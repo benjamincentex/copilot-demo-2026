@@ -67,6 +67,14 @@ async function sendMail(env, to, subject, text) {
   return true;
 }
 
+// Emails the site owner (first address in ADMIN_EMAIL). Never throws.
+async function notifyOwner(env, subject, text) {
+  const to = (env.ADMIN_EMAIL || "").split(",")[0].trim();
+  if (!to) return;
+  try { await sendMail(env, to, subject, text + `\n\nReview it: ${env.SITE_URL || "https://centexhomeschool.org"}/admin.html`); }
+  catch (e) { console.error("owner notice failed", e.code, e.message); }
+}
+
 function alertEmail(listing, town, avail, siteUrl) {
   const status = avail.s === "open" ? "has open spots" : `opens registration${avail.when ? " in " + avail.when : " soon"}`;
   return {
@@ -149,6 +157,8 @@ const routes = {
       "INSERT INTO submissions (kind, name, town, website, contact, email, details, availability, registration_opens) VALUES (?,?,?,?,?,?,?,?,?)"
     ).bind(clip(b.kind, 60), name, clip(b.town, 60), clip(b.website, 300), clip(b.contact, 80), email, clip(b.details, 2000),
       AVAIL.has(b.availability) ? b.availability : "", clip(b.registrationOpens, 40)).run();
+    await notifyOwner(env, `New request: ${clip(b.kind, 60) || "Suggestion"} — ${name}`,
+      `${clip(b.kind, 60)}\nName: ${name}\nTown: ${clip(b.town, 60)}\nWebsite: ${clip(b.website, 300)}\nFrom: ${clip(b.contact, 80)} <${email}>\n\n${clip(b.details, 2000)}`);
     return json({ ok: true });
   },
 
@@ -282,6 +292,8 @@ const routes = {
     if (!dup) {
       await env.DB.prepare("INSERT INTO claims (slug, listing, town, email, name, role, note) VALUES (?,?,?,?,?,?,?)")
         .bind(slug, clip(b.listing, 140), clip(b.town, 60), email, clip(b.name, 80), clip(b.role, 60), clip(b.note, 500)).run();
+      await notifyOwner(env, `New listing claim: ${clip(b.listing, 140)}`,
+        `${clip(b.name, 80)}${clip(b.role, 60) ? " (" + clip(b.role, 60) + ")" : ""} wants to manage ${clip(b.listing, 140)}.\nEmail: ${email}${clip(b.note, 500) ? "\nNote: " + clip(b.note, 500) : ""}`);
     }
     return json({ ok: true });
   },
@@ -470,6 +482,8 @@ const routes = {
     const r = await env.DB.prepare(
       `INSERT INTO jobs (email, name, kind, title, org, town, pay, schedule, details, apply_link, status, expires_at) VALUES (?,?,?,?,?,?,?,?,?,?,?, ${kind === "hiring" ? "NULL" : "datetime('now','+60 days')"})`
     ).bind(email, prof.name, kind, title, clip(b.org, 100), clip(b.town, 40), clip(b.pay, 60), clip(b.schedule, 80), details, kind === "hiring" ? link : "", kind === "hiring" ? "awaiting_payment" : "live").run();
+    if (kind === "hiring") await notifyOwner(env, `Job post awaiting payment: ${title}`,
+      `${clip(b.org, 100)} posted "${title}" (${clip(b.town, 40)}).\nPoster: ${prof.name} <${email}>\nMark it paid on your owner page once the $39 payment comes through.`);
     return json({ ok: true, id: r.meta.last_row_id, needsPayment: kind === "hiring" });
   },
 
@@ -617,7 +631,34 @@ const routes = {
   },
 };
 
+// Daily summary for the owner (runs on the cron in wrangler.jsonc). Skipped when nothing is new.
+async function dailyDigest(env) {
+  const since = "datetime('now','-1 day')";
+  const q = (sql) => env.DB.prepare(sql).all().then((r) => r.results);
+  const [posts, events, tutors, questions, subs, alerts] = await Promise.all([
+    q(`SELECT name, town, want, details FROM board_posts WHERE created_at > ${since} AND status='approved'`),
+    q(`SELECT title, event_date, host, name FROM events WHERE created_at > ${since} AND status='approved' AND source!='imported'`),
+    q(`SELECT data FROM user_listings WHERE created_at > ${since} AND status='live'`),
+    q(`SELECT listing, name, question FROM questions WHERE created_at > ${since}`),
+    q(`SELECT COUNT(DISTINCT email) AS n FROM subscribers WHERE created_at > ${since}`),
+    q(`SELECT COUNT(*) AS n FROM alerts WHERE created_at > ${since}`),
+  ]);
+  const lines = [];
+  if (posts.length) lines.push(`"Looking for" posts (${posts.length}):\n` + posts.map((p) => `- ${p.name}, ${p.town || "no town"}: ${p.want} — ${p.details}`).join("\n"));
+  if (events.length) lines.push(`Events (${events.length}):\n` + events.map((e) => `- ${e.event_date}: ${e.title}${e.host ? " (" + e.host + ")" : ""} posted by ${e.name}`).join("\n"));
+  if (tutors.length) lines.push(`Tutor listings (${tutors.length}):\n` + tutors.map((t) => { const d = JSON.parse(t.data); return `- ${d.n}, ${d.town}: ${(d.tags || []).join(", ")}`; }).join("\n"));
+  if (questions.length) lines.push(`Questions on listings (${questions.length}):\n` + questions.map((x) => `- ${x.listing}: "${x.question}" (${x.name})`).join("\n"));
+  if (subs[0].n) lines.push(`New newsletter sign-ups: ${subs[0].n}`);
+  if (alerts[0].n) lines.push(`New opening-alert sign-ups: ${alerts[0].n}`);
+  if (!lines.length) return;
+  await notifyOwner(env, "Your CenTex Homeschool Hub daily summary", "Here's what's new in the last 24 hours.\n\n" + lines.join("\n\n") + "\n\nRemove anything that breaks the rules from your owner page.");
+}
+
 export default {
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(dailyDigest(env));
+  },
+
   async fetch(request, env) {
     const url = new URL(request.url);
     if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);

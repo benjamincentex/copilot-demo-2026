@@ -21,5 +21,7 @@
     // in the Cloudflare dashboard (Worker > Settings > Variables) or here.
     "ADMIN_EMAIL": ""
   },
+  // Daily owner summary at 8:00 a.m. Central (13:00 UTC; 7 a.m. during daylight saving time).
+  "triggers": { "crons": ["0 13 * * *"] },
   "observability": { "enabled": true }
 }
