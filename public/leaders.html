@@ -217,6 +217,7 @@ html{scroll-behavior:smooth}
 .row2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 .signedin{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:15px}
 .pill{font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;background:var(--sun-soft);color:var(--ink)}
+.plans{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}@media (max-width:780px){.plans{grid-template-columns:1fr}}
 .stack{display:flex;flex-direction:column;gap:10px}
 .stats4{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
 .stats4 div{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px}
@@ -300,6 +301,52 @@ html{scroll-behavior:smooth}
     </div>
   </div>
 </section>
+  <section id="plans" style="padding-top:36px">
+    <div class="intro">
+      <span class="label">Plans</span>
+      <h2>Show families what you offer</h2>
+      <p>Every listing is free, and listings appear in the same order for every family. Tutors, classes and programs can upgrade to add photos, a class schedule and a sign-up button, so families can see what you offer and enroll in one click.</p>
+    </div>
+    <div class="plans">
+      <div class="plan">
+        <span class="label">Basic listing</span>
+        <div class="price">Free</div>
+        <ul>
+          <li>Description, ages, meeting days, cost and website</li>
+          <li>Availability status and opening alerts to waiting families</li>
+          <li>Answer families' questions on your listing</li>
+          <li>Post events to the community calendar</li>
+        </ul>
+        <a class="btn ghost" href="#signinBox">Claim your free listing</a>
+      </div>
+      <div class="plan featured">
+        <span class="label">Enhanced listing</span>
+        <div class="price">$29<small> / month</small></div>
+        <ul>
+          <li>Everything in Basic</li>
+          <li>Photo gallery, up to 6 photos</li>
+          <li>Class schedule with days, times and ages</li>
+          <li>A "Sign up" button that goes straight to your registration page</li>
+          <li>Longer description</li>
+        </ul>
+        <a class="btn" data-plan="enhanced" href="/#submit">Get an Enhanced listing</a>
+      </div>
+      <div class="plan">
+        <span class="label">Partner</span>
+        <div class="price">$49<small> / month</small></div>
+        <ul>
+          <li>Everything in Enhanced</li>
+          <li>Featured listing: a highlighted banner around your listing so it stands out wherever families see it</li>
+          <li>A feature in the monthly newsletter each quarter</li>
+          <li>Your events mentioned in the newsletter</li>
+          <li>Monthly results report: views, clicks and questions</li>
+          <li>Up to 3 listings for multiple locations or programs</li>
+        </ul>
+        <a class="btn ghost" data-plan="partner" href="/#submit">Become a Partner</a>
+      </div>
+    </div>
+  </section>
+<p class="where" style="margin-top:16px">Hiring a teacher or tutor? Job posts are $39 for 30 days on the <a href="/#jobs">jobs board</a>.</p>
 <footer><span>CenTex Homeschool Hub</span><span>Questions? Reply to any email from us.</span></footer>
 </div>
 <script src="/listings.js"></script>
@@ -317,6 +364,8 @@ const sid=x=>x.slug||slug(x.n);
 const slug=n=>n.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,120);
 const setStatus=(id,kind,msg)=>{const el=$(id); el.className="status"+(kind?" "+kind:""); el.textContent=msg;};
 
+const STRIPE_LINKS={enhanced:"",partner:""};
+document.querySelectorAll("[data-plan]").forEach(a=>{ const l=STRIPE_LINKS[a.dataset.plan]; if(l) a.href=l; });
 const AVL={open:"Open spots",waitlist:"Waitlist",full:"Full",opens:"Registration opens soon",unknown:"Not sure / ask us"};
 let me=null, overrides={};
 const bySlug=()=>Object.fromEntries(L.map(x=>[sid(x),x]));
