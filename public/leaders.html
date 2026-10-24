@@ -448,7 +448,7 @@ $("claimForm").addEventListener("submit",async e=>{
   e.preventDefault(); const id=$("c-listing").value, x=bySlug()[id];
   if(!$("c-name").value.trim()){setStatus("claimStatus","err","Add your name so we can confirm you lead this group.");$("c-name").focus();return;}
   setStatus("claimStatus","","Sending…");
-  const r=await api("/api/leader/claim",{slug:id,listing:x.n,town:x.town,name:$("c-name").value.trim(),role:$("c-role").value.trim(),note:$("c-note").value.trim()});
+  const r=await api("/api/leader/claim",{slug:id,listing:x.n,town:x.town,type:x.type,name:$("c-name").value.trim(),role:$("c-role").value.trim(),note:$("c-note").value.trim()});
   if(!r.ok){setStatus("claimStatus","err",r.error);return;}
   setStatus("claimStatus","ok",r.already?"You already manage this listing.":"Request sent. We'll email you once it's approved.");
   load();

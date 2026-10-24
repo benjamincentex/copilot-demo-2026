@@ -293,8 +293,8 @@ const routes = {
     if (owned) return json({ ok: true, already: true });
     const dup = await env.DB.prepare("SELECT 1 FROM claims WHERE slug=? AND email=? AND status='pending'").bind(slug, email).first();
     if (!dup) {
-      await env.DB.prepare("INSERT INTO claims (slug, listing, town, email, name, role, note) VALUES (?,?,?,?,?,?,?)")
-        .bind(slug, clip(b.listing, 140), clip(b.town, 60), email, clip(b.name, 80), clip(b.role, 60), clip(b.note, 500)).run();
+      await env.DB.prepare("INSERT INTO claims (slug, listing, town, email, name, role, note, type) VALUES (?,?,?,?,?,?,?,?)")
+        .bind(slug, clip(b.listing, 140), clip(b.town, 60), email, clip(b.name, 80), clip(b.role, 60), clip(b.note, 500), clip(b.type, 20)).run();
       await notifyOwner(env, `New listing claim: ${clip(b.listing, 140)}`,
         `${clip(b.name, 80)}${clip(b.role, 60) ? " (" + clip(b.role, 60) + ")" : ""} wants to manage ${clip(b.listing, 140)}.\nEmail: ${email}${clip(b.note, 500) ? "\nNote: " + clip(b.note, 500) : ""}`);
     }
@@ -606,8 +606,13 @@ const routes = {
     await env.DB.prepare("INSERT INTO listing_overrides (slug, data, updated_at, updated_by) VALUES (?,?,?,?) ON CONFLICT(slug) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at")
       .bind(c.slug, JSON.stringify({ ...prev, claimed: true }), stamp, "owner").run();
     try {
+      const paid = ["class", "micro", "tutor"].includes(c.type);
       await sendMail(env, c.email, `You can now manage ${c.listing} on CenTex Homeschool Hub`,
-        `Hi ${c.name || "there"},\n\nYour claim for ${c.listing} is approved. Sign in at ${env.SITE_URL || "https://centexhomeschool.org"}/#leaders with this email address to update your details and availability anytime.\n\nWhen you mark open spots or post a registration date, families waiting on your group get an email right away.\n\nCenTex Homeschool Hub`);
+        `Hi ${c.name || "there"},\n\nYour claim for ${c.listing} is approved. Sign in at ${env.SITE_URL || "https://centexhomeschool.org"}/leaders.html with this email address to update your details and availability anytime.\n\n` +
+        `A few things that help families find you:\n- Mark your availability (open spots, waitlist or full)\n- Add your next open house or application deadline to the community calendar\n- Answer families' questions on your listing\n\n` +
+        `When you mark open spots or post a registration date, families waiting on your group get an email right away.\n\n` +
+        (paid ? `P.S. Want families to enroll in one click? An Enhanced listing adds photos, your class schedule and a "Sign up" button that goes straight to your registration page. Details: ${env.SITE_URL || "https://centexhomeschool.org"}/leaders.html#plans\n\n` : "") +
+        `Thanks,\nBenjamin\nCenTex Homeschool Hub`);
     } catch (e) { console.error("approval email failed", e.code, e.message); }
     return json({ ok: true });
   },
