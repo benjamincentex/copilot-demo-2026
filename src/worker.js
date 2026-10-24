@@ -114,6 +114,19 @@ function cleanFields(f) {
   return fields;
 }
 
+
+// ---------- community helpers ----------
+const PHONE_RE = /(\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/;
+const EMAIL_IN_TEXT_RE = /[^\s@]+@[^\s@]+\.[a-z]{2,}/i;
+function privacyProblem(text) {
+  if (PHONE_RE.test(text)) return "Please leave out phone numbers. Families reach each other through the site.";
+  if (EMAIL_IN_TEXT_RE.test(text)) return "Please leave out email addresses. Families reach each other through the site.";
+  return null;
+}
+async function profileOf(env, email) {
+  return env.DB.prepare("SELECT name, town FROM profiles WHERE email=?").bind(email).first();
+}
+
 const routes = {
   // ---------- public ----------
   "GET /api/listings": async (req, env) => {
@@ -244,6 +257,156 @@ const routes = {
     if (!owned) return bad("You can only update listings you've claimed. If you've asked to claim this one, we'll email you once it's approved.", 403);
     const alerted = await publishListing(env, slug, clip(b.listing, 140), clip(b.town, 60), cleanFields(b.fields), email);
     return json({ ok: true, alerted });
+  },
+
+
+  // ---------- accounts (parents and leaders share one sign-in) ----------
+  "GET /api/account/me": async (req, env) => {
+    const email = await leaderEmail(req, env);
+    if (!email) return json({ signedIn: false });
+    return json({ signedIn: true, email, profile: await profileOf(env, email) });
+  },
+
+  "POST /api/account/profile": async (req, env) => {
+    const email = await leaderEmail(req, env); if (!email) return bad("Sign in first.", 401);
+    const b = await body(req); const name = clip(b && b.name, 40);
+    if (!name) return bad("Add the name other parents will see, like \"Sarah M.\"");
+    await env.DB.prepare("INSERT INTO profiles (email, name, town) VALUES (?,?,?) ON CONFLICT(email) DO UPDATE SET name=excluded.name, town=excluded.town")
+      .bind(email, name, clip(b.town, 40)).run();
+    return json({ ok: true });
+  },
+
+  // ---------- "Looking for" board ----------
+  "GET /api/board": async (req, env) => {
+    const me = await leaderEmail(req, env);
+    const { results } = await env.DB.prepare(
+      "SELECT id, email, name, town, ages, want, details, created_at FROM board_posts WHERE status='approved' AND expires_at > datetime('now') ORDER BY id DESC LIMIT 100").all();
+    let mine = [];
+    if (me) ({ results: mine } = await env.DB.prepare("SELECT id, want, details, status, expires_at FROM board_posts WHERE email=? AND status!='removed' ORDER BY id DESC LIMIT 20").bind(me).all());
+    return json({ posts: results.map(({ email, ...r }) => ({ ...r, mine: email === me })), mine });
+  },
+
+  "POST /api/board": async (req, env) => {
+    const email = await leaderEmail(req, env); if (!email) return bad("Sign in first.", 401);
+    const prof = await profileOf(env, email); if (!prof) return bad("Add your display name first.");
+    const b = await body(req); const details = clip(b && b.details, 400);
+    if (details.length < 15) return bad("Tell families a little more about what you're looking for.");
+    const problem = privacyProblem(details); if (problem) return bad(problem);
+    const open = await env.DB.prepare("SELECT COUNT(*) AS n FROM board_posts WHERE email=? AND status IN ('pending','approved') AND expires_at > datetime('now')").bind(email).first();
+    if (open.n >= 3) return bad("You can have up to 3 active posts. Remove one to add another.");
+    await env.DB.prepare("INSERT INTO board_posts (email, name, town, ages, want, details, expires_at) VALUES (?,?,?,?,?,?, datetime('now','+60 days'))")
+      .bind(email, prof.name, clip(b.town, 40) || prof.town || "", clip(b.ages, 40), clip(b.want, 60), details).run();
+    return json({ ok: true });
+  },
+
+  "POST /api/board/remove": async (req, env) => {
+    const email = await leaderEmail(req, env); if (!email) return bad("Sign in first.", 401);
+    const b = await body(req);
+    await env.DB.prepare("UPDATE board_posts SET status='removed' WHERE id=? AND email=?").bind(Number(b && b.id) || 0, email).run();
+    return json({ ok: true });
+  },
+
+  "POST /api/board/reply": async (req, env) => {
+    const email = await leaderEmail(req, env); if (!email) return bad("Sign in first.", 401);
+    const prof = await profileOf(env, email); if (!prof) return bad("Add your display name first.");
+    const b = await body(req); const message = clip(b && b.message, 800);
+    if (message.length < 5) return bad("Write a short message.");
+    const post = await env.DB.prepare("SELECT email, details FROM board_posts WHERE id=? AND status='approved'").bind(Number(b.id) || 0).first();
+    if (!post) return bad("That post is no longer up.", 404);
+    let sent = false;
+    try {
+      sent = await sendMail(env, post.email, `${prof.name} replied to your post on CenTex Homeschool Hub`,
+        `${prof.name}${prof.town ? " (" + prof.town + ")" : ""} replied to your "Looking for" post:\n\n"${message}"\n\nYour post: "${post.details}"\n\nTo write back, email ${email}. They chose to share it by replying.\n\nCenTex Homeschool Hub`);
+    } catch (e) { console.error("reply send failed", e.code, e.message); }
+    if (!sent) return bad("Replies aren't switched on yet. Please check back soon.", 503);
+    return json({ ok: true });
+  },
+
+  // ---------- community events ----------
+  "GET /api/events": async (req, env) => {
+    const { results } = await env.DB.prepare(
+      "SELECT id, title, event_date, event_time, town, place, host, link, details FROM events WHERE status='approved' AND event_date >= date('now','-1 day') ORDER BY event_date, event_time LIMIT 60").all();
+    return json({ events: results });
+  },
+
+  "POST /api/events": async (req, env) => {
+    const email = await leaderEmail(req, env); if (!email) return bad("Sign in first.", 401);
+    const prof = await profileOf(env, email); if (!prof) return bad("Add your display name first.");
+    const b = await body(req) || {};
+    const title = clip(b.title, 100), date = clip(b.date, 10), details = clip(b.details, 500), link = clip(b.link, 300);
+    if (!title) return bad("Add a title for the event.");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return bad("Pick the event date.");
+    if (link && !/^https?:\/\//i.test(link)) return bad("The link should start with https://");
+    const problem = privacyProblem(details + " " + title); if (problem) return bad(problem);
+    await env.DB.prepare("INSERT INTO events (email, name, title, event_date, event_time, town, place, host, link, details) VALUES (?,?,?,?,?,?,?,?,?,?)")
+      .bind(email, prof.name, title, date, clip(b.time, 30), clip(b.town, 40), clip(b.place, 120), clip(b.host, 100), link, details).run();
+    return json({ ok: true });
+  },
+
+  // ---------- questions on listings ----------
+  "GET /api/questions": async (req, env) => {
+    const { results } = await env.DB.prepare(
+      "SELECT id, slug, name, question, answer, answered_at FROM questions WHERE status='answered' ORDER BY answered_at DESC LIMIT 500").all();
+    const by = {};
+    for (const q of results) (by[q.slug] = by[q.slug] || []).push(q);
+    return json({ questions: by });
+  },
+
+  "POST /api/questions": async (req, env) => {
+    const email = await leaderEmail(req, env); if (!email) return bad("Sign in first.", 401);
+    const prof = await profileOf(env, email); if (!prof) return bad("Add your display name first.");
+    const b = await body(req); const question = clip(b && b.question, 300), slug = clip(b && b.slug, 120);
+    if (!slug) return bad("Missing listing.");
+    if (question.length < 8) return bad("Write your question in a sentence or two.");
+    const problem = privacyProblem(question); if (problem) return bad(problem);
+    await env.DB.prepare("INSERT INTO questions (slug, listing, email, name, question) VALUES (?,?,?,?,?)")
+      .bind(slug, clip(b.listing, 140), email, prof.name, question).run();
+    const { results: owners } = await env.DB.prepare("SELECT email FROM listing_owners WHERE slug=?").bind(slug).all();
+    for (const o of owners) {
+      try { await sendMail(env, o.email, `New question about ${clip(b.listing, 140)}`,
+        `A family asked:\n\n"${question}"\n\nAnswer it at ${env.SITE_URL || "https://centexhomeschool.org"}/leaders.html. Your answer will show on your listing so other families see it too.\n\nCenTex Homeschool Hub`); } catch (e) {}
+    }
+    return json({ ok: true, hasLeader: owners.length > 0 });
+  },
+
+  "GET /api/leader/questions": async (req, env) => {
+    const email = await leaderEmail(req, env); if (!email) return bad("Sign in first.", 401);
+    const { results } = await env.DB.prepare(
+      "SELECT q.id, q.slug, q.listing, q.name, q.question, q.answer, q.status FROM questions q JOIN listing_owners o ON o.slug=q.slug AND o.email=? WHERE q.status IN ('open','answered') ORDER BY q.status='answered', q.id DESC LIMIT 100").bind(email).all();
+    return json({ questions: results });
+  },
+
+  "POST /api/leader/answer": async (req, env) => {
+    const email = await leaderEmail(req, env); if (!email) return bad("Sign in first.", 401);
+    const b = await body(req); const id = Number(b && b.id) || 0, answer = clip(b && b.answer, 800);
+    if (answer.length < 2) return bad("Write your answer first.");
+    const q = await env.DB.prepare("SELECT q.id, q.email, q.listing FROM questions q JOIN listing_owners o ON o.slug=q.slug AND o.email=? WHERE q.id=?").bind(email, id).first();
+    if (!q) return bad("You can only answer questions about listings you manage.", 403);
+    await env.DB.prepare("UPDATE questions SET answer=?, answered_by=?, answered_at=datetime('now'), status='answered' WHERE id=?").bind(answer, email, id).run();
+    try { await sendMail(env, q.email, `${q.listing} answered your question`,
+      `${q.listing} answered your question on CenTex Homeschool Hub:\n\n"${answer}"\n\nSee it on their listing: ${env.SITE_URL || "https://centexhomeschool.org"}\n\nCenTex Homeschool Hub`); } catch (e) {}
+    return json({ ok: true });
+  },
+
+  // ---------- owner moderation ----------
+  "GET /api/admin/moderation": async (req, env) => {
+    const [{ results: posts }, { results: evs }, { results: qs }] = await Promise.all([
+      env.DB.prepare("SELECT id, name, email, town, ages, want, details, created_at FROM board_posts WHERE status='pending' ORDER BY id").all(),
+      env.DB.prepare("SELECT id, name, email, title, event_date, event_time, town, place, host, link, details FROM events WHERE status='pending' ORDER BY event_date").all(),
+      env.DB.prepare("SELECT id, listing, name, question, answer, status FROM questions WHERE status IN ('open','answered') ORDER BY id DESC LIMIT 30").all(),
+    ]);
+    return json({ posts, events: evs, questions: qs });
+  },
+
+  "POST /api/admin/moderate": async (req, env) => {
+    const b = await body(req) || {};
+    const table = { post: "board_posts", event: "events", question: "questions" }[b.kind];
+    const status = { approve: "approved", reject: "rejected", hide: "hidden" }[b.action];
+    if (!table || !status) return bad("Unknown action.");
+    if (table === "questions" && status !== "hidden") return bad("Questions can only be hidden.");
+    if (table !== "questions" && status === "hidden") return bad("Use reject instead.");
+    await env.DB.prepare(`UPDATE ${table} SET status=? ${table === "questions" ? "" : ", reviewed_at=datetime('now')"} WHERE id=?`).bind(status, Number(b.id) || 0).run();
+    return json({ ok: true });
   },
 
   // ---------- admin (owner only, via Cloudflare Access) ----------

@@ -235,11 +235,14 @@ html{scroll-behavior:smooth}
 </header>
 
 <section style="padding-top:28px">
-  <div class="intro"><span class="label">Only you can see this</span><h2>Owner tools</h2><p>Approve group leaders, see who's signing up, and spot towns where families can't find a fit.</p></div>
+  <div class="intro"><span class="label">Only you can see this</span><h2>Owner tools</h2><p>Approve group leaders, posts and events, see who's signing up, and spot towns where families can't find a fit.</p></div>
   <div class="box" id="denied" hidden><h2>Owner sign-in required</h2><p class="where" style="margin:0">Open this page through Cloudflare Access with the email set as ADMIN_EMAIL on the Worker.</p></div>
   <div id="tools" hidden>
     <div class="box"><h2>At a glance</h2><div class="stats4" id="stats"></div><p class="where" id="emailLine" style="margin:0"></p></div>
     <div class="box"><h2>Listing claims to review</h2><div id="claims" class="where">No claims waiting.</div></div>
+    <div class="box"><h2>"Looking for" posts to review</h2><div id="mPosts" class="where">Nothing waiting.</div></div>
+    <div class="box"><h2>Events to review</h2><div id="mEvents" class="where">Nothing waiting.</div></div>
+    <div class="box"><h2>Recent listing questions</h2><p class="where" style="margin:0">Questions go to the group's leader. Hide anything inappropriate.</p><div id="mQs" class="where"></div></div>
     <div class="box"><h2>Unmet demand</h2><p class="where" style="margin:0">What families asked for in the quiz where no listing near them fit.</p><div id="gaps" class="demand" style="margin-top:0;border:0;padding:0"></div></div>
   </div>
 </section>
@@ -268,12 +271,21 @@ async function load(){
     $("emailLine").textContent=sum.emailEnabled?"Email sending is on: sign-in codes and alerts go out automatically.":"Email sending is off until the domain is verified for sending. Leaders can't sign in yet, and alerts wait in the queue.";
     $("gaps").innerHTML=sum.gaps.length?`<table><thead><tr><th>Looking for (town · faith · type)</th><th style="text-align:right">Families</th></tr></thead><tbody>${sum.gaps.map(g=>`<tr><td>${esc([g.town,g.faith,g.want].filter(Boolean).join(" · "))}</td><td class="n">${g.n}</td></tr>`).join("")}</tbody></table>`:"<p class='where'>No gaps yet.</p>";
   }
+  const m=await api("/api/admin/moderation");
+  if(m.ok){
+    const btns=(k,id,hideOnly)=>`<div class="row">${hideOnly?`<button class="btn ghost sm" type="button" data-mod="${k}:${id}:hide">Hide</button>`:`<button class="btn sm" type="button" data-mod="${k}:${id}:approve">Approve</button><button class="btn ghost sm" type="button" data-mod="${k}:${id}:reject">Reject</button>`}</div>`;
+    $("mPosts").innerHTML=m.posts.length?m.posts.map(p=>`<div class="rev"><b style="color:var(--ink)">${esc(p.want||"Looking for")}</b><span>${esc(p.name)} · ${esc(p.email)}${p.town?" · "+esc(p.town):""}${p.ages?" · ages "+esc(p.ages):""}</span><span>${esc(p.details)}</span>${btns("post",p.id)}</div>`).join(""):"Nothing waiting.";
+    $("mEvents").innerHTML=m.events.length?m.events.map(v=>`<div class="rev"><b style="color:var(--ink)">${esc(v.title)}</b><span>${esc(v.event_date)} ${esc(v.event_time||"")} · ${esc([v.place,v.town].filter(Boolean).join(", "))}</span><span>From ${esc(v.name)} · ${esc(v.email)}${v.host?" · host: "+esc(v.host):""}</span>${v.details?`<span>${esc(v.details)}</span>`:""}${v.link?`<a href="${esc(v.link)}" target="_blank" rel="noopener">${esc(v.link)}</a>`:""}${btns("event",v.id)}</div>`).join(""):"Nothing waiting.";
+    $("mQs").innerHTML=m.questions.length?m.questions.map(q=>`<div class="rev"><b style="color:var(--ink)">${esc(q.listing)}</b><span>${esc(q.name)}: "${esc(q.question)}"</span>${q.answer?`<span>Answer: ${esc(q.answer)}</span>`:"<span>Not answered yet</span>"}${btns("question",q.id,true)}</div>`).join(""):"No questions yet.";
+  }
   const items=(cl.ok&&cl.claims)||[];
   $("claims").innerHTML=items.length?items.map(c=>`<div class="rev"><b style="color:var(--ink)">${esc(c.listing||c.slug)}</b>
     <span>${esc(c.name||"")}${c.role?", "+esc(c.role):""} · ${esc(c.email)}</span>${c.note?`<span>${esc(c.note)}</span>`:""}
     <div class="row"><button class="btn sm" type="button" data-approve="${c.id}">Approve</button><button class="btn ghost sm" type="button" data-reject="${c.id}">Reject</button></div></div>`).join(""):"No claims waiting.";
 }
 document.addEventListener("click",async e=>{
+  const mod=e.target.closest("[data-mod]");
+  if(mod){const [kind,id,action]=mod.dataset.mod.split(":"); mod.disabled=true; const x=await api("/api/admin/moderate",{kind,id:Number(id),action}); x.ok?load():(mod.disabled=false); return;}
   const a=e.target.closest("[data-approve]"), r=e.target.closest("[data-reject]");
   if(a){a.disabled=true; const x=await api("/api/admin/claims/approve",{id:Number(a.dataset.approve)}); x.ok?load():(a.disabled=false);}
   if(r){r.disabled=true; const x=await api("/api/admin/claims/reject",{id:Number(r.dataset.reject)}); x.ok?load():(r.disabled=false);}

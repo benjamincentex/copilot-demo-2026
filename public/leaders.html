@@ -217,6 +217,7 @@ html{scroll-behavior:smooth}
 .row2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 .signedin{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:15px}
 .pill{font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;background:var(--sun-soft);color:var(--ink)}
+.stack{display:flex;flex-direction:column;gap:10px}
 .stats4{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
 .stats4 div{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px}
 .stats4 b{display:block;font-family:var(--display);font-size:28px;font-weight:400;font-variant-numeric:tabular-nums}
@@ -262,6 +263,7 @@ html{scroll-behavior:smooth}
     <div class="box">
       <div class="signedin"><span>Signed in as <b id="whoami"></b></span><button class="linkbtn" type="button" id="logout">Sign out</button></div>
     </div>
+    <div class="box" id="qBox" hidden><h2>Questions from families</h2><p class="where" style="margin:0">Your answers show on your listing so other families see them too.</p><div id="qList" class="stack"></div></div>
     <div id="myListings"></div>
     <div class="box" id="pendingBox" hidden><h2>Waiting for approval</h2><div id="pendingList"></div></div>
     <div class="box">
@@ -359,13 +361,27 @@ async function load(){
   const [m,o]=await Promise.all([api("/api/leader/me"),api("/api/listings")]);
   if(o.ok) overrides=o.overrides||{};
   if(!m.ok||!m.signedIn){$("signinBox").hidden=false;$("account").hidden=true;return;}
-  me=m; $("signinBox").hidden=true; $("account").hidden=false; $("whoami").textContent=m.email;
+  me=m; $("signinBox").hidden=true; loadQs(); $("account").hidden=false; $("whoami").textContent=m.email;
   const map=bySlug();
   $("myListings").innerHTML=m.owned.length?m.owned.filter(id=>map[id]).map(id=>editor(map[id])).join(""):`<div class="box"><h2>Your listings</h2><p class="where" style="margin:0">You don't manage any listings yet. Claim yours below.</p></div>`;
   $("pendingBox").hidden=!m.pending.length;
   $("pendingList").innerHTML=m.pending.map(p=>`<p style="margin:0"><span class="pill">Pending</span> ${esc(p.listing||p.slug)}</p>`).join("");
 }
-load();
+async function loadQs(){
+  const r=await api("/api/leader/questions"); const qs=(r.ok&&r.questions)||[];
+  $("qBox").hidden=!qs.length;
+  $("qList").innerHTML=qs.map(q=>`<form class="rev" data-q="${q.id}" novalidate><b style="color:var(--ink)">${esc(q.listing||q.slug)}</b>
+    <span>${esc(q.name||"A parent")} asked: "${esc(q.question)}"</span>
+    <textarea maxlength="800" style="font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);min-height:60px" placeholder="Your answer">${esc(q.answer||"")}</textarea>
+    <div class="row"><button class="btn sm" type="submit">${q.status==="answered"?"Update answer":"Post answer"}</button><span class="status" role="status"></span></div></form>`).join("");
+}
+document.addEventListener("submit",async e=>{
+  const f=e.target; if(!f.dataset.q) return; e.preventDefault();
+  const st=f.querySelector(".status"); st.className="status"; st.textContent="Posting…";
+  const r=await api("/api/leader/answer",{id:Number(f.dataset.q),answer:f.querySelector("textarea").value.trim()});
+  st.className="status "+(r.ok?"ok":"err"); st.textContent=r.ok?"Posted on your listing.":r.error;
+});
+load().then(()=>{ if(me) loadQs(); });
 </script>
 </body>
 </html>

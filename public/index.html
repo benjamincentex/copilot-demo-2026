@@ -109,6 +109,30 @@ form.notify p{font-size:13px;margin:0;color:var(--muted)}
 .tefa-links a:hover{border-color:var(--oak)}
 .tefa-links b{color:var(--bonnet)}
 .tefa-links span{font-size:14px;color:var(--muted)}
+/* community */
+.acctbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;font-size:15px}
+.box2{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:10px;margin-bottom:12px}
+.inline{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.inline .field{flex:1 1 200px}
+.row2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.community{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.community>div{min-width:0}
+.colhead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.colhead h3{font-size:22px}
+.stack{display:flex;flex-direction:column;gap:10px}
+.post,.event{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.post p,.event p{margin:0;font-size:15px;overflow-wrap:anywhere}
+.meta{font-size:13px;color:var(--muted)}
+.event{display:grid;grid-template-columns:56px minmax(0,1fr);gap:12px}
+.datebox{background:var(--oak-soft);border-radius:8px;text-align:center;padding:6px 0;align-self:start}
+.datebox b{display:block;font-family:var(--display);font-size:24px;font-weight:400;line-height:1}
+.datebox span{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--oak)}
+.emptynote{background:var(--surface);border:1px dashed var(--line);border-radius:var(--r);padding:16px;color:var(--muted);font-size:15px}
+.qa{border-top:1px dashed var(--line);padding-top:8px;display:flex;flex-direction:column;gap:8px}
+.qa .q{font-size:14px;margin:0}.qa .a{font-size:14px;margin:0;padding-left:10px;border-left:3px solid var(--oak)}
+form.ask{display:flex;flex-direction:column;gap:8px}
+form.ask textarea{font:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);min-height:60px}
+@media (max-width:780px){.community,.row2{grid-template-columns:1fr}}
 /* search + filters */
 .finder{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:12px;border-bottom:1px solid var(--line)}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
@@ -234,6 +258,7 @@ html{scroll-behavior:smooth}
     <a href="#fit">Find your fit</a>
     <a href="#tefa">TEFA basics</a>
     <a href="#plans">For vendors</a>
+    <a href="#community">Community</a>
     <a href="#newsletter">Newsletter</a>
     <a href="#submit">Add a listing</a>
   </nav>
@@ -337,6 +362,70 @@ html{scroll-behavior:smooth}
       <p>Many co-ops open registration in spring for the fall semester, and popular ones fill fast. Groups that post their dates appear here and in the monthly newsletter.</p>
     </div>
     <div id="regList"></div>
+  </section>
+
+  <section id="community">
+    <div class="intro">
+      <span class="label">Community</span>
+      <h2>Connect with local homeschool families</h2>
+      <p>Post what your family is looking for, find park days and field trips, and ask groups questions. Accounts are for parents and group leaders, and every post is reviewed before it appears.</p>
+    </div>
+    <div class="acctbar" id="acctBar"></div>
+    <div class="box2" id="signinPanel" hidden>
+      <form id="cEmailForm" novalidate class="inline">
+        <div class="field"><label for="c-email">Your email</label><input id="c-email" type="email" autocomplete="email" maxlength="160" placeholder="you@example.com"></div>
+        <button class="btn" type="submit" style="margin-top:0">Email me a sign-in code</button>
+      </form>
+      <form id="cCodeForm" novalidate class="inline" hidden>
+        <div class="field"><label for="c-code">6-digit code</label><input id="c-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456"></div>
+        <button class="btn" type="submit" style="margin-top:0">Sign in</button>
+      </form>
+      <span class="status" id="cSignStatus" role="status"></span>
+      <p class="where" style="margin:0;font-size:13px">No password needed. We'll email you a one-time code.</p>
+    </div>
+    <div class="box2" id="profilePanel" hidden>
+      <form id="cProfileForm" novalidate class="inline">
+        <div class="field"><label for="p-name">Name other parents will see</label><input id="p-name" maxlength="40" placeholder="e.g. Sarah M."></div>
+        <div class="field"><label for="p-town">Your town</label><input id="p-town" maxlength="40" placeholder="e.g. Leander"></div>
+        <button class="btn" type="submit" style="margin-top:0">Save</button>
+      </form>
+      <span class="status" id="cProfileStatus" role="status"></span>
+      <p class="where" style="margin:0;font-size:13px">Use a first name and last initial. Please don't share your kids' names or photos.</p>
+    </div>
+
+    <div class="community">
+      <div>
+        <div class="colhead"><h3>Looking for</h3><button class="linkbtn" type="button" id="newPostBtn">Post what you're looking for</button></div>
+        <form class="box2" id="postForm" novalidate hidden>
+          <div class="row2">
+            <div class="field"><label for="b-want">Looking for</label><select id="b-want"><option>A co-op</option><option>A support group</option><option>Classes or tutoring</option><option>A microschool or hybrid</option><option>Other families to meet</option><option>Something else</option></select></div>
+            <div class="field"><label for="b-ages">Kids' ages</label><input id="b-ages" maxlength="40" placeholder="e.g. 7 and 10"></div>
+          </div>
+          <div class="field"><label for="b-town">Area</label><input id="b-town" maxlength="40" placeholder="e.g. Leander / Cedar Park"></div>
+          <div class="field"><label for="b-details">Details</label><textarea id="b-details" maxlength="400" placeholder="e.g. Secular co-op that meets Fridays, open to a first-year homeschooler"></textarea></div>
+          <div class="formfoot"><button class="btn" type="submit" style="margin-top:0">Submit for review</button><span class="status" id="postStatus" role="status"></span></div>
+          <p class="where" style="margin:0;font-size:13px">Posts stay up for 60 days. Others reply through the site, so your email stays private.</p>
+        </form>
+        <div id="boardList" class="stack"></div>
+      </div>
+      <div>
+        <div class="colhead"><h3>Upcoming events</h3><button class="linkbtn" type="button" id="newEventBtn">Submit an event</button></div>
+        <form class="box2" id="eventForm" novalidate hidden>
+          <div class="field"><label for="e-title">Event</label><input id="e-title" maxlength="100" placeholder="e.g. Park day at Brushy Creek"></div>
+          <div class="row2">
+            <div class="field"><label for="e-date">Date</label><input id="e-date" type="date"></div>
+            <div class="field"><label for="e-time">Time</label><input id="e-time" maxlength="30" placeholder="e.g. 10am–noon"></div>
+            <div class="field"><label for="e-town">Town</label><input id="e-town" maxlength="40"></div>
+            <div class="field"><label for="e-place">Place</label><input id="e-place" maxlength="120" placeholder="Park, library or venue"></div>
+          </div>
+          <div class="field"><label for="e-host">Hosted by</label><input id="e-host" maxlength="100" placeholder="Group or organizer"></div>
+          <div class="field"><label for="e-link">Link for details or RSVP (optional)</label><input id="e-link" type="url" maxlength="300" placeholder="https://"></div>
+          <div class="field"><label for="e-details">Details</label><textarea id="e-details" maxlength="500"></textarea></div>
+          <div class="formfoot"><button class="btn" type="submit" style="margin-top:0">Submit for review</button><span class="status" id="eventStatus" role="status"></span></div>
+        </form>
+        <div id="eventList" class="stack"></div>
+      </div>
+    </div>
   </section>
 
   <section id="newsletter">
@@ -572,6 +661,7 @@ function card(x){
       <span class="status" role="status"></span>
     </form>
     ${x.site||x.phone?`<div class="contact">${x.site?`<a href="${esc(x.site)}" target="_blank" rel="noopener" data-site="${esc(slug(x.n))}">${/facebook\.com/i.test(x.site)?"Facebook page":"Visit website"} ↗</a>`:""}${x.phone?`<span>${esc(x.phone)}</span>`:""}</div>`:""}
+    ${qaBlock(x)}
     <div class="foot">${x.claimed?`<span class="claimed">Updated by the group</span>`:`<span>Unclaimed</span>`}<a class="linkbtn" href="/leaders.html#${esc(slug(x.n))}">${x.claimed?"Manage listing":"Is this yours? Claim it"}</a></div>
   </article>`;
 }
@@ -723,7 +813,97 @@ async function loadOverrides(){
     if(o.claimed) x.claimed=true;});
   render(); renderRegistration();
 }
-render(); renderQuiz(); renderRegistration(); loadOverrides();
+
+// ---- Community: account, "Looking for" board, events, listing questions ----
+let acct={signedIn:false}, QA={};
+const fmtDate=d=>{const t=new Date(d+"T12:00:00");return {m:t.toLocaleString("en-US",{month:"short"}),d:t.getDate(),w:t.toLocaleString("en-US",{weekday:"long"})};};
+function qaBlock(x){
+  const list=QA[slug(x.n)]||[];
+  return `<div class="qa">${list.slice(0,3).map(q=>`<p class="q"><b>Q:</b> ${esc(q.question)} <span class="meta">— ${esc(q.name||"A parent")}</span></p><p class="a"><b>${esc(x.n)}:</b> ${esc(q.answer)}</p>`).join("")}
+    <button class="linkbtn" type="button" data-ask="${esc(slug(x.n))}" style="align-self:flex-start">Ask ${list.length?"another":"a"} question</button>
+    <form class="ask" data-for="${esc(slug(x.n))}" hidden novalidate><textarea maxlength="300" placeholder="e.g. Do you take mid-year families?"></textarea><div class="nrow"><button class="btn sm" type="submit" style="margin-top:0">Send question</button></div><span class="status" role="status"></span></form>
+  </div>`;
+}
+function needSignIn(){ document.getElementById("community").scrollIntoView({behavior:"smooth"}); showSignIn(); }
+function showSignIn(){ $("signinPanel").hidden=false; $("profilePanel").hidden=true; setTimeout(()=>$("c-email").focus({preventScroll:true}),400); }
+function renderAcct(){
+  if(!acct.signedIn){ $("acctBar").innerHTML=`<span class="meta">Sign in to post, reply or ask a question.</span><button class="btn sm" type="button" id="signInBtn" style="margin-top:0">Sign in</button>`; $("signInBtn").onclick=showSignIn; return; }
+  $("signinPanel").hidden=true;
+  $("profilePanel").hidden=!!acct.profile;
+  $("acctBar").innerHTML=`<span>Signed in as <b>${esc(acct.profile?acct.profile.name:acct.email)}</b>${acct.profile&&acct.profile.town?` · ${esc(acct.profile.town)}`:""}</span><span><button class="linkbtn" type="button" id="editProf">Edit name</button> · <button class="linkbtn" type="button" id="signOut">Sign out</button></span>`;
+  $("editProf").onclick=()=>{$("profilePanel").hidden=false; if(acct.profile){$("p-name").value=acct.profile.name;$("p-town").value=acct.profile.town||"";}};
+  $("signOut").onclick=async()=>{await api("/api/auth/logout",{}); acct={signedIn:false}; renderAcct(); loadBoard();};
+}
+function ready(){ if(!acct.signedIn){needSignIn();return false;} if(!acct.profile){$("profilePanel").hidden=false;$("p-name").focus();return false;} return true; }
+async function loadAcct(){ const r=await api("/api/account/me"); acct=r.ok?r:{signedIn:false}; renderAcct(); }
+$("cEmailForm").addEventListener("submit",async e=>{
+  e.preventDefault(); const email=$("c-email").value.trim();
+  if(!/^\S+@\S+\.\S+$/.test(email)){setS("cSignStatus","err","Enter a valid email address.");return;}
+  setS("cSignStatus","","Sending…"); const r=await api("/api/auth/request-code",{email});
+  if(!r.ok){setS("cSignStatus","err",r.error);return;}
+  $("cEmailForm").hidden=true; $("cCodeForm").hidden=false; $("c-code").focus(); setS("cSignStatus","ok","Code sent. Check your inbox.");
+});
+$("cCodeForm").addEventListener("submit",async e=>{
+  e.preventDefault(); const r=await api("/api/auth/verify",{email:$("c-email").value.trim(),code:$("c-code").value.trim()});
+  if(!r.ok){setS("cSignStatus","err",r.error);return;}
+  setS("cSignStatus","",""); await loadAcct(); loadBoard();
+});
+$("cProfileForm").addEventListener("submit",async e=>{
+  e.preventDefault(); const r=await api("/api/account/profile",{name:$("p-name").value.trim(),town:$("p-town").value.trim()});
+  if(!r.ok){setS("cProfileStatus","err",r.error);return;}
+  await loadAcct();
+});
+function setS(id,k,m){const el=$(id); el.className="status"+(k?" "+k:""); el.textContent=m;}
+$("newPostBtn").onclick=()=>{ if(ready()){$("postForm").hidden=!$("postForm").hidden; if(acct.profile&&acct.profile.town&&!$("b-town").value) $("b-town").value=acct.profile.town;} };
+$("newEventBtn").onclick=()=>{ if(ready()) $("eventForm").hidden=!$("eventForm").hidden; };
+$("postForm").addEventListener("submit",async e=>{
+  e.preventDefault(); setS("postStatus","","Sending…");
+  const r=await api("/api/board",{want:$("b-want").value,ages:$("b-ages").value.trim(),town:$("b-town").value.trim(),details:$("b-details").value.trim()});
+  if(!r.ok){setS("postStatus","err",r.error);return;}
+  e.target.reset(); setS("postStatus","ok","Thanks! Your post will appear once it's reviewed, usually within a day."); loadBoard();
+});
+$("eventForm").addEventListener("submit",async e=>{
+  e.preventDefault(); setS("eventStatus","","Sending…");
+  const v=id=>$(id).value.trim();
+  const r=await api("/api/events",{title:v("e-title"),date:v("e-date"),time:v("e-time"),town:v("e-town"),place:v("e-place"),host:v("e-host"),link:v("e-link"),details:v("e-details")});
+  if(!r.ok){setS("eventStatus","err",r.error);return;}
+  e.target.reset(); setS("eventStatus","ok","Thanks! The event will appear once it's reviewed.");
+});
+async function loadBoard(){
+  const r=await api("/api/board"); const posts=(r.ok&&r.posts)||[], mine=(r.ok&&r.mine)||[];
+  const pending=mine.filter(m=>m.status==="pending");
+  $("boardList").innerHTML=(pending.length?`<div class="emptynote">You have ${pending.length} post${pending.length>1?"s":""} waiting for review.</div>`:"")+
+    (posts.length?posts.map(p=>`<div class="post"><b>${esc(p.want||"Looking for")}</b><span class="meta">${[p.town,p.ages?"Ages "+p.ages:""].filter(Boolean).map(esc).join(" · ")}</span><p>${esc(p.details)}</p>
+      <span class="meta">${esc(p.name||"A parent")} · ${new Date(p.created_at+"Z").toLocaleDateString("en-US",{month:"short",day:"numeric"})}</span>
+      ${p.mine?`<button class="linkbtn" type="button" data-remove="${p.id}" style="align-self:flex-start">Remove my post</button>`:`<button class="linkbtn" type="button" data-reply="${p.id}" style="align-self:flex-start">Reply</button>
+      <form class="ask" data-post="${p.id}" hidden novalidate><textarea maxlength="800" placeholder="Introduce yourself. We'll send your message and email address to this parent."></textarea><div class="nrow"><button class="btn sm" type="submit" style="margin-top:0">Send reply</button></div><span class="status" role="status"></span></form>`}</div>`).join("")
+    :`<div class="emptynote">No posts yet. Be the first to share what your family is looking for.</div>`);
+}
+async function loadEvents(){
+  const r=await api("/api/events"); const evs=(r.ok&&r.events)||[];
+  $("eventList").innerHTML=evs.length?evs.map(ev=>{const d=fmtDate(ev.event_date);return `<div class="event"><div class="datebox"><span>${d.m}</span><b>${d.d}</b></div><div style="display:flex;flex-direction:column;gap:4px;min-width:0"><b>${esc(ev.title)}</b>
+      <span class="meta">${[d.w,ev.event_time,[ev.place,ev.town].filter(Boolean).join(", ")].filter(Boolean).map(esc).join(" · ")}</span>
+      ${ev.details?`<p>${esc(ev.details)}</p>`:""}<span class="meta">${ev.host?"Hosted by "+esc(ev.host):""}${ev.link?` · <a href="${esc(ev.link)}" target="_blank" rel="noopener">Details ↗</a>`:""}</span></div></div>`;}).join("")
+    :`<div class="emptynote">No events posted yet. Hosting a park day, field trip or open house? Submit it and we'll share it here and in the newsletter.</div>`;
+}
+document.addEventListener("click",async e=>{
+  const ask=e.target.closest("[data-ask]"), rep=e.target.closest("[data-reply]"), rm=e.target.closest("[data-remove]");
+  if(ask){ if(!ready())return; const f=ask.parentElement.querySelector("form.ask"); f.hidden=!f.hidden; if(!f.hidden) f.querySelector("textarea").focus(); }
+  if(rep){ if(!ready())return; const f=rep.parentElement.querySelector("form.ask"); f.hidden=!f.hidden; if(!f.hidden) f.querySelector("textarea").focus(); }
+  if(rm){ rm.disabled=true; const r=await api("/api/board/remove",{id:Number(rm.dataset.remove)}); if(r.ok) loadBoard(); else rm.disabled=false; }
+});
+document.addEventListener("submit",async e=>{
+  const f=e.target; if(!f.matches("form.ask")) return; e.preventDefault();
+  const st=f.querySelector(".status"), text=f.querySelector("textarea").value.trim(); st.className="status"; st.textContent="Sending…";
+  let r;
+  if(f.dataset.for){ const x=L.find(v=>slug(v.n)===f.dataset.for); r=await api("/api/questions",{slug:f.dataset.for,listing:x?x.n:"",question:text});
+    if(r.ok){f.reset(); st.className="status ok"; st.textContent=r.hasLeader?"Sent. The group will answer here, and we'll email you when they do.":"Sent. This group hasn't claimed its listing yet, so an answer may take longer."; return;} }
+  else { r=await api("/api/board/reply",{id:Number(f.dataset.post),message:text});
+    if(r.ok){f.reset(); st.className="status ok"; st.textContent="Sent. They have your email now and can write back."; return;} }
+  st.className="status err"; st.textContent=r.error;
+});
+async function loadQuestions(){ const r=await api("/api/questions"); if(r.ok){QA=r.questions||{}; render();} }
+render(); renderQuiz(); renderRegistration(); loadOverrides(); loadAcct(); loadBoard(); loadEvents(); loadQuestions();
 // Scatter bluebonnets and draw the park-day gathering (seeded so it looks the same every load).
 (function(){
   let seed=11; const rnd=()=>((seed=(seed*16807)%2147483647)/2147483647);

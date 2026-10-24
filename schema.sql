@@ -13,3 +13,9 @@ CREATE INDEX IF NOT EXISTS idx_login_codes_email ON login_codes(email);
 CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, email TEXT NOT NULL, expires_at INTEGER NOT NULL, created_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS listing_owners (slug TEXT NOT NULL, email TEXT NOT NULL, name TEXT, role TEXT, approved_at TEXT, PRIMARY KEY (slug, email));
 CREATE TABLE IF NOT EXISTS claims (id INTEGER PRIMARY KEY AUTOINCREMENT, slug TEXT NOT NULL, listing TEXT, town TEXT, email TEXT NOT NULL, name TEXT, role TEXT, note TEXT, status TEXT DEFAULT 'pending', created_at TEXT DEFAULT (datetime('now')), reviewed_at TEXT);
+-- Community: profiles, "Looking for" board, events, listing questions
+CREATE TABLE IF NOT EXISTS profiles (email TEXT PRIMARY KEY, name TEXT NOT NULL, town TEXT, created_at TEXT DEFAULT (datetime('now')));
+CREATE TABLE IF NOT EXISTS board_posts (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT NOT NULL, name TEXT, town TEXT, ages TEXT, want TEXT, details TEXT NOT NULL, status TEXT DEFAULT 'pending', created_at TEXT DEFAULT (datetime('now')), expires_at TEXT NOT NULL, reviewed_at TEXT);
+CREATE TABLE IF NOT EXISTS events (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT NOT NULL, name TEXT, title TEXT NOT NULL, event_date TEXT NOT NULL, event_time TEXT, town TEXT, place TEXT, host TEXT, link TEXT, details TEXT, status TEXT DEFAULT 'pending', created_at TEXT DEFAULT (datetime('now')), reviewed_at TEXT);
+CREATE TABLE IF NOT EXISTS questions (id INTEGER PRIMARY KEY AUTOINCREMENT, slug TEXT NOT NULL, listing TEXT, email TEXT NOT NULL, name TEXT, question TEXT NOT NULL, answer TEXT, answered_by TEXT, answered_at TEXT, status TEXT DEFAULT 'open', created_at TEXT DEFAULT (datetime('now')));
+CREATE INDEX IF NOT EXISTS idx_questions_slug ON questions(slug);
