@@ -482,11 +482,18 @@ const routes = {
     if (link && !/^https?:\/\//i.test(link)) return bad("The link should start with https://");
     const problem = privacyProblem(details + " " + title); if (problem) return bad(problem);
     if (kind === "hiring" && !clip(b.org, 100)) return bad("Add the name of your co-op, school or business.");
+    // Featured vendors post jobs free: live right away for 30 days.
+    let featured = false;
+    if (kind === "hiring") {
+      const { results: owned } = await env.DB.prepare("SELECT o.data FROM listing_overrides o JOIN listing_owners w ON w.slug=o.slug WHERE w.email=?").bind(email).all();
+      featured = owned.some((r) => { try { return ["featured", "partner", "enhanced"].includes(JSON.parse(r.data).plan); } catch { return false; } });
+    }
     const open = await env.DB.prepare("SELECT COUNT(*) AS n FROM jobs WHERE email=? AND status IN ('live','awaiting_payment') AND (expires_at IS NULL OR expires_at > datetime('now'))").bind(email).first();
     if (open.n >= 5) return bad("You have 5 active posts. Remove one to add another.");
     const r = await env.DB.prepare(
-      `INSERT INTO jobs (email, name, kind, title, org, town, pay, schedule, details, apply_link, status, expires_at) VALUES (?,?,?,?,?,?,?,?,?,?,?, ${kind === "hiring" ? "NULL" : "datetime('now','+60 days')"})`
-    ).bind(email, prof.name, kind, title, clip(b.org, 100), clip(b.town, 40), clip(b.pay, 60), clip(b.schedule, 80), details, kind === "hiring" ? link : "", kind === "hiring" ? "awaiting_payment" : "live").run();
+      `INSERT INTO jobs (email, name, kind, title, org, town, pay, schedule, details, apply_link, status, expires_at) VALUES (?,?,?,?,?,?,?,?,?,?,?, ${kind === "hiring" && !featured ? "NULL" : kind === "hiring" ? "datetime('now','+30 days')" : "datetime('now','+60 days')"})`
+    ).bind(email, prof.name, kind, title, clip(b.org, 100), clip(b.town, 40), clip(b.pay, 60), clip(b.schedule, 80), details, kind === "hiring" ? link : "", kind === "hiring" && !featured ? "awaiting_payment" : "live").run();
+    if (featured) return json({ ok: true, id: r.meta.last_row_id, live: true });
     if (kind === "hiring") await notifyOwner(env, `Job post awaiting payment: ${title}`,
       `${clip(b.org, 100)} posted "${title}" (${clip(b.town, 40)}).\nPoster: ${prof.name} <${email}>\nMark it paid on your owner page once the $39 payment comes through.`);
     return json({ ok: true, id: r.meta.last_row_id, needsPayment: kind === "hiring" });
@@ -562,7 +569,7 @@ const routes = {
 
   "POST /api/admin/plan": async (req, env) => {
     const b = await body(req) || {}; const slug = clip(b.slug, 140);
-    const plan = ["", "enhanced", "partner"].includes(b.plan) ? b.plan : null;
+    const plan = ["", "featured"].includes(b.plan) ? b.plan : null;
     if (!slug || plan === null) return bad("Pick a listing and plan.");
     const prevRow = await env.DB.prepare("SELECT data FROM listing_overrides WHERE slug=?").bind(slug).first();
     const prev = prevRow ? JSON.parse(prevRow.data) : {};
@@ -611,7 +618,7 @@ const routes = {
         `Hi ${c.name || "there"},\n\nYour claim for ${c.listing} is approved. Sign in at ${env.SITE_URL || "https://centexhomeschool.org"}/leaders.html with this email address to update your details and availability anytime.\n\n` +
         `A few things that help families find you:\n- Mark your availability (open spots, waitlist or full)\n- Add your next open house or application deadline to the community calendar\n- Answer families' questions on your listing\n\n` +
         `When you mark open spots or post a registration date, families waiting on your group get an email right away.\n\n` +
-        (paid ? `P.S. Want families to enroll in one click? An Enhanced listing adds photos, a "Register" button that goes straight to your registration page, a longer description and a monthly report on how your listing is doing. Details: ${env.SITE_URL || "https://centexhomeschool.org"}/leaders.html#plans\n\n` : "") +
+        (paid ? `P.S. Want families to enroll in one click? A Featured listing ($39/month) adds a highlighted banner, photos, a "Register" button straight to your registration page, a longer description, a quarterly newsletter shout-out, free job posts and a monthly report on how your listing is doing. Details: ${env.SITE_URL || "https://centexhomeschool.org"}/leaders.html#plans\n\n` : "") +
         `Thanks,\nBenjamin\nCenTex Homeschool Hub`);
     } catch (e) { console.error("approval email failed", e.code, e.message); }
     return json({ ok: true });

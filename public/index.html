@@ -484,7 +484,7 @@ html{scroll-behavior:smooth}
     </div>
     <div class="colhead"><span>Hiring a teacher, or are you a tutor for hire? <a href="/leaders.html">Tutors can create a free listing.</a></span><button class="btn sm" type="button" id="newJobBtn" style="margin-top:0">Post a job or tutor request</button></div>
     <form class="box2" id="jobForm" novalidate hidden>
-      <div class="field"><label for="j-kind">I'm</label><select id="j-kind"><option value="hiring">Hiring for a co-op, school or business ($39 for 30 days)</option><option value="seeking">A parent looking for a tutor (free)</option></select></div>
+      <div class="field"><label for="j-kind">I'm</label><select id="j-kind"><option value="hiring">Hiring for a co-op, school or business ($39 for 30 days, free with a Featured listing)</option><option value="seeking">A parent looking for a tutor (free)</option></select></div>
       <div class="row2">
         <div class="field"><label for="j-title">Headline</label><input id="j-title" maxlength="100" placeholder="e.g. Part-time science teacher, grades 6–8"></div>
         <div class="field" id="j-org-wrap"><label for="j-org">Organization</label><input id="j-org" maxlength="100" placeholder="Co-op, school or business name"></div>
@@ -589,8 +589,7 @@ html{scroll-behavior:smooth}
           <option>Add a free listing</option>
           <option>Claim or correct a listing</option>
           <option>Add an event</option>
-          <option>Get an Enhanced listing</option>
-          <option>Get a Featured listing</option>
+                    <option>Get a Featured listing</option>
         </select>
       </div>
       <div class="field">
@@ -648,7 +647,7 @@ html{scroll-behavior:smooth}
 <script src="/listings.js"></script>
 <script>
 // Stripe Payment Links: paste each link here once created in the Stripe dashboard.
-const STRIPE_LINKS = { enhanced: "", partner: "", job: "" };
+const STRIPE_LINKS = { featured: "", job: "" };
 
 // Listings live in /listings.js so the leader page shares them.
 
@@ -674,10 +673,11 @@ function matches(x){
     if(!state.q.toLowerCase().split(/\s+/).every(w=>hay.includes(w))) return false;}
   return true;
 }
+const isFeat=x=>["featured","partner","enhanced"].includes(x.plan);
 function card(x){
   const [tl,tc]=TYPES[x.type];
   const tut=x.type==="tutor"; const facts=[["Ages",x.ages],[tut?"Format":"Meets",x.sched],[tut?"Rate":"Cost",x.cost],["For members",x.members]].filter(f=>f[1]);
-  return `<article class="card${x.plan==="partner"?" partner":""}">${x.plan==="partner"?`<span class="ribbon">Featured</span>`:""}
+  return `<article class="card${isFeat(x)?" partner":""}">${isFeat(x)?`<span class="ribbon">Featured</span>`:""}
     <div class="head"><h3>${esc(x.n)}</h3><span class="type ${tc}">${tl}</span></div>
     <div class="where">${esc(townsOf(x).join(" · "))}</div>
     <p>${esc(x.d)}</p>
@@ -827,7 +827,7 @@ async function recordDemand(res){
 document.querySelectorAll("[data-plan]").forEach(b=>b.addEventListener("click",()=>{
   const link=STRIPE_LINKS[b.dataset.plan];
   if(link){window.location.href=link;return;}
-  goForm(b.dataset.plan==="enhanced"?"Get an Enhanced listing":"Get a Featured listing");
+  goForm("Get a Featured listing");
 }));
 document.querySelectorAll("[data-kind]").forEach(a=>a.addEventListener("click",e=>{e.preventDefault();goForm(a.dataset.kind);}));
 
@@ -989,6 +989,7 @@ $("jobForm").addEventListener("submit",async e=>{
   const r=await api("/api/jobs",{kind:v("j-kind"),title:v("j-title"),org:v("j-org"),town:v("j-town"),pay:v("j-pay"),schedule:v("j-schedule"),link:v("j-link"),details:v("j-details")});
   if(!r.ok){setS("jobStatus","err",r.error);return;}
   e.target.reset(); jobKindUI(); $("jobForm").hidden=true; setS("jobStatus","","");
+  if(r.live){ loadJobs(); return; }
   if(r.needsPayment&&STRIPE_LINKS.job){ window.location.href=STRIPE_LINKS.job+(STRIPE_LINKS.job.includes("?")?"&":"?")+"client_reference_id=job-"+r.id; return; }
   loadJobs();
 });

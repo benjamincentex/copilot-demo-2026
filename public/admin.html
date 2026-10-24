@@ -241,10 +241,10 @@ html{scroll-behavior:smooth}
     <div class="box"><h2>At a glance</h2><div class="stats4" id="stats"></div><p class="where" id="emailLine" style="margin:0"></p></div>
     <div class="box"><h2>Listing claims to review</h2><div id="claims" class="where">No claims waiting.</div></div>
     <div class="box"><h2>Live "Looking for" posts</h2><p class="where" style="margin:0">Posts go up right away. Remove anything that breaks the rules.</p><div id="mPosts" class="where">No posts yet.</div></div>
-    <div class="box"><h2>Paid plans</h2><p class="where" style="margin:0">After a vendor pays in Stripe, set their plan here. Featured adds the highlighted banner to their listing.</p>
+    <div class="box"><h2>Paid plans</h2><p class="where" style="margin:0">After a vendor pays in Stripe, set their plan here. Featured adds the banner, photos, Register button and free job posts.</p>
       <form id="planForm" class="row" novalidate style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
         <div class="field" style="flex:1 1 260px"><label for="pl-listing">Listing</label><select id="pl-listing"></select></div>
-        <div class="field"><label for="pl-plan">Plan</label><select id="pl-plan"><option value="">Basic (free)</option><option value="enhanced">Enhanced ($29)</option><option value="partner">Featured ($49)</option></select></div>
+        <div class="field"><label for="pl-plan">Plan</label><select id="pl-plan"><option value="">Basic (free)</option><option value="featured">Featured ($39)</option></select></div>
         <button class="btn sm" type="submit">Save plan</button><span class="status" id="planStatus" role="status"></span>
       </form><div id="planList" class="where"></div></div>
     <div class="box"><h2>Tutor listings</h2><p class="where" style="margin:0">Listings tutors created themselves. They go live right away.</p><div id="mTutors" class="where">No tutor listings yet.</div></div>
@@ -292,7 +292,7 @@ async function load(){
     const all=L.concat(lo.custom||[]); const sid=x=>x.slug||slug(x.n);
     $("pl-listing").innerHTML=all.slice().sort((a,b)=>a.n.localeCompare(b.n)).map(x=>`<option value="${esc(sid(x))}">${esc(x.n)}${x.test?" (demo)":""}</option>`).join("");
     const paid=Object.entries(lo.overrides||{}).filter(([k,o])=>o.plan);
-    $("planList").innerHTML=paid.length?paid.map(([k,o])=>{const x=all.find(v=>sid(v)===k); return `<p style="margin:4px 0"><span class="pill">${o.plan==="partner"?"Featured":"Enhanced"}</span> ${esc(x?x.n:k)}</p>`;}).join(""):"No paid plans yet.";
+    $("planList").innerHTML=paid.length?paid.map(([k,o])=>{const x=all.find(v=>sid(v)===k); return `<p style="margin:4px 0"><span class="pill">Featured</span> ${esc(x?x.n:k)}</p>`;}).join(""):"No paid plans yet.";
   }
   const ul=await api("/api/admin/user-listings");
   if(ul.ok){ $("mTutors").innerHTML=ul.listings.length?ul.listings.map(t=>`<div class="rev"><b style="color:var(--ink)">${esc(t.data.n)}</b><span>${esc(t.data.town)} · ${esc((t.data.tags||[]).join(", "))} · ${esc(t.email)}</span><span>${esc(t.data.d)}</span><div class="row"><button class="btn ghost sm" type="button" data-tutor="${esc(t.slug)}">Remove</button></div></div>`).join(""):"No tutor listings yet."; }
