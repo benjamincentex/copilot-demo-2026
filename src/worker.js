@@ -109,6 +109,7 @@ function cleanFields(f) {
   const fields = {};
   for (const [k, n] of [["d", 600], ["ages", 40], ["sched", 80], ["cost", 80], ["site", 300]]) { const v = clip(f[k], n); if (v) fields[k] = v; }
   if (fields.site && !/^https?:\/\//i.test(fields.site)) delete fields.site;
+  if (typeof f.littles === "boolean") fields.littles = f.littles;
   const a = f.avail || {};
   fields.avail = { s: AVAIL.has(a.s) ? a.s : "unknown", when: clip(a.when, 40) };
   return fields;
@@ -238,6 +239,38 @@ const routes = {
     return json({ signedIn: true, email, owned: owned.map((r) => r.slug), pending });
   },
 
+
+  "GET /api/leader/events": async (req, env) => {
+    const email = await leaderEmail(req, env); if (!email) return bad("Sign in first.", 401);
+    const { results } = await env.DB.prepare(
+      "SELECT e.id, e.slug, e.title, e.event_date, e.event_time, e.place, e.source FROM events e JOIN listing_owners o ON o.slug=e.slug AND o.email=? WHERE e.status='approved' AND e.event_date >= date('now','-1 day') ORDER BY e.event_date").bind(email).all();
+    return json({ events: results });
+  },
+
+  "POST /api/leader/event": async (req, env) => {
+    const email = await leaderEmail(req, env); if (!email) return bad("Sign in first.", 401);
+    const b = await body(req) || {}; const slug = clip(b.slug, 140);
+    const owned = await env.DB.prepare("SELECT 1 FROM listing_owners WHERE slug=? AND email=?").bind(slug, email).first();
+    if (!owned) return bad("You can only add events for listings you manage.", 403);
+    const title = clip(b.title, 100), date = clip(b.date, 10), link = clip(b.link, 300), details = clip(b.details, 500);
+    if (!title) return bad("Add a title for the event.");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return bad("Pick the event date.");
+    if (link && !/^https?:\/\//i.test(link)) return bad("The link should start with https://");
+    const problem = privacyProblem(details + " " + title); if (problem) return bad(problem);
+    await env.DB.prepare("INSERT INTO events (email, name, title, event_date, event_time, town, place, host, link, details, status, slug, source) VALUES (?,?,?,?,?,?,?,?,?,?, 'approved', ?, 'leader')")
+      .bind(email, clip(b.listing, 140), title, date, clip(b.time, 30), clip(b.town, 40), clip(b.place, 120), clip(b.listing, 140), link, details, slug).run();
+    return json({ ok: true });
+  },
+
+  "POST /api/leader/event/remove": async (req, env) => {
+    const email = await leaderEmail(req, env); if (!email) return bad("Sign in first.", 401);
+    const b = await body(req); const id = Number(b && b.id) || 0;
+    const ev = await env.DB.prepare("SELECT e.id FROM events e JOIN listing_owners o ON o.slug=e.slug AND o.email=? WHERE e.id=?").bind(email, id).first();
+    if (!ev) return bad("You can only remove your own group's events.", 403);
+    await env.DB.prepare("UPDATE events SET status='removed' WHERE id=?").bind(id).run();
+    return json({ ok: true });
+  },
+
   "POST /api/leader/claim": async (req, env) => {
     const email = await leaderEmail(req, env); if (!email) return bad("Sign in first.", 401);
     const b = await body(req); const slug = clip(b && b.slug, 120);
@@ -328,7 +361,7 @@ const routes = {
   // ---------- community events ----------
   "GET /api/events": async (req, env) => {
     const { results } = await env.DB.prepare(
-      "SELECT id, title, event_date, event_time, town, place, host, link, details FROM events WHERE status='approved' AND event_date >= date('now','-1 day') ORDER BY event_date, event_time LIMIT 60").all();
+      "SELECT id, title, event_date, event_time, town, place, host, link, details, slug, source, confirm FROM events WHERE status='approved' AND event_date >= date('now','-45 days') ORDER BY event_date, event_time LIMIT 300").all();
     return json({ events: results });
   },
 

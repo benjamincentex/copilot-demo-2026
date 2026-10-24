@@ -58,7 +58,7 @@ nav.links a:hover{color:var(--oak)}
 
 /* hero scene */
 .scene{margin:0 0 8px;border-radius:18px;overflow:hidden;border:1px solid var(--line);background:var(--sky2)}
-.scene svg{display:block;width:100%;height:auto;max-width:100%}
+.scene svg{display:block;width:100%;height:clamp(170px,22vw,280px);max-width:100%}
 .scene figcaption{position:absolute;left:-9999px}
 /* availability */
 .avail{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
@@ -133,6 +133,34 @@ form.notify p{font-size:13px;margin:0;color:var(--muted)}
 form.ask{display:flex;flex-direction:column;gap:8px}
 form.ask textarea{font:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);min-height:60px}
 @media (max-width:780px){.community,.row2{grid-template-columns:1fr}}
+/* hero actions, calendar, board, show-all */
+.heroacts{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.moreline{display:flex;justify-content:center;padding-block:16px 0}
+.calwrap{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:20px;align-items:start}
+.cal{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.calhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.calhead h3{font-size:22px}
+.calgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.dow{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:center;padding:4px 0}
+.day{font:inherit;min-height:74px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);padding:4px;display:flex;flex-direction:column;gap:2px;align-items:stretch;text-align:left;cursor:pointer;min-width:0;overflow:hidden}
+.day span{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
+.day.out{opacity:.45}
+.day.today span{background:var(--oak);color:var(--bg);border-radius:999px;align-self:flex-start;padding:0 6px}
+.day.sel{outline:2px solid var(--bonnet);outline-offset:-2px}
+.day i{font-style:normal;font-size:11px;line-height:1.25;padding:1px 4px;border-radius:4px;background:var(--oak-soft);color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.day i.imported{background:var(--bonnet-soft)}
+.day i.leader{background:var(--sun-soft)}
+.day i.more{background:transparent;color:var(--muted)}
+.calside{min-width:0;display:flex;flex-direction:column}
+.boardgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
+@media (max-width:780px){
+  .calwrap{grid-template-columns:1fr}
+  .day{min-height:44px;align-items:center}
+  .day i{display:none}
+  .day.has::after{content:"";width:6px;height:6px;border-radius:50%;background:var(--bonnet);margin-top:2px}
+  nav.links{flex-wrap:nowrap;overflow-x:auto;width:100%;gap:16px;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+  nav.links a{white-space:nowrap}
+}
 /* search + filters */
 .finder{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:12px;border-bottom:1px solid var(--line)}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
@@ -163,6 +191,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .facts dt{color:var(--muted)}
 .facts dd{margin:0;min-width:0}
 .tags{display:flex;gap:6px;flex-wrap:wrap}
+.tag.littles{background:var(--sun-soft);border-color:var(--sun);color:var(--ink)}
 .tag{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:2px 7px}
 .card.flash{outline:3px solid var(--sun);outline-offset:2px;transition:outline-color .4s}
 @media (prefers-reduced-motion:reduce){.card.flash{transition:none}}
@@ -258,20 +287,24 @@ html{scroll-behavior:smooth}
   </a>
   <nav class="links" aria-label="Sections">
     <a href="#directory">Directory</a>
-    <a href="#fit">Find your fit</a>
-    <a href="#tefa">TEFA basics</a>
+    <a href="#calendar">Calendar</a>
     <a href="#community">Community</a>
+    <a href="#tefa">TEFA</a>
     <a href="#jobs">Jobs</a>
     <a href="#newsletter">Newsletter</a>
-    <a href="#submit">Add a listing</a>
   </nav>
 </header>
 
 <div class="hero">
   <div>
-    <span class="label">Central Texas homeschool directory</span>
+    <span class="label">The free guide to homeschooling in Central Texas</span>
     <h1>Find your homeschool <em>people</em>, from Leander to South Austin.</h1>
-    <p>Co-ops, support groups, classes microschools and tutors across Williamson and Travis counties, searchable by town, approach and meeting day. Free for families. Free for groups.</p>
+    <p>Co-ops, classes, tutors and microschools from Leander to South Austin, plus events, registration deadlines and TEFA help, all in one place. Always free for families.</p>
+    <div class="heroacts">
+      <a class="btn" href="#directory" style="margin-top:0">Browse groups</a>
+      <a class="btn ghost" href="#fit" style="margin-top:0">New to homeschooling? Take the quiz</a>
+      <a class="btn ghost" href="#calendar" style="margin-top:0">See what's happening</a>
+    </div>
   </div>
   <div class="stats" aria-label="Directory at a glance">
     <div class="stat"><b id="statListings">0</b><span>listings</span></div>
@@ -315,8 +348,17 @@ html{scroll-behavior:smooth}
     <g id="gathering"></g>
   </svg>
 </figure>
+  <section id="fit" style="padding-block:24px 8px">
+    <div class="intro">
+      <span class="label">Find your fit</span>
+      <h2>Five questions to your best-matched groups</h2>
+      <p>Tell us a little about your family and we'll pick the co-ops, groups and classes that fit, out of every listing in the directory.</p>
+    </div>
+    <div class="quiz" id="quiz" aria-live="polite"></div>
+  </section>
 </div>
 
+<div class="dirwrap">
 <div class="finder" id="directory">
   <div class="wrap">
     <div class="searchrow">
@@ -335,7 +377,7 @@ html{scroll-behavior:smooth}
         <option value="">Any approach</option>
         <option>Christian</option><option>Catholic</option><option>Secular</option>
         <option>Classical</option><option>Charlotte Mason</option><option>Nature-based</option>
-        <option>STEM</option><option>Arts</option><option>Gifted / 2e</option>
+        <option>STEM</option><option>Arts</option><option>Gifted / 2e</option><option>Littles welcome</option>
       </select>
     </div>
     <div class="chips"><button class="toggle" type="button" id="openNow" aria-pressed="false">Open now</button><div class="chips" id="townChips" role="group" aria-label="Filter by town" style="margin-top:0"></div></div>
@@ -348,31 +390,49 @@ html{scroll-behavior:smooth}
     <button class="linkbtn" id="clearBtn" type="button">Clear filters</button>
   </div>
   <div class="grid" id="grid"></div>
+  <div class="moreline"><button class="btn ghost" type="button" id="showAll" hidden style="margin-top:0"></button></div>
+</div>
+</div>
+<div class="wrap">
   <div class="empty" id="empty" hidden><span id="emptyMsg">No listings match yet. Try another town, or <a href="#submit">add the group you know about</a>.</span></div>
 
-  <section id="fit">
+  <section id="calendar">
     <div class="intro">
-      <span class="label">Find your fit</span>
-      <h2>Five questions to your best-matched groups</h2>
-      <p>Tell us a little about your family and we'll pick the co-ops, groups and classes that fit, out of every listing in the directory.</p>
+      <span class="label">Community calendar</span>
+      <h2>What's happening around Central Texas</h2>
+      <p>Open houses, application deadlines, park days and field trips. Some dates come from groups' own websites, so always confirm with the group before you go.</p>
     </div>
-    <div class="quiz" id="quiz" aria-live="polite"></div>
-  </section>
-
-  <section id="register">
-    <div class="intro">
-      <span class="label">Registration calendar</span>
-      <h2>Registration opening soon</h2>
-      <p>Many co-ops open registration in spring for the fall semester, and popular ones fill fast. Groups that post their dates appear here and in the monthly newsletter.</p>
+    <div class="calwrap">
+      <div class="cal">
+        <div class="calhead"><button class="linkbtn" type="button" id="calPrev" aria-label="Previous month">‹ Prev</button><h3 id="calTitle"></h3><button class="linkbtn" type="button" id="calNext" aria-label="Next month">Next ›</button></div>
+        <div class="calgrid" id="calGrid" role="grid"></div>
+      </div>
+      <div class="calside">
+        <div class="colhead"><h3 id="calListTitle">Coming up</h3><button class="linkbtn" type="button" id="newEventBtn">Add an event</button></div>
+        <form class="box2" id="eventForm" novalidate hidden>
+          <p class="where" style="margin:0;font-size:13px">Group leaders: <a href="/leaders.html">add events from your leader page</a> so they show as posted by your group.</p>
+          <div class="field"><label for="e-title">Event</label><input id="e-title" maxlength="100" placeholder="e.g. Park day at Brushy Creek"></div>
+          <div class="row2">
+            <div class="field"><label for="e-date">Date</label><input id="e-date" type="date"></div>
+            <div class="field"><label for="e-time">Time</label><input id="e-time" maxlength="30" placeholder="e.g. 10am–noon"></div>
+            <div class="field"><label for="e-town">Town</label><input id="e-town" maxlength="40"></div>
+            <div class="field"><label for="e-place">Place</label><input id="e-place" maxlength="120" placeholder="Park, library or venue"></div>
+          </div>
+          <div class="field"><label for="e-host">Hosted by</label><input id="e-host" maxlength="100" placeholder="Group or organizer"></div>
+          <div class="field"><label for="e-link">Link for details or RSVP (optional)</label><input id="e-link" type="url" maxlength="300" placeholder="https://"></div>
+          <div class="field"><label for="e-details">Details</label><textarea id="e-details" maxlength="500"></textarea></div>
+          <div class="formfoot"><button class="btn" type="submit" style="margin-top:0">Post event</button><span class="status" id="eventStatus" role="status"></span></div>
+        </form>
+        <div id="eventList" class="stack"></div>
+        <div id="regList"></div>
+      </div>
     </div>
-    <div id="regList"></div>
   </section>
-
   <section id="community">
     <div class="intro">
       <span class="label">Community</span>
       <h2>Connect with local homeschool families</h2>
-      <p>Post what your family is looking for, find park days and field trips, and ask groups questions. Accounts are for parents and group leaders. Be kind, keep it about homeschooling, and keep kids' details private. We remove posts that don't follow these rules.</p>
+      <p>Post what your family is looking for and meet other homeschool families nearby. You can also ask any group a question right on its listing. Accounts are for parents and group leaders. Be kind, keep it about homeschooling, and keep kids' details private. We remove posts that don't follow these rules.</p>
     </div>
     <div class="acctbar" id="acctBar"></div>
     <div class="box2" id="signinPanel" hidden>
@@ -397,7 +457,7 @@ html{scroll-behavior:smooth}
       <p class="where" style="margin:0;font-size:13px">Use a first name and last initial. Please don't share your kids' names or photos.</p>
     </div>
 
-    <div class="community">
+    <div>
       <div>
         <div class="colhead"><h3>Looking for</h3><button class="linkbtn" type="button" id="newPostBtn">Post what you're looking for</button></div>
         <form class="box2" id="postForm" novalidate hidden>
@@ -410,28 +470,10 @@ html{scroll-behavior:smooth}
           <div class="formfoot"><button class="btn" type="submit" style="margin-top:0">Post</button><span class="status" id="postStatus" role="status"></span></div>
           <p class="where" style="margin:0;font-size:13px">Posts stay up for 60 days. Others reply through the site, so your email stays private.</p>
         </form>
-        <div id="boardList" class="stack"></div>
-      </div>
-      <div>
-        <div class="colhead"><h3>Upcoming events</h3><button class="linkbtn" type="button" id="newEventBtn">Submit an event</button></div>
-        <form class="box2" id="eventForm" novalidate hidden>
-          <div class="field"><label for="e-title">Event</label><input id="e-title" maxlength="100" placeholder="e.g. Park day at Brushy Creek"></div>
-          <div class="row2">
-            <div class="field"><label for="e-date">Date</label><input id="e-date" type="date"></div>
-            <div class="field"><label for="e-time">Time</label><input id="e-time" maxlength="30" placeholder="e.g. 10am–noon"></div>
-            <div class="field"><label for="e-town">Town</label><input id="e-town" maxlength="40"></div>
-            <div class="field"><label for="e-place">Place</label><input id="e-place" maxlength="120" placeholder="Park, library or venue"></div>
-          </div>
-          <div class="field"><label for="e-host">Hosted by</label><input id="e-host" maxlength="100" placeholder="Group or organizer"></div>
-          <div class="field"><label for="e-link">Link for details or RSVP (optional)</label><input id="e-link" type="url" maxlength="300" placeholder="https://"></div>
-          <div class="field"><label for="e-details">Details</label><textarea id="e-details" maxlength="500"></textarea></div>
-          <div class="formfoot"><button class="btn" type="submit" style="margin-top:0">Post event</button><span class="status" id="eventStatus" role="status"></span></div>
-        </form>
-        <div id="eventList" class="stack"></div>
+        <div id="boardList" class="boardgrid"></div>
       </div>
     </div>
   </section>
-
   <section id="jobs">
     <div class="intro">
       <span class="label">Jobs &amp; tutors</span>
@@ -458,40 +500,6 @@ html{scroll-behavior:smooth}
       <div><div class="colhead"><h3>Families seeking a tutor</h3></div><div id="seekingList" class="stack"></div></div>
     </div>
   </section>
-
-  <section id="newsletter">
-    <div class="newsband">
-      <div class="newscopy">
-        <span class="label">The monthly newsletter</span>
-        <h2>What's new in Central Texas homeschooling, once a month</h2>
-        <p>One email at the start of each month: groups that opened spots, registration dates coming up, new listings near you, and a few things worth knowing. Short enough to read over coffee.</p>
-        <ul class="newsperks">
-          <li>Registration deadlines before they pass</li>
-          <li>Openings at groups that are usually full</li>
-          <li>New co-ops, classes and park days by town</li>
-        </ul>
-      </div>
-      <form class="newsform" id="mainNewsForm" novalidate>
-        <div class="field">
-          <label for="nl-email">Email</label>
-          <input id="nl-email" type="email" placeholder="you@example.com" maxlength="160" autocomplete="email">
-        </div>
-        <div class="field">
-          <label for="nl-town">Your town</label>
-          <select id="nl-town">
-            <option value="">Anywhere in Central Texas</option>
-            <option>Leander</option><option>Cedar Park</option><option>Liberty Hill</option><option>Round Rock</option>
-            <option>Georgetown</option><option>Austin</option><option>Pflugerville</option><option>Hutto</option><option>Other</option>
-          </select>
-        </div>
-        <button class="btn" type="submit" style="margin-top:0">Sign me up</button>
-        <span class="status" id="nlStatus" role="status"></span>
-        <p class="where" style="margin:0;font-size:13px">Free. Unsubscribe anytime. We never share your email.</p>
-      </form>
-    </div>
-  </section>
-
-
   <section id="tefa">
     <div class="intro">
       <span class="label">Texas Education Freedom Accounts</span>
@@ -535,12 +543,40 @@ html{scroll-behavior:smooth}
     </div>
     <p class="where" style="margin-top:12px">CenTex Homeschool Hub isn't affiliated with the TEFA program. Links go to official state pages or the state's program partner.</p>
   </section>
-
-
-
+  <section id="newsletter">
+    <div class="newsband">
+      <div class="newscopy">
+        <span class="label">The monthly newsletter</span>
+        <h2>What's new in Central Texas homeschooling, once a month</h2>
+        <p>One email at the start of each month: groups that opened spots, registration dates coming up, new listings near you, and a few things worth knowing. Short enough to read over coffee.</p>
+        <ul class="newsperks">
+          <li>Registration deadlines before they pass</li>
+          <li>Openings at groups that are usually full</li>
+          <li>New co-ops, classes and park days by town</li>
+        </ul>
+      </div>
+      <form class="newsform" id="mainNewsForm" novalidate>
+        <div class="field">
+          <label for="nl-email">Email</label>
+          <input id="nl-email" type="email" placeholder="you@example.com" maxlength="160" autocomplete="email">
+        </div>
+        <div class="field">
+          <label for="nl-town">Your town</label>
+          <select id="nl-town">
+            <option value="">Anywhere in Central Texas</option>
+            <option>Leander</option><option>Cedar Park</option><option>Liberty Hill</option><option>Round Rock</option>
+            <option>Georgetown</option><option>Austin</option><option>Pflugerville</option><option>Hutto</option><option>Other</option>
+          </select>
+        </div>
+        <button class="btn" type="submit" style="margin-top:0">Sign me up</button>
+        <span class="status" id="nlStatus" role="status"></span>
+        <p class="where" style="margin:0;font-size:13px">Free. Unsubscribe anytime. We never share your email.</p>
+      </form>
+    </div>
+  </section>
   <section id="submit">
     <div class="intro">
-      <span class="label">Add or update a listing</span>
+      <span class="label">Suggest a group</span>
       <h2>Know a group we're missing?</h2>
       <p>Send it in and we'll review it within a few days. Group leaders can claim their listing here too.</p>
     </div>
@@ -644,7 +680,7 @@ function card(x){
     <div class="where">${esc(townsOf(x).join(" · "))}</div>
     <p>${esc(x.d)}</p>
     ${facts.length?`<dl class="facts">${facts.map(f=>`<dt>${f[0]}</dt><dd>${esc(f[1])}</dd>`).join("")}</dl>`:""}
-    ${x.tags.length?`<div class="tags">${x.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join("")}</div>`:""}
+    ${x.tags.length?`<div class="tags">${x.tags.map(t=>`<span class="tag${t==="Littles welcome"?" littles":""}"${t==="Littles welcome"?' title="Offers a nursery or classes for babies and toddlers during co-op"':""}>${esc(t)}</span>`).join("")}</div>`:""}
     <div class="avail"><span class="ab ${AV[x.avail.s][1]}">${esc(availLabel(x))}</span>${x.avail.s!=="open"?`<button class="linkbtn" type="button" data-notify="${esc(x.n)}">Notify me when spots open</button>`:""}</div>
     <form class="notify" data-for="${esc(x.n)}" hidden novalidate>
       <p>We'll email you when ${esc(x.n)} has openings or opens registration, plus the monthly newsletter with new matches near you.</p>
@@ -656,9 +692,14 @@ function card(x){
     <div class="foot">${x.claimed?`<span class="claimed">${x.type==="tutor"?"Managed by the tutor":"Updated by the group"}</span>`:`<span>Unclaimed</span>`}<a class="linkbtn" href="/leaders.html#${esc(sid(x))}">${x.claimed?"Manage listing":"Is this yours? Claim it"}</a></div>
   </article>`;
 }
+let showAll=false;
 function render(){
   const res=L.filter(matches);
-  $("grid").innerHTML=res.map(card).join("");
+  const filtering=state.q||state.type||state.approach||state.town!=="All"||state.open;
+  const shown=(filtering||showAll)?res:res.slice(0,12);
+  $("grid").innerHTML=shown.map(card).join("");
+  $("showAll").hidden=shown.length>=res.length;
+  $("showAll").textContent=`Show all ${res.length} listings`;
   $("empty").hidden=res.length>0;
   $("emptyMsg").innerHTML=state.open&&!L.some(x=>x.avail.s==="open")
     ?'No groups have confirmed open spots yet. As leaders claim their listings and post availability, they\'ll show up here. Turn off "Open now" to see everyone, and use "Notify me" on any group you like.'
@@ -692,6 +733,7 @@ function scoreOf(x){
   const g=GRADE[ans.age], r=gradeRange(x);
   if(g&&r){ if(r[1]<g[0]||r[0]>g[1]) return null; s+=1; why.push("Right ages"); }
   const t=x.tags;
+  if(ans.age==="Little ones"&&t.includes("Littles welcome")){s+=2;why.push("Littles welcome");}
   if(ans.faith==="Secular"){ if(t.includes("Christian")||t.includes("Catholic")) return null; if(t.includes("Secular")){s+=3;why.push("Secular");} }
   else if(ans.faith==="Christian"){ if(t.includes("Secular")) return null; if(t.includes("Christian")){s+=3;why.push("Christian");} else if(t.includes("Catholic")) s+=1; }
   else if(ans.faith==="Catholic"){ if(t.includes("Secular")) return null; if(t.includes("Catholic")){s+=4;why.push("Catholic");} else if(t.includes("Christian")) s+=1; }
@@ -770,11 +812,8 @@ $("grid").addEventListener("submit",async e=>{
 });
 $("grid").addEventListener("click",e=>{const a=e.target.closest("a[data-site]"); if(a) api("/api/click",{slug:a.dataset.site,kind:"website"});});
 function renderRegistration(){
-  const items=L.filter(x=>x.avail.s==="opens"||x.avail.s==="waitlist");
-  $("regList").innerHTML=items.length
-    ?`<div class="reglist">${items.map(x=>`<div class="regcard"><span class="ab ${AV[x.avail.s][1]}" style="align-self:flex-start">${esc(availLabel(x))}</span><h3>${esc(x.n)}</h3><span class="where">${esc(townsOf(x).join(" · "))} · ${TYPES[x.type][0]}</span></div>`).join("")}</div>`
-    :`<div class="regempty"><b style="color:var(--ink)">No registration dates posted yet.</b> When a group shares when it opens enrollment, it shows up here and in the monthly newsletter. Leading a group? <a href="/leaders.html">Post your registration date</a>.</div>`;
-  $("regList").querySelectorAll("[data-kind]").forEach(a=>a.addEventListener("click",ev=>{ev.preventDefault();goForm(a.dataset.kind);}));
+  const items=L.filter(x=>!x.test&&(x.avail.s==="opens"||x.avail.s==="waitlist"));
+  $("regList").innerHTML=items.length?`<h3 style="font-size:20px;margin:18px 0 8px">Registration opening soon</h3><div class="stack">${items.map(x=>`<div class="post"><span class="ab ${AV[x.avail.s][1]}" style="align-self:flex-start">${esc(availLabel(x))}</span><b>${esc(x.n)}</b><span class="meta">${esc(townsOf(x).join(" · "))} · ${TYPES[x.type][0]}</span></div>`).join("")}</div>`:"";
 }
 // Unmet demand: each finished quiz is counted (answers only, no personal details).
 let demandSent=false;
@@ -793,6 +832,7 @@ document.querySelectorAll("[data-kind]").forEach(a=>a.addEventListener("click",e
 $("statListings").textContent=L.filter(x=>!x.test).length;
 $("statTowns").textContent=new Set(L.filter(x=>!x.test).flatMap(townsOf)).size;
 
+$("showAll").onclick=()=>{showAll=true;render();};
 // ---- Listing data shared with the leader page ----
 const sid=x=>x.slug||slug(x.n);
 const slug=n=>n.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,120);
@@ -805,7 +845,8 @@ async function loadOverrides(){
   Object.entries(r.overrides).forEach(([id,o])=>{const x=L.find(v=>sid(v)===id); if(!x) return;
     ["d","ages","sched","cost","site"].forEach(k=>{if(o[k]) x[k]=o[k];});
     if(o.avail&&AV[o.avail.s]) x.avail={s:o.avail.s,when:o.avail.when||""};
-    if(o.claimed) x.claimed=true; if(o.plan) x.plan=o.plan;});
+    if(o.claimed) x.claimed=true; if(o.plan) x.plan=o.plan;
+    if(typeof o.littles==="boolean"){ x.tags=x.tags.filter(t=>t!=="Littles welcome"); if(o.littles) x.tags.push("Littles welcome"); }});
   render(); renderRegistration();
 }
 
@@ -873,12 +914,44 @@ async function loadBoard(){
       <form class="ask" data-post="${p.id}" hidden novalidate><textarea maxlength="800" placeholder="Introduce yourself. We'll send your message and email address to this parent."></textarea><div class="nrow"><button class="btn sm" type="submit" style="margin-top:0">Send reply</button></div><span class="status" role="status"></span></form>`}</div>`).join("")
     :`<div class="emptynote">No posts yet. Be the first to share what your family is looking for.</div>`);
 }
+let EVENTS=[], calMonth=null, calDay=null;
+const ymd=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+function sourceLine(ev){
+  if(ev.source==="imported") return `From ${esc(ev.host)}'s website${ev.confirm?" · year not stated, confirm the date":""}`;
+  if(ev.source==="leader") return `Posted by ${esc(ev.host)}`;
+  return ev.host?`Hosted by ${esc(ev.host)}`:"Posted by a parent";
+}
+function eventCard(ev){
+  const d=fmtDate(ev.event_date);
+  return `<div class="event"><div class="datebox"><span>${d.m}</span><b>${d.d}</b></div><div style="display:flex;flex-direction:column;gap:4px;min-width:0"><b>${esc(ev.title)}</b>
+    <span class="meta">${[d.w,ev.event_time,[ev.place,ev.town].filter(Boolean).join(", ")].filter(Boolean).map(esc).join(" · ")}</span>
+    ${ev.details?`<p>${esc(ev.details)}</p>`:""}<span class="meta">${sourceLine(ev)}${ev.link?` · <a href="${esc(ev.link)}" target="_blank" rel="noopener">Details ↗</a>`:""}</span></div></div>`;
+}
+function renderCalendar(){
+  const today=new Date(); if(!calMonth) calMonth=new Date(today.getFullYear(),today.getMonth(),1);
+  $("calTitle").textContent=calMonth.toLocaleString("en-US",{month:"long",year:"numeric"});
+  const first=new Date(calMonth), start=new Date(first); start.setDate(1-first.getDay());
+  const byDay={}; EVENTS.forEach(ev=>(byDay[ev.event_date]=byDay[ev.event_date]||[]).push(ev));
+  let cells=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d=>`<div class="dow">${d}</div>`).join("");
+  for(let k=0;k<42;k++){
+    const d=new Date(start); d.setDate(start.getDate()+k); const key=ymd(d), evs=byDay[key]||[];
+    const inMonth=d.getMonth()===calMonth.getMonth();
+    if(k>=35&&!inMonth&&d.getDay()===0) break;
+    cells+=`<button type="button" class="day${inMonth?"":" out"}${key===ymd(today)?" today":""}${evs.length?" has":""}${key===calDay?" sel":""}" data-day="${key}" aria-label="${d.toDateString()}${evs.length?", "+evs.length+" event"+(evs.length>1?"s":""):""}"><span>${d.getDate()}</span>${evs.slice(0,2).map(ev=>`<i class="${ev.source}">${esc(ev.title)}</i>`).join("")}${evs.length>2?`<i class="more">+${evs.length-2} more</i>`:""}</button>`;
+  }
+  $("calGrid").innerHTML=cells;
+  const todayKey=ymd(today);
+  const list=calDay?(byDay[calDay]||[]):EVENTS.filter(ev=>ev.event_date>=todayKey).slice(0,8);
+  $("calListTitle").textContent=calDay?new Date(calDay+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}):"Coming up";
+  $("eventList").innerHTML=list.length?list.map(eventCard).join("")+(calDay?`<button class="linkbtn" type="button" id="calClear" style="align-self:flex-start">Show all upcoming</button>`:"")
+    :`<div class="emptynote">${calDay?"Nothing on this day.":"No upcoming events yet."} Hosting a park day, field trip or open house? Add it here.</div>`;
+  const c=$("calClear"); if(c) c.onclick=()=>{calDay=null;renderCalendar();};
+}
+$("calPrev").onclick=()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()-1,1);calDay=null;renderCalendar();};
+$("calNext").onclick=()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+1,1);calDay=null;renderCalendar();};
+$("calGrid").addEventListener("click",e=>{const b=e.target.closest("[data-day]"); if(!b) return; calDay=calDay===b.dataset.day?null:b.dataset.day; renderCalendar();});
 async function loadEvents(){
-  const r=await api("/api/events"); const evs=(r.ok&&r.events)||[];
-  $("eventList").innerHTML=evs.length?evs.map(ev=>{const d=fmtDate(ev.event_date);return `<div class="event"><div class="datebox"><span>${d.m}</span><b>${d.d}</b></div><div style="display:flex;flex-direction:column;gap:4px;min-width:0"><b>${esc(ev.title)}</b>
-      <span class="meta">${[d.w,ev.event_time,[ev.place,ev.town].filter(Boolean).join(", ")].filter(Boolean).map(esc).join(" · ")}</span>
-      ${ev.details?`<p>${esc(ev.details)}</p>`:""}<span class="meta">${ev.host?"Hosted by "+esc(ev.host):""}${ev.link?` · <a href="${esc(ev.link)}" target="_blank" rel="noopener">Details ↗</a>`:""}</span></div></div>`;}).join("")
-    :`<div class="emptynote">No events posted yet. Hosting a park day, field trip or open house? Post it here, and we may include it in the newsletter.</div>`;
+  const r=await api("/api/events"); EVENTS=(r.ok&&r.events)||[]; renderCalendar();
 }
 document.addEventListener("click",async e=>{
   const ask=e.target.closest("[data-ask]"), rep=e.target.closest("[data-reply]"), rm=e.target.closest("[data-remove]");

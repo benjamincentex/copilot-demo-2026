@@ -23,3 +23,7 @@ CREATE INDEX IF NOT EXISTS idx_questions_slug ON questions(slug);
 CREATE TABLE IF NOT EXISTS jobs (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT NOT NULL, name TEXT, kind TEXT NOT NULL, title TEXT NOT NULL, org TEXT, town TEXT, pay TEXT, schedule TEXT, details TEXT NOT NULL, apply_link TEXT, status TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now')), expires_at TEXT);
 -- Listings created on the site (independent tutors)
 CREATE TABLE IF NOT EXISTS user_listings (slug TEXT PRIMARY KEY, email TEXT NOT NULL, data TEXT NOT NULL, status TEXT DEFAULT 'live', created_at TEXT DEFAULT (datetime('now')));
+-- Calendar sources: community (parents), leader (verified group), imported (from a group's public website)
+ALTER TABLE events ADD COLUMN slug TEXT;
+ALTER TABLE events ADD COLUMN source TEXT DEFAULT 'community';
+ALTER TABLE events ADD COLUMN confirm INTEGER DEFAULT 0;
