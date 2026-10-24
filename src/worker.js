@@ -294,7 +294,7 @@ const routes = {
     const problem = privacyProblem(details); if (problem) return bad(problem);
     const open = await env.DB.prepare("SELECT COUNT(*) AS n FROM board_posts WHERE email=? AND status IN ('pending','approved') AND expires_at > datetime('now')").bind(email).first();
     if (open.n >= 3) return bad("You can have up to 3 active posts. Remove one to add another.");
-    await env.DB.prepare("INSERT INTO board_posts (email, name, town, ages, want, details, expires_at) VALUES (?,?,?,?,?,?, datetime('now','+60 days'))")
+    await env.DB.prepare("INSERT INTO board_posts (email, name, town, ages, want, details, status, expires_at) VALUES (?,?,?,?,?,?, 'approved', datetime('now','+60 days'))")
       .bind(email, prof.name, clip(b.town, 40) || prof.town || "", clip(b.ages, 40), clip(b.want, 60), details).run();
     return json({ ok: true });
   },
@@ -338,7 +338,7 @@ const routes = {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return bad("Pick the event date.");
     if (link && !/^https?:\/\//i.test(link)) return bad("The link should start with https://");
     const problem = privacyProblem(details + " " + title); if (problem) return bad(problem);
-    await env.DB.prepare("INSERT INTO events (email, name, title, event_date, event_time, town, place, host, link, details) VALUES (?,?,?,?,?,?,?,?,?,?)")
+    await env.DB.prepare("INSERT INTO events (email, name, title, event_date, event_time, town, place, host, link, details, status) VALUES (?,?,?,?,?,?,?,?,?,?,'approved')")
       .bind(email, prof.name, title, date, clip(b.time, 30), clip(b.town, 40), clip(b.place, 120), clip(b.host, 100), link, details).run();
     return json({ ok: true });
   },
@@ -391,8 +391,8 @@ const routes = {
   // ---------- owner moderation ----------
   "GET /api/admin/moderation": async (req, env) => {
     const [{ results: posts }, { results: evs }, { results: qs }] = await Promise.all([
-      env.DB.prepare("SELECT id, name, email, town, ages, want, details, created_at FROM board_posts WHERE status='pending' ORDER BY id").all(),
-      env.DB.prepare("SELECT id, name, email, title, event_date, event_time, town, place, host, link, details FROM events WHERE status='pending' ORDER BY event_date").all(),
+      env.DB.prepare("SELECT id, name, email, town, ages, want, details, created_at FROM board_posts WHERE status='approved' AND expires_at > datetime('now') ORDER BY id DESC LIMIT 50").all(),
+      env.DB.prepare("SELECT id, name, email, title, event_date, event_time, town, place, host, link, details FROM events WHERE status='approved' AND event_date >= date('now','-1 day') ORDER BY event_date LIMIT 50").all(),
       env.DB.prepare("SELECT id, listing, name, question, answer, status FROM questions WHERE status IN ('open','answered') ORDER BY id DESC LIMIT 30").all(),
     ]);
     return json({ posts, events: evs, questions: qs });
@@ -401,11 +401,9 @@ const routes = {
   "POST /api/admin/moderate": async (req, env) => {
     const b = await body(req) || {};
     const table = { post: "board_posts", event: "events", question: "questions" }[b.kind];
-    const status = { approve: "approved", reject: "rejected", hide: "hidden" }[b.action];
+    const status = { remove: "removed", hide: "hidden" }[b.action];
     if (!table || !status) return bad("Unknown action.");
-    if (table === "questions" && status !== "hidden") return bad("Questions can only be hidden.");
-    if (table !== "questions" && status === "hidden") return bad("Use reject instead.");
-    await env.DB.prepare(`UPDATE ${table} SET status=? ${table === "questions" ? "" : ", reviewed_at=datetime('now')"} WHERE id=?`).bind(status, Number(b.id) || 0).run();
+    await env.DB.prepare(`UPDATE ${table} SET status=? ${table === "questions" ? "" : ", reviewed_at=datetime('now')"} WHERE id=?`).bind(table === "questions" ? "hidden" : "removed", Number(b.id) || 0).run();
     return json({ ok: true });
   },
 

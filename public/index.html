@@ -368,7 +368,7 @@ html{scroll-behavior:smooth}
     <div class="intro">
       <span class="label">Community</span>
       <h2>Connect with local homeschool families</h2>
-      <p>Post what your family is looking for, find park days and field trips, and ask groups questions. Accounts are for parents and group leaders, and every post is reviewed before it appears.</p>
+      <p>Post what your family is looking for, find park days and field trips, and ask groups questions. Accounts are for parents and group leaders. Be kind, keep it about homeschooling, and keep kids' details private. We remove posts that don't follow these rules.</p>
     </div>
     <div class="acctbar" id="acctBar"></div>
     <div class="box2" id="signinPanel" hidden>
@@ -403,7 +403,7 @@ html{scroll-behavior:smooth}
           </div>
           <div class="field"><label for="b-town">Area</label><input id="b-town" maxlength="40" placeholder="e.g. Leander / Cedar Park"></div>
           <div class="field"><label for="b-details">Details</label><textarea id="b-details" maxlength="400" placeholder="e.g. Secular co-op that meets Fridays, open to a first-year homeschooler"></textarea></div>
-          <div class="formfoot"><button class="btn" type="submit" style="margin-top:0">Submit for review</button><span class="status" id="postStatus" role="status"></span></div>
+          <div class="formfoot"><button class="btn" type="submit" style="margin-top:0">Post</button><span class="status" id="postStatus" role="status"></span></div>
           <p class="where" style="margin:0;font-size:13px">Posts stay up for 60 days. Others reply through the site, so your email stays private.</p>
         </form>
         <div id="boardList" class="stack"></div>
@@ -421,7 +421,7 @@ html{scroll-behavior:smooth}
           <div class="field"><label for="e-host">Hosted by</label><input id="e-host" maxlength="100" placeholder="Group or organizer"></div>
           <div class="field"><label for="e-link">Link for details or RSVP (optional)</label><input id="e-link" type="url" maxlength="300" placeholder="https://"></div>
           <div class="field"><label for="e-details">Details</label><textarea id="e-details" maxlength="500"></textarea></div>
-          <div class="formfoot"><button class="btn" type="submit" style="margin-top:0">Submit for review</button><span class="status" id="eventStatus" role="status"></span></div>
+          <div class="formfoot"><button class="btn" type="submit" style="margin-top:0">Post event</button><span class="status" id="eventStatus" role="status"></span></div>
         </form>
         <div id="eventList" class="stack"></div>
       </div>
@@ -863,19 +863,18 @@ $("postForm").addEventListener("submit",async e=>{
   e.preventDefault(); setS("postStatus","","Sending…");
   const r=await api("/api/board",{want:$("b-want").value,ages:$("b-ages").value.trim(),town:$("b-town").value.trim(),details:$("b-details").value.trim()});
   if(!r.ok){setS("postStatus","err",r.error);return;}
-  e.target.reset(); setS("postStatus","ok","Thanks! Your post will appear once it's reviewed, usually within a day."); loadBoard();
+  e.target.reset(); setS("postStatus","ok","Posted."); $("postForm").hidden=true; loadBoard();
 });
 $("eventForm").addEventListener("submit",async e=>{
   e.preventDefault(); setS("eventStatus","","Sending…");
   const v=id=>$(id).value.trim();
   const r=await api("/api/events",{title:v("e-title"),date:v("e-date"),time:v("e-time"),town:v("e-town"),place:v("e-place"),host:v("e-host"),link:v("e-link"),details:v("e-details")});
   if(!r.ok){setS("eventStatus","err",r.error);return;}
-  e.target.reset(); setS("eventStatus","ok","Thanks! The event will appear once it's reviewed.");
+  e.target.reset(); setS("eventStatus","ok","Posted."); $("eventForm").hidden=true; loadEvents();
 });
 async function loadBoard(){
   const r=await api("/api/board"); const posts=(r.ok&&r.posts)||[], mine=(r.ok&&r.mine)||[];
-  const pending=mine.filter(m=>m.status==="pending");
-  $("boardList").innerHTML=(pending.length?`<div class="emptynote">You have ${pending.length} post${pending.length>1?"s":""} waiting for review.</div>`:"")+
+  $("boardList").innerHTML=
     (posts.length?posts.map(p=>`<div class="post"><b>${esc(p.want||"Looking for")}</b><span class="meta">${[p.town,p.ages?"Ages "+p.ages:""].filter(Boolean).map(esc).join(" · ")}</span><p>${esc(p.details)}</p>
       <span class="meta">${esc(p.name||"A parent")} · ${new Date(p.created_at+"Z").toLocaleDateString("en-US",{month:"short",day:"numeric"})}</span>
       ${p.mine?`<button class="linkbtn" type="button" data-remove="${p.id}" style="align-self:flex-start">Remove my post</button>`:`<button class="linkbtn" type="button" data-reply="${p.id}" style="align-self:flex-start">Reply</button>
@@ -887,7 +886,7 @@ async function loadEvents(){
   $("eventList").innerHTML=evs.length?evs.map(ev=>{const d=fmtDate(ev.event_date);return `<div class="event"><div class="datebox"><span>${d.m}</span><b>${d.d}</b></div><div style="display:flex;flex-direction:column;gap:4px;min-width:0"><b>${esc(ev.title)}</b>
       <span class="meta">${[d.w,ev.event_time,[ev.place,ev.town].filter(Boolean).join(", ")].filter(Boolean).map(esc).join(" · ")}</span>
       ${ev.details?`<p>${esc(ev.details)}</p>`:""}<span class="meta">${ev.host?"Hosted by "+esc(ev.host):""}${ev.link?` · <a href="${esc(ev.link)}" target="_blank" rel="noopener">Details ↗</a>`:""}</span></div></div>`;}).join("")
-    :`<div class="emptynote">No events posted yet. Hosting a park day, field trip or open house? Submit it and we'll share it here and in the newsletter.</div>`;
+    :`<div class="emptynote">No events posted yet. Hosting a park day, field trip or open house? Post it here, and we may include it in the newsletter.</div>`;
 }
 document.addEventListener("click",async e=>{
   const ask=e.target.closest("[data-ask]"), rep=e.target.closest("[data-reply]"), rm=e.target.closest("[data-remove]");

@@ -235,13 +235,13 @@ html{scroll-behavior:smooth}
 </header>
 
 <section style="padding-top:28px">
-  <div class="intro"><span class="label">Only you can see this</span><h2>Owner tools</h2><p>Approve group leaders, posts and events, see who's signing up, and spot towns where families can't find a fit.</p></div>
+  <div class="intro"><span class="label">Only you can see this</span><h2>Owner tools</h2><p>Approve group leaders, remove posts that break the rules, see who's signing up, and spot towns where families can't find a fit.</p></div>
   <div class="box" id="denied" hidden><h2>Owner sign-in required</h2><p class="where" style="margin:0">Open this page through Cloudflare Access with the email set as ADMIN_EMAIL on the Worker.</p></div>
   <div id="tools" hidden>
     <div class="box"><h2>At a glance</h2><div class="stats4" id="stats"></div><p class="where" id="emailLine" style="margin:0"></p></div>
     <div class="box"><h2>Listing claims to review</h2><div id="claims" class="where">No claims waiting.</div></div>
-    <div class="box"><h2>"Looking for" posts to review</h2><div id="mPosts" class="where">Nothing waiting.</div></div>
-    <div class="box"><h2>Events to review</h2><div id="mEvents" class="where">Nothing waiting.</div></div>
+    <div class="box"><h2>Live "Looking for" posts</h2><p class="where" style="margin:0">Posts go up right away. Remove anything that breaks the rules.</p><div id="mPosts" class="where">No posts yet.</div></div>
+    <div class="box"><h2>Live events</h2><div id="mEvents" class="where">No events yet.</div></div>
     <div class="box"><h2>Recent listing questions</h2><p class="where" style="margin:0">Questions go to the group's leader. Hide anything inappropriate.</p><div id="mQs" class="where"></div></div>
     <div class="box"><h2>Unmet demand</h2><p class="where" style="margin:0">What families asked for in the quiz where no listing near them fit.</p><div id="gaps" class="demand" style="margin-top:0;border:0;padding:0"></div></div>
   </div>
@@ -273,9 +273,9 @@ async function load(){
   }
   const m=await api("/api/admin/moderation");
   if(m.ok){
-    const btns=(k,id,hideOnly)=>`<div class="row">${hideOnly?`<button class="btn ghost sm" type="button" data-mod="${k}:${id}:hide">Hide</button>`:`<button class="btn sm" type="button" data-mod="${k}:${id}:approve">Approve</button><button class="btn ghost sm" type="button" data-mod="${k}:${id}:reject">Reject</button>`}</div>`;
-    $("mPosts").innerHTML=m.posts.length?m.posts.map(p=>`<div class="rev"><b style="color:var(--ink)">${esc(p.want||"Looking for")}</b><span>${esc(p.name)} · ${esc(p.email)}${p.town?" · "+esc(p.town):""}${p.ages?" · ages "+esc(p.ages):""}</span><span>${esc(p.details)}</span>${btns("post",p.id)}</div>`).join(""):"Nothing waiting.";
-    $("mEvents").innerHTML=m.events.length?m.events.map(v=>`<div class="rev"><b style="color:var(--ink)">${esc(v.title)}</b><span>${esc(v.event_date)} ${esc(v.event_time||"")} · ${esc([v.place,v.town].filter(Boolean).join(", "))}</span><span>From ${esc(v.name)} · ${esc(v.email)}${v.host?" · host: "+esc(v.host):""}</span>${v.details?`<span>${esc(v.details)}</span>`:""}${v.link?`<a href="${esc(v.link)}" target="_blank" rel="noopener">${esc(v.link)}</a>`:""}${btns("event",v.id)}</div>`).join(""):"Nothing waiting.";
+    const btns=(k,id,hideOnly)=>`<div class="row"><button class="btn ghost sm" type="button" data-mod="${k}:${id}:${hideOnly?"hide":"remove"}">${hideOnly?"Hide":"Remove"}</button></div>`;
+    $("mPosts").innerHTML=m.posts.length?m.posts.map(p=>`<div class="rev"><b style="color:var(--ink)">${esc(p.want||"Looking for")}</b><span>${esc(p.name)} · ${esc(p.email)}${p.town?" · "+esc(p.town):""}${p.ages?" · ages "+esc(p.ages):""}</span><span>${esc(p.details)}</span>${btns("post",p.id)}</div>`).join(""):"No posts yet.";
+    $("mEvents").innerHTML=m.events.length?m.events.map(v=>`<div class="rev"><b style="color:var(--ink)">${esc(v.title)}</b><span>${esc(v.event_date)} ${esc(v.event_time||"")} · ${esc([v.place,v.town].filter(Boolean).join(", "))}</span><span>From ${esc(v.name)} · ${esc(v.email)}${v.host?" · host: "+esc(v.host):""}</span>${v.details?`<span>${esc(v.details)}</span>`:""}${v.link?`<a href="${esc(v.link)}" target="_blank" rel="noopener">${esc(v.link)}</a>`:""}${btns("event",v.id)}</div>`).join(""):"No events yet.";
     $("mQs").innerHTML=m.questions.length?m.questions.map(q=>`<div class="rev"><b style="color:var(--ink)">${esc(q.listing)}</b><span>${esc(q.name)}: "${esc(q.question)}"</span>${q.answer?`<span>Answer: ${esc(q.answer)}</span>`:"<span>Not answered yet</span>"}${btns("question",q.id,true)}</div>`).join(""):"No questions yet.";
   }
   const items=(cl.ok&&cl.claims)||[];
