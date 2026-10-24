@@ -508,6 +508,18 @@ const routes = {
     return json({ ok: true, slug });
   },
 
+  "POST /api/admin/plan": async (req, env) => {
+    const b = await body(req) || {}; const slug = clip(b.slug, 140);
+    const plan = ["", "enhanced", "partner"].includes(b.plan) ? b.plan : null;
+    if (!slug || plan === null) return bad("Pick a listing and plan.");
+    const prevRow = await env.DB.prepare("SELECT data FROM listing_overrides WHERE slug=?").bind(slug).first();
+    const prev = prevRow ? JSON.parse(prevRow.data) : {};
+    if (plan) prev.plan = plan; else delete prev.plan;
+    await env.DB.prepare("INSERT INTO listing_overrides (slug, data, updated_at, updated_by) VALUES (?,?,?,?) ON CONFLICT(slug) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at, updated_by=excluded.updated_by")
+      .bind(slug, JSON.stringify(prev), new Date().toISOString(), "owner").run();
+    return json({ ok: true });
+  },
+
   "GET /api/admin/user-listings": async (req, env) => {
     const { results } = await env.DB.prepare("SELECT slug, email, data, created_at FROM user_listings WHERE status='live' ORDER BY created_at DESC LIMIT 100").all();
     return json({ listings: results.map((r) => ({ ...r, data: JSON.parse(r.data) })) });

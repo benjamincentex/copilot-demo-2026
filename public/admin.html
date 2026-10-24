@@ -241,6 +241,12 @@ html{scroll-behavior:smooth}
     <div class="box"><h2>At a glance</h2><div class="stats4" id="stats"></div><p class="where" id="emailLine" style="margin:0"></p></div>
     <div class="box"><h2>Listing claims to review</h2><div id="claims" class="where">No claims waiting.</div></div>
     <div class="box"><h2>Live "Looking for" posts</h2><p class="where" style="margin:0">Posts go up right away. Remove anything that breaks the rules.</p><div id="mPosts" class="where">No posts yet.</div></div>
+    <div class="box"><h2>Paid plans</h2><p class="where" style="margin:0">After a vendor pays in Stripe, set their plan here. Partner adds the featured banner to their listing.</p>
+      <form id="planForm" class="row" novalidate style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+        <div class="field" style="flex:1 1 260px"><label for="pl-listing">Listing</label><select id="pl-listing"></select></div>
+        <div class="field"><label for="pl-plan">Plan</label><select id="pl-plan"><option value="">Basic (free)</option><option value="enhanced">Enhanced ($29)</option><option value="partner">Partner ($49)</option></select></div>
+        <button class="btn sm" type="submit">Save plan</button><span class="status" id="planStatus" role="status"></span>
+      </form><div id="planList" class="where"></div></div>
     <div class="box"><h2>Tutor listings</h2><p class="where" style="margin:0">Listings tutors created themselves. They go live right away.</p><div id="mTutors" class="where">No tutor listings yet.</div></div>
     <div class="box"><h2>Job posts</h2><p class="where" style="margin:0">Hiring posts go live when you mark them paid. Family tutor requests are already live.</p><div id="mJobs" class="where">No job posts yet.</div></div>
     <div class="box"><h2>Live events</h2><div id="mEvents" class="where">No events yet.</div></div>
@@ -250,6 +256,7 @@ html{scroll-behavior:smooth}
 </section>
 <footer><span>CenTex Homeschool Hub · owner tools</span></footer>
 </div>
+<script src="/listings.js"></script>
 <script>
 async function api(path,data){
   try{
@@ -280,6 +287,13 @@ async function load(){
     $("mEvents").innerHTML=m.events.length?m.events.map(v=>`<div class="rev"><b style="color:var(--ink)">${esc(v.title)}</b><span>${esc(v.event_date)} ${esc(v.event_time||"")} · ${esc([v.place,v.town].filter(Boolean).join(", "))}</span><span>From ${esc(v.name)} · ${esc(v.email)}${v.host?" · host: "+esc(v.host):""}</span>${v.details?`<span>${esc(v.details)}</span>`:""}${v.link?`<a href="${esc(v.link)}" target="_blank" rel="noopener">${esc(v.link)}</a>`:""}${btns("event",v.id)}</div>`).join(""):"No events yet.";
     $("mQs").innerHTML=m.questions.length?m.questions.map(q=>`<div class="rev"><b style="color:var(--ink)">${esc(q.listing)}</b><span>${esc(q.name)}: "${esc(q.question)}"</span>${q.answer?`<span>Answer: ${esc(q.answer)}</span>`:"<span>Not answered yet</span>"}${btns("question",q.id,true)}</div>`).join(""):"No questions yet.";
   }
+  const lo=await api("/api/listings");
+  if(lo.ok){
+    const all=L.concat(lo.custom||[]); const sid=x=>x.slug||slug(x.n);
+    $("pl-listing").innerHTML=all.slice().sort((a,b)=>a.n.localeCompare(b.n)).map(x=>`<option value="${esc(sid(x))}">${esc(x.n)}${x.test?" (demo)":""}</option>`).join("");
+    const paid=Object.entries(lo.overrides||{}).filter(([k,o])=>o.plan);
+    $("planList").innerHTML=paid.length?paid.map(([k,o])=>{const x=all.find(v=>sid(v)===k); return `<p style="margin:4px 0"><span class="pill">${o.plan==="partner"?"Partner":"Enhanced"}</span> ${esc(x?x.n:k)}</p>`;}).join(""):"No paid plans yet.";
+  }
   const ul=await api("/api/admin/user-listings");
   if(ul.ok){ $("mTutors").innerHTML=ul.listings.length?ul.listings.map(t=>`<div class="rev"><b style="color:var(--ink)">${esc(t.data.n)}</b><span>${esc(t.data.town)} · ${esc((t.data.tags||[]).join(", "))} · ${esc(t.email)}</span><span>${esc(t.data.d)}</span><div class="row"><button class="btn ghost sm" type="button" data-tutor="${esc(t.slug)}">Remove</button></div></div>`).join(""):"No tutor listings yet."; }
   const jb=await api("/api/admin/jobs");
@@ -302,6 +316,11 @@ document.addEventListener("click",async e=>{
   const a=e.target.closest("[data-approve]"), r=e.target.closest("[data-reject]");
   if(a){a.disabled=true; const x=await api("/api/admin/claims/approve",{id:Number(a.dataset.approve)}); x.ok?load():(a.disabled=false);}
   if(r){r.disabled=true; const x=await api("/api/admin/claims/reject",{id:Number(r.dataset.reject)}); x.ok?load():(r.disabled=false);}
+});
+$("planForm").addEventListener("submit",async e=>{
+  e.preventDefault(); const st=$("planStatus"); st.className="status"; st.textContent="Saving…";
+  const r=await api("/api/admin/plan",{slug:$("pl-listing").value,plan:$("pl-plan").value});
+  st.className="status "+(r.ok?"ok":"err"); st.textContent=r.ok?"Saved.":r.error; if(r.ok) load();
 });
 load();
 </script>

@@ -169,6 +169,8 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .contact{display:flex;gap:14px;flex-wrap:wrap;font-size:14px;font-weight:600}
 .contact a{color:var(--bonnet)}
 .contact span{color:var(--ink);font-variant-numeric:tabular-nums}
+.card.partner{border:2px solid var(--sun);box-shadow:0 0 0 4px var(--sun-soft);position:relative;padding-top:30px}
+.ribbon{position:absolute;top:0;left:18px;background:var(--sun);color:var(--ink);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:0 0 8px 8px}
 .card .foot{margin-top:auto;display:flex;justify-content:space-between;align-items:center;gap:10px;padding-top:10px;border-top:1px dashed var(--line);font-size:13px;color:var(--muted)}
 .empty{padding:40px 0;color:var(--muted)}
 
@@ -539,7 +541,7 @@ html{scroll-behavior:smooth}
     <div class="intro">
       <span class="label">For groups &amp; vendors</span>
       <h2>Show families what you offer</h2>
-      <p>Every listing is free, and every listing appears in the same order for every family. Tutors, classes and programs can upgrade to add photos, a class schedule and a sign-up button, so families can see what you offer and enroll in one click.</p>
+      <p>Every listing is free, and listings appear in the same order for every family. Tutors, classes and programs can upgrade to add photos, a class schedule and a sign-up button, so families can see what you offer and enroll in one click.</p>
     </div>
     <div class="plans">
       <div class="plan">
@@ -559,7 +561,7 @@ html{scroll-behavior:smooth}
         <ul>
           <li>Everything in Basic</li>
           <li>Photo gallery, up to 6 photos</li>
-          <li>Class schedule with days, times, ages and prices</li>
+          <li>Class schedule with days, times and ages</li>
           <li>A "Sign up" button that goes straight to your registration page</li>
           <li>Longer description</li>
         </ul>
@@ -570,6 +572,7 @@ html{scroll-behavior:smooth}
         <div class="price">$49<small> / month</small></div>
         <ul>
           <li>Everything in Enhanced</li>
+          <li>Featured listing: a highlighted banner around your listing so it stands out wherever families see it</li>
           <li>A feature in the monthly newsletter each quarter</li>
           <li>Your events mentioned in the newsletter</li>
           <li>Monthly results report: views, clicks and questions</li>
@@ -681,7 +684,7 @@ function matches(x){
 function card(x){
   const [tl,tc]=TYPES[x.type];
   const tut=x.type==="tutor"; const facts=[["Ages",x.ages],[tut?"Format":"Meets",x.sched],[tut?"Rate":"Cost",x.cost]].filter(f=>f[1]);
-  return `<article class="card">
+  return `<article class="card${x.plan==="partner"?" partner":""}">${x.plan==="partner"?`<span class="ribbon">Featured partner</span>`:""}
     <div class="head"><h3>${esc(x.n)}</h3><span class="type ${tc}">${tl}</span></div>
     <div class="where">${esc(townsOf(x).join(" · "))}</div>
     <p>${esc(x.d)}</p>
@@ -847,7 +850,7 @@ async function loadOverrides(){
   Object.entries(r.overrides).forEach(([id,o])=>{const x=L.find(v=>sid(v)===id); if(!x) return;
     ["d","ages","sched","cost","site"].forEach(k=>{if(o[k]) x[k]=o[k];});
     if(o.avail&&AV[o.avail.s]) x.avail={s:o.avail.s,when:o.avail.when||""};
-    if(o.claimed) x.claimed=true;});
+    if(o.claimed) x.claimed=true; if(o.plan) x.plan=o.plan;});
   render(); renderRegistration();
 }
 
