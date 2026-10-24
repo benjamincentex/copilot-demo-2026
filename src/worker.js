@@ -15,6 +15,7 @@ const bad = (message, status = 400) => json({ error: message }, status);
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const clip = (v, n) => (typeof v === "string" ? v.trim().slice(0, n) : "");
 const AVAIL = new Set(["open", "waitlist", "full", "opens", "unknown"]);
+const EVENT_CATS = new Set(["openhouse", "deadline", "public", "other"]);
 const now = () => Date.now();
 const SESSION_DAYS = 30, CODE_MINUTES = 10, MAX_CODE_ATTEMPTS = 5, MAX_CODES_PER_15_MIN = 3;
 
@@ -265,10 +266,12 @@ const routes = {
     const title = clip(b.title, 100), date = clip(b.date, 10), link = clip(b.link, 300), details = clip(b.details, 500);
     if (!title) return bad("Add a title for the event.");
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return bad("Pick the event date.");
+    if (!EVENT_CATS.has(b.category)) return bad("Pick the type of event.");
+    if (b.isPublic !== true) return bad("Only events open to the public can go on the calendar.");
     if (link && !/^https?:\/\//i.test(link)) return bad("The link should start with https://");
     const problem = privacyProblem(details + " " + title); if (problem) return bad(problem);
-    await env.DB.prepare("INSERT INTO events (email, name, title, event_date, event_time, town, place, host, link, details, status, slug, source) VALUES (?,?,?,?,?,?,?,?,?,?, 'approved', ?, 'leader')")
-      .bind(email, clip(b.listing, 140), title, date, clip(b.time, 30), clip(b.town, 40), clip(b.place, 120), clip(b.listing, 140), link, details, slug).run();
+    await env.DB.prepare("INSERT INTO events (email, name, title, event_date, event_time, town, place, host, link, details, status, slug, source, category) VALUES (?,?,?,?,?,?,?,?,?,?, 'approved', ?, 'leader', ?)")
+      .bind(email, clip(b.listing, 140), title, date, clip(b.time, 30), clip(b.town, 40), clip(b.place, 120), clip(b.listing, 140), link, details, slug, b.category).run();
     return json({ ok: true });
   },
 
@@ -373,7 +376,7 @@ const routes = {
   // ---------- community events ----------
   "GET /api/events": async (req, env) => {
     const { results } = await env.DB.prepare(
-      "SELECT id, title, event_date, event_time, town, place, host, link, details, slug, source, confirm FROM events WHERE status='approved' AND event_date >= date('now','-45 days') ORDER BY event_date, event_time LIMIT 300").all();
+      "SELECT id, title, event_date, event_time, town, place, host, link, details, slug, source, confirm, category FROM events WHERE status='approved' AND event_date >= date('now','-45 days') ORDER BY event_date, event_time LIMIT 300").all();
     return json({ events: results });
   },
 
@@ -384,10 +387,12 @@ const routes = {
     const title = clip(b.title, 100), date = clip(b.date, 10), details = clip(b.details, 500), link = clip(b.link, 300);
     if (!title) return bad("Add a title for the event.");
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return bad("Pick the event date.");
+    if (!EVENT_CATS.has(b.category)) return bad("Pick the type of event.");
+    if (b.isPublic !== true) return bad("Only events open to the public can go on the calendar.");
     if (link && !/^https?:\/\//i.test(link)) return bad("The link should start with https://");
     const problem = privacyProblem(details + " " + title); if (problem) return bad(problem);
-    await env.DB.prepare("INSERT INTO events (email, name, title, event_date, event_time, town, place, host, link, details, status) VALUES (?,?,?,?,?,?,?,?,?,?,'approved')")
-      .bind(email, prof.name, title, date, clip(b.time, 30), clip(b.town, 40), clip(b.place, 120), clip(b.host, 100), link, details).run();
+    await env.DB.prepare("INSERT INTO events (email, name, title, event_date, event_time, town, place, host, link, details, status, category) VALUES (?,?,?,?,?,?,?,?,?,?,'approved',?)")
+      .bind(email, prof.name, title, date, clip(b.time, 30), clip(b.town, 40), clip(b.place, 120), clip(b.host, 100), link, details, b.category).run();
     return json({ ok: true });
   },
 

@@ -273,11 +273,12 @@ html{scroll-behavior:smooth}
     <div class="box" id="qBox" hidden><h2>Questions from families</h2><p class="where" style="margin:0">Your answers show on your listing so other families see them too.</p><div id="qList" class="stack"></div></div>
     <div class="box" id="evBox" hidden>
       <h2>Your group's events</h2>
-      <p class="where" style="margin:0">Events you add appear on the community calendar as posted by your group. Dates we found on your website are listed here too, so you can remove or replace them.</p>
+      <p class="where" style="margin:0">Add open houses, info sessions, application deadlines and other public events. They appear on the community calendar as posted by your group. Dates we found on your website are listed here too, so you can remove or replace them.</p>
       <div id="evList" class="stack"></div>
       <form id="evForm" novalidate>
         <div class="row2">
           <div class="field"><label for="ev-listing">For listing</label><select id="ev-listing"></select></div>
+          <div class="field"><label for="ev-cat">Type of event</label><select id="ev-cat"><option value="openhouse">Open house or info session</option><option value="deadline">Application or registration deadline</option><option value="public">Public homeschool event</option><option value="other">Other public event</option></select></div>
           <div class="field"><label for="ev-title">Event</label><input id="ev-title" maxlength="100" placeholder="e.g. Spring open house"></div>
           <div class="field"><label for="ev-date">Date</label><input id="ev-date" type="date"></div>
           <div class="field"><label for="ev-time">Time</label><input id="ev-time" maxlength="30" placeholder="e.g. 10am–noon"></div>
@@ -285,6 +286,7 @@ html{scroll-behavior:smooth}
           <div class="field"><label for="ev-link">Link (optional)</label><input id="ev-link" type="url" maxlength="300" placeholder="https://"></div>
         </div>
         <div class="field" style="margin-top:12px"><label for="ev-details">Details</label><textarea id="ev-details" maxlength="500" placeholder="e.g. Tour classrooms and meet teachers. Registration for fall opens the same day."></textarea></div>
+        <label style="display:flex;gap:8px;align-items:flex-start;font-size:14px;margin-top:12px"><input type="checkbox" id="ev-public" style="margin-top:3px"> This event is open to the public, not just our members. Members-only events like park days don't go on the calendar.</label>
         <div class="formfoot" style="margin-top:12px"><button class="btn" type="submit" style="margin-top:0">Add to calendar</button><span class="status" id="evStatus" role="status"></span></div>
       </form>
     </div>
@@ -492,7 +494,7 @@ async function loadEv(){
 $("evForm").addEventListener("submit",async e=>{
   e.preventDefault(); const v=id=>$(id).value.trim(); const x=bySlug()[v("ev-listing")];
   setStatus("evStatus","","Adding…");
-  const r=await api("/api/leader/event",{slug:v("ev-listing"),listing:x?x.n:"",town:x?x.town:"",title:v("ev-title"),date:v("ev-date"),time:v("ev-time"),place:v("ev-place"),link:v("ev-link"),details:v("ev-details")});
+  const r=await api("/api/leader/event",{category:v("ev-cat"),isPublic:$("ev-public").checked,slug:v("ev-listing"),listing:x?x.n:"",town:x?x.town:"",title:v("ev-title"),date:v("ev-date"),time:v("ev-time"),place:v("ev-place"),link:v("ev-link"),details:v("ev-details")});
   if(!r.ok){setStatus("evStatus","err",r.error);return;}
   ["ev-title","ev-date","ev-time","ev-place","ev-link","ev-details"].forEach(id=>$(id).value=""); setStatus("evStatus","ok","Added to the calendar."); loadEv();
 });

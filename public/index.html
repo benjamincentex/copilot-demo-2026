@@ -400,7 +400,7 @@ html{scroll-behavior:smooth}
     <div class="intro">
       <span class="label">Community calendar</span>
       <h2>What's happening around Central Texas</h2>
-      <p>Open houses, application deadlines, park days and field trips. Some dates come from groups' own websites, so always confirm with the group before you go.</p>
+      <p>Open houses, info sessions, application deadlines and homeschool events that are open to the public. Some dates come from groups' own websites, so confirm with the group before you go.</p>
     </div>
     <div class="calwrap">
       <div class="cal">
@@ -411,7 +411,8 @@ html{scroll-behavior:smooth}
         <div class="colhead"><h3 id="calListTitle">Coming up</h3><button class="linkbtn" type="button" id="newEventBtn">Add an event</button></div>
         <form class="box2" id="eventForm" novalidate hidden>
           <p class="where" style="margin:0;font-size:13px">Group leaders: <a href="/leaders.html">add events from your leader page</a> so they show as posted by your group.</p>
-          <div class="field"><label for="e-title">Event</label><input id="e-title" maxlength="100" placeholder="e.g. Park day at Brushy Creek"></div>
+          <div class="field"><label for="e-cat">Type of event</label><select id="e-cat"><option value="">Choose one</option><option value="openhouse">Open house or info session</option><option value="deadline">Application or registration deadline</option><option value="public">Public homeschool event (library program, curriculum fair, field trip open to all)</option><option value="other">Other public event</option></select></div>
+          <div class="field"><label for="e-title">Event</label><input id="e-title" maxlength="100" placeholder="e.g. Homeschool day at the library"></div>
           <div class="row2">
             <div class="field"><label for="e-date">Date</label><input id="e-date" type="date"></div>
             <div class="field"><label for="e-time">Time</label><input id="e-time" maxlength="30" placeholder="e.g. 10am–noon"></div>
@@ -421,6 +422,7 @@ html{scroll-behavior:smooth}
           <div class="field"><label for="e-host">Hosted by</label><input id="e-host" maxlength="100" placeholder="Group or organizer"></div>
           <div class="field"><label for="e-link">Link for details or RSVP (optional)</label><input id="e-link" type="url" maxlength="300" placeholder="https://"></div>
           <div class="field"><label for="e-details">Details</label><textarea id="e-details" maxlength="500"></textarea></div>
+          <label style="display:flex;gap:8px;align-items:flex-start;font-size:14px"><input type="checkbox" id="e-public" style="margin-top:3px"> This event is open to the public. Anyone can attend or apply, not just members of a group.</label>
           <div class="formfoot"><button class="btn" type="submit" style="margin-top:0">Post event</button><span class="status" id="eventStatus" role="status"></span></div>
         </form>
         <div id="eventList" class="stack"></div>
@@ -552,7 +554,7 @@ html{scroll-behavior:smooth}
         <ul class="newsperks">
           <li>Registration deadlines before they pass</li>
           <li>Openings at groups that are usually full</li>
-          <li>New co-ops, classes and park days by town</li>
+          <li>New co-ops, classes and public events by town</li>
         </ul>
       </div>
       <form class="newsform" id="mainNewsForm" novalidate>
@@ -901,7 +903,7 @@ $("postForm").addEventListener("submit",async e=>{
 $("eventForm").addEventListener("submit",async e=>{
   e.preventDefault(); setS("eventStatus","","Sending…");
   const v=id=>$(id).value.trim();
-  const r=await api("/api/events",{title:v("e-title"),date:v("e-date"),time:v("e-time"),town:v("e-town"),place:v("e-place"),host:v("e-host"),link:v("e-link"),details:v("e-details")});
+  const r=await api("/api/events",{category:v("e-cat"),isPublic:$("e-public").checked,title:v("e-title"),date:v("e-date"),time:v("e-time"),town:v("e-town"),place:v("e-place"),host:v("e-host"),link:v("e-link"),details:v("e-details")});
   if(!r.ok){setS("eventStatus","err",r.error);return;}
   e.target.reset(); setS("eventStatus","ok","Posted."); $("eventForm").hidden=true; loadEvents();
 });
@@ -921,9 +923,10 @@ function sourceLine(ev){
   if(ev.source==="leader") return `Posted by ${esc(ev.host)}`;
   return ev.host?`Hosted by ${esc(ev.host)}`:"Posted by a parent";
 }
+const CATS={"openhouse":"Open house or info session","deadline":"Application or registration deadline","public":"Public homeschool event","other":"Other public event"};
 function eventCard(ev){
   const d=fmtDate(ev.event_date);
-  return `<div class="event"><div class="datebox"><span>${d.m}</span><b>${d.d}</b></div><div style="display:flex;flex-direction:column;gap:4px;min-width:0"><b>${esc(ev.title)}</b>
+  return `<div class="event"><div class="datebox"><span>${d.m}</span><b>${d.d}</b></div><div style="display:flex;flex-direction:column;gap:4px;min-width:0">${ev.category&&CATS[ev.category]?`<span class="tag" style="align-self:flex-start">${esc(CATS[ev.category])}</span>`:""}<b>${esc(ev.title)}</b>
     <span class="meta">${[d.w,ev.event_time,[ev.place,ev.town].filter(Boolean).join(", ")].filter(Boolean).map(esc).join(" · ")}</span>
     ${ev.details?`<p>${esc(ev.details)}</p>`:""}<span class="meta">${sourceLine(ev)}${ev.link?` · <a href="${esc(ev.link)}" target="_blank" rel="noopener">Details ↗</a>`:""}</span></div></div>`;
 }
@@ -944,7 +947,7 @@ function renderCalendar(){
   const list=calDay?(byDay[calDay]||[]):EVENTS.filter(ev=>ev.event_date>=todayKey).slice(0,8);
   $("calListTitle").textContent=calDay?new Date(calDay+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}):"Coming up";
   $("eventList").innerHTML=list.length?list.map(eventCard).join("")+(calDay?`<button class="linkbtn" type="button" id="calClear" style="align-self:flex-start">Show all upcoming</button>`:"")
-    :`<div class="emptynote">${calDay?"Nothing on this day.":"No upcoming events yet."} Hosting a park day, field trip or open house? Add it here.</div>`;
+    :`<div class="emptynote">${calDay?"Nothing on this day.":"No upcoming events yet."} Hosting an open house or a public homeschool event? Add it here.</div>`;
   const c=$("calClear"); if(c) c.onclick=()=>{calDay=null;renderCalendar();};
 }
 $("calPrev").onclick=()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()-1,1);calDay=null;renderCalendar();};
