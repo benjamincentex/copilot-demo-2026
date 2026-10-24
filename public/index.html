@@ -676,7 +676,7 @@ function matches(x){
 }
 function card(x){
   const [tl,tc]=TYPES[x.type];
-  const tut=x.type==="tutor"; const facts=[["Ages",x.ages],[tut?"Format":"Meets",x.sched],[tut?"Rate":"Cost",x.cost]].filter(f=>f[1]);
+  const tut=x.type==="tutor"; const facts=[["Ages",x.ages],[tut?"Format":"Meets",x.sched],[tut?"Rate":"Cost",x.cost],["For members",x.members]].filter(f=>f[1]);
   return `<article class="card${x.plan==="partner"?" partner":""}">${x.plan==="partner"?`<span class="ribbon">Featured partner</span>`:""}
     <div class="head"><h3>${esc(x.n)}</h3><span class="type ${tc}">${tl}</span></div>
     <div class="where">${esc(townsOf(x).join(" · "))}</div>
@@ -845,7 +845,7 @@ async function loadOverrides(){
   $("statListings").textContent=L.filter(x=>!x.test).length;
   $("statTowns").textContent=new Set(L.filter(x=>!x.test).flatMap(townsOf)).size;
   Object.entries(r.overrides).forEach(([id,o])=>{const x=L.find(v=>sid(v)===id); if(!x) return;
-    ["d","ages","sched","cost","site"].forEach(k=>{if(o[k]) x[k]=o[k];});
+    ["d","ages","sched","cost","site","members"].forEach(k=>{if(o[k]) x[k]=o[k];});
     if(o.avail&&AV[o.avail.s]) x.avail={s:o.avail.s,when:o.avail.when||""};
     if(o.claimed) x.claimed=true; if(o.plan) x.plan=o.plan;
     if(typeof o.littles==="boolean"){ x.tags=x.tags.filter(t=>t!=="Littles welcome"); if(o.littles) x.tags.push("Littles welcome"); }});

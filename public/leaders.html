@@ -428,6 +428,7 @@ function editor(x){
       <div class="field"><label>When you meet</label><input name="sched" maxlength="80" value="${esc(c.sched||"")}"></div>
       <div class="field"><label>Cost</label><input name="cost" maxlength="80" value="${esc(c.cost||"")}"></div>
       <div class="field"><label>Website or Facebook page</label><input name="site" type="url" maxlength="300" value="${esc(c.site||"")}"></div>
+      <div class="field" style="grid-column:1/-1"><label>Members-only activities (optional, no dates or places)</label><input name="members" maxlength="120" placeholder="e.g. Weekly park days, monthly field trips, spring play" value="${esc(c.members||"")}"></div>
     </div>
     <div class="field"><label>Description</label><textarea name="d" maxlength="600">${esc(c.d||"")}</textarea></div>
     <label style="display:flex;gap:8px;align-items:center;font-size:15px"><input type="checkbox" name="littles"${(typeof c.littles==="boolean"?c.littles:(x.tags||[]).includes("Littles welcome"))?" checked":""}> We offer a nursery or classes for babies and toddlers during co-op</label>
@@ -438,7 +439,7 @@ $("myListings").addEventListener("submit",async e=>{
   const f=e.target; if(!f.dataset.slug) return; e.preventDefault();
   const x=bySlug()[f.dataset.slug], st=f.querySelector(".status"); st.className="status"; st.textContent="Publishing…";
   const v=n=>f.elements[n].value.trim();
-  const r=await api("/api/leader/update",{slug:f.dataset.slug,listing:x.n,town:x.town,fields:{avail:{s:v("s"),when:v("when")},ages:v("ages"),sched:v("sched"),cost:v("cost"),site:v("site"),d:v("d"),littles:f.elements["littles"].checked}});
+  const r=await api("/api/leader/update",{slug:f.dataset.slug,listing:x.n,town:x.town,fields:{avail:{s:v("s"),when:v("when")},ages:v("ages"),sched:v("sched"),cost:v("cost"),site:v("site"),members:v("members"),d:v("d"),littles:f.elements["littles"].checked}});
   if(!r.ok){st.className="status err";st.textContent=r.error;return;}
   st.className="status ok"; st.textContent="Published."+(r.alerted?` ${r.alerted} waiting ${r.alerted===1?"family was":"families were"} emailed.`:"");
   const o=await api("/api/listings"); if(o.ok) overrides=o.overrides||{};

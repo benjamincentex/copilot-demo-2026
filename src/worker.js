@@ -116,7 +116,7 @@ async function publishListing(env, slug, listing, town, fields, updatedBy) {
 function cleanFields(f) {
   f = f || {};
   const fields = {};
-  for (const [k, n] of [["d", 600], ["ages", 40], ["sched", 80], ["cost", 80], ["site", 300]]) { const v = clip(f[k], n); if (v) fields[k] = v; }
+  for (const [k, n] of [["d", 600], ["ages", 40], ["sched", 80], ["cost", 80], ["site", 300], ["members", 120]]) { const v = clip(f[k], n); if (v) fields[k] = v; }
   if (fields.site && !/^https?:\/\//i.test(fields.site)) delete fields.site;
   if (typeof f.littles === "boolean") fields.littles = f.littles;
   const a = f.avail || {};
