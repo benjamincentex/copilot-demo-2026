@@ -124,6 +124,8 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .facts dd{margin:0;min-width:0}
 .tags{display:flex;gap:6px;flex-wrap:wrap}
 .tag{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:2px 7px}
+.card.flash{outline:3px solid var(--sun);outline-offset:2px;transition:outline-color .4s}
+@media (prefers-reduced-motion:reduce){.card.flash{transition:none}}
 .card .foot{margin-top:auto;display:flex;justify-content:space-between;align-items:center;gap:10px;padding-top:10px;border-top:1px dashed var(--line);font-size:13px;color:var(--muted)}
 .empty{padding:40px 0;color:var(--muted)}
 
@@ -693,7 +695,7 @@ $("quiz").addEventListener("click",e=>{
   if(e.target.id==="qBack"){qi=Math.max(0,qi-1); renderQuiz(); return;}
   if(e.target.id==="qRetake"){qi=0; ans={}; renderQuiz(); return;}
   const see=e.target.closest("[data-see]");
-  if(see){Object.assign(state,{q:see.dataset.see,type:"",approach:"",town:"All",open:false});$("q").value=see.dataset.see;$("typeSel").value="";$("approachSel").value="";render();document.getElementById("directory").scrollIntoView({behavior:"smooth"});}
+  if(see){Object.assign(state,{q:see.dataset.see,type:"",approach:"",town:"All",open:false});$("q").value=see.dataset.see;$("typeSel").value="";$("approachSel").value="";render();const c=document.querySelector("#grid .card"); if(c){c.scrollIntoView({behavior:"smooth",block:"center"}); c.classList.add("flash"); setTimeout(()=>c.classList.remove("flash"),2200);}}
 });
 $("quiz").addEventListener("submit",async e=>{
   if(e.target.id!=="newsForm") return;
