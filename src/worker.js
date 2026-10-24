@@ -407,6 +407,78 @@ const routes = {
     return json({ ok: true });
   },
 
+
+  // ---------- jobs board ----------
+  "GET /api/jobs": async (req, env) => {
+    const me = await leaderEmail(req, env);
+    const { results } = await env.DB.prepare(
+      "SELECT id, email, name, kind, title, org, town, pay, schedule, details, apply_link, created_at FROM jobs WHERE status='live' AND expires_at > datetime('now') ORDER BY id DESC LIMIT 100").all();
+    let mine = [];
+    if (me) ({ results: mine } = await env.DB.prepare("SELECT id, kind, title, status FROM jobs WHERE email=? AND status='awaiting_payment' ORDER BY id DESC").bind(me).all());
+    return json({ jobs: results.map(({ email, ...r }) => ({ ...r, mine: email === me })), awaitingPayment: mine });
+  },
+
+  "POST /api/jobs": async (req, env) => {
+    const email = await leaderEmail(req, env); if (!email) return bad("Sign in first.", 401);
+    const prof = await profileOf(env, email); if (!prof) return bad("Add your display name first.");
+    const b = await body(req) || {};
+    const kind = b.kind === "hiring" ? "hiring" : "seeking";
+    const title = clip(b.title, 100), details = clip(b.details, 800), link = clip(b.link, 300);
+    if (!title) return bad(kind === "hiring" ? "Add a job title." : "Add a short headline, like \"Math tutor for a 7th grader\".");
+    if (details.length < 20) return bad("Add a few more details.");
+    if (link && !/^https?:\/\//i.test(link)) return bad("The link should start with https://");
+    const problem = privacyProblem(details + " " + title); if (problem) return bad(problem);
+    if (kind === "hiring" && !clip(b.org, 100)) return bad("Add the name of your co-op, school or business.");
+    const open = await env.DB.prepare("SELECT COUNT(*) AS n FROM jobs WHERE email=? AND status IN ('live','awaiting_payment') AND (expires_at IS NULL OR expires_at > datetime('now'))").bind(email).first();
+    if (open.n >= 5) return bad("You have 5 active posts. Remove one to add another.");
+    const r = await env.DB.prepare(
+      `INSERT INTO jobs (email, name, kind, title, org, town, pay, schedule, details, apply_link, status, expires_at) VALUES (?,?,?,?,?,?,?,?,?,?,?, ${kind === "hiring" ? "NULL" : "datetime('now','+60 days')"})`
+    ).bind(email, prof.name, kind, title, clip(b.org, 100), clip(b.town, 40), clip(b.pay, 60), clip(b.schedule, 80), details, kind === "hiring" ? link : "", kind === "hiring" ? "awaiting_payment" : "live").run();
+    return json({ ok: true, id: r.meta.last_row_id, needsPayment: kind === "hiring" });
+  },
+
+  "POST /api/jobs/remove": async (req, env) => {
+    const email = await leaderEmail(req, env); if (!email) return bad("Sign in first.", 401);
+    const b = await body(req);
+    await env.DB.prepare("UPDATE jobs SET status='removed' WHERE id=? AND email=?").bind(Number(b && b.id) || 0, email).run();
+    return json({ ok: true });
+  },
+
+  "POST /api/jobs/reply": async (req, env) => {
+    const email = await leaderEmail(req, env); if (!email) return bad("Sign in first.", 401);
+    const prof = await profileOf(env, email); if (!prof) return bad("Add your display name first.");
+    const b = await body(req); const message = clip(b && b.message, 1200);
+    if (message.length < 10) return bad("Write a short message.");
+    const job = await env.DB.prepare("SELECT email, kind, title FROM jobs WHERE id=? AND status='live'").bind(Number(b.id) || 0).first();
+    if (!job) return bad("That post is no longer up.", 404);
+    let sent = false;
+    try {
+      sent = await sendMail(env, job.email, `${prof.name} responded to "${job.title}" on CenTex Homeschool Hub`,
+        `${prof.name}${prof.town ? " (" + prof.town + ")" : ""} responded to your post "${job.title}":\n\n"${message}"\n\nTo write back, email ${email}. They chose to share it by responding.\n\nCenTex Homeschool Hub`);
+    } catch (e) { console.error("job reply failed", e.code, e.message); }
+    if (!sent) return bad("Responses aren't switched on yet. Please check back soon.", 503);
+    return json({ ok: true });
+  },
+
+  "GET /api/admin/jobs": async (req, env) => {
+    const { results } = await env.DB.prepare(
+      "SELECT id, email, name, kind, title, org, town, pay, details, apply_link, status, created_at, expires_at FROM jobs WHERE status='awaiting_payment' OR (status='live' AND expires_at > datetime('now')) ORDER BY status, id DESC LIMIT 100").all();
+    return json({ jobs: results });
+  },
+
+  "POST /api/admin/jobs": async (req, env) => {
+    const b = await body(req) || {}; const id = Number(b.id) || 0;
+    if (b.action === "activate") {
+      await env.DB.prepare("UPDATE jobs SET status='live', expires_at=datetime('now','+30 days') WHERE id=? AND status='awaiting_payment'").bind(id).run();
+      const job = await env.DB.prepare("SELECT email, title FROM jobs WHERE id=?").bind(id).first();
+      if (job) { try { await sendMail(env, job.email, `Your job post is live: ${job.title}`,
+        `Thanks! Your post "${job.title}" is now live on CenTex Homeschool Hub for 30 days.\n\nSee it here: ${env.SITE_URL || "https://centexhomeschool.org"}/#jobs\n\nCenTex Homeschool Hub`); } catch (e) {} }
+    } else if (b.action === "remove") {
+      await env.DB.prepare("UPDATE jobs SET status='removed' WHERE id=?").bind(id).run();
+    } else return bad("Unknown action.");
+    return json({ ok: true });
+  },
+
   // ---------- admin (owner only, via Cloudflare Access) ----------
   "GET /api/admin/me": async (req, env) => json({ admin: !!adminEmail(req, env) }),
 

@@ -241,6 +241,7 @@ html{scroll-behavior:smooth}
     <div class="box"><h2>At a glance</h2><div class="stats4" id="stats"></div><p class="where" id="emailLine" style="margin:0"></p></div>
     <div class="box"><h2>Listing claims to review</h2><div id="claims" class="where">No claims waiting.</div></div>
     <div class="box"><h2>Live "Looking for" posts</h2><p class="where" style="margin:0">Posts go up right away. Remove anything that breaks the rules.</p><div id="mPosts" class="where">No posts yet.</div></div>
+    <div class="box"><h2>Job posts</h2><p class="where" style="margin:0">Hiring posts go live when you mark them paid. Family tutor requests are already live.</p><div id="mJobs" class="where">No job posts yet.</div></div>
     <div class="box"><h2>Live events</h2><div id="mEvents" class="where">No events yet.</div></div>
     <div class="box"><h2>Recent listing questions</h2><p class="where" style="margin:0">Questions go to the group's leader. Hide anything inappropriate.</p><div id="mQs" class="where"></div></div>
     <div class="box"><h2>Unmet demand</h2><p class="where" style="margin:0">What families asked for in the quiz where no listing near them fit.</p><div id="gaps" class="demand" style="margin-top:0;border:0;padding:0"></div></div>
@@ -278,12 +279,19 @@ async function load(){
     $("mEvents").innerHTML=m.events.length?m.events.map(v=>`<div class="rev"><b style="color:var(--ink)">${esc(v.title)}</b><span>${esc(v.event_date)} ${esc(v.event_time||"")} · ${esc([v.place,v.town].filter(Boolean).join(", "))}</span><span>From ${esc(v.name)} · ${esc(v.email)}${v.host?" · host: "+esc(v.host):""}</span>${v.details?`<span>${esc(v.details)}</span>`:""}${v.link?`<a href="${esc(v.link)}" target="_blank" rel="noopener">${esc(v.link)}</a>`:""}${btns("event",v.id)}</div>`).join(""):"No events yet.";
     $("mQs").innerHTML=m.questions.length?m.questions.map(q=>`<div class="rev"><b style="color:var(--ink)">${esc(q.listing)}</b><span>${esc(q.name)}: "${esc(q.question)}"</span>${q.answer?`<span>Answer: ${esc(q.answer)}</span>`:"<span>Not answered yet</span>"}${btns("question",q.id,true)}</div>`).join(""):"No questions yet.";
   }
+  const jb=await api("/api/admin/jobs");
+  if(jb.ok){ $("mJobs").innerHTML=jb.jobs.length?jb.jobs.map(j=>`<div class="rev"><b style="color:var(--ink)">${esc(j.title)}</b>
+    <span>${j.kind==="hiring"?"Hiring":"Seeking a tutor"} · ${esc(j.org||"")} ${esc(j.town||"")} · ${esc(j.name)} · ${esc(j.email)}</span><span>${esc(j.details)}</span>
+    <span>${j.status==="awaiting_payment"?"<span class='pill'>Awaiting payment</span>":"Live until "+esc((j.expires_at||"").slice(0,10))}</span>
+    <div class="row">${j.status==="awaiting_payment"?`<button class="btn sm" type="button" data-job="${j.id}:activate">Mark paid and publish</button>`:""}<button class="btn ghost sm" type="button" data-job="${j.id}:remove">Remove</button></div></div>`).join(""):"No job posts yet."; }
   const items=(cl.ok&&cl.claims)||[];
   $("claims").innerHTML=items.length?items.map(c=>`<div class="rev"><b style="color:var(--ink)">${esc(c.listing||c.slug)}</b>
     <span>${esc(c.name||"")}${c.role?", "+esc(c.role):""} · ${esc(c.email)}</span>${c.note?`<span>${esc(c.note)}</span>`:""}
     <div class="row"><button class="btn sm" type="button" data-approve="${c.id}">Approve</button><button class="btn ghost sm" type="button" data-reject="${c.id}">Reject</button></div></div>`).join(""):"No claims waiting.";
 }
 document.addEventListener("click",async e=>{
+  const jbtn=e.target.closest("[data-job]");
+  if(jbtn){const [id,action]=jbtn.dataset.job.split(":"); jbtn.disabled=true; const x=await api("/api/admin/jobs",{id:Number(id),action}); x.ok?load():(jbtn.disabled=false); return;}
   const mod=e.target.closest("[data-mod]");
   if(mod){const [kind,id,action]=mod.dataset.mod.split(":"); mod.disabled=true; const x=await api("/api/admin/moderate",{kind,id:Number(id),action}); x.ok?load():(mod.disabled=false); return;}
   const a=e.target.closest("[data-approve]"), r=e.target.closest("[data-reject]");

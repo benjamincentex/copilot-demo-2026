@@ -259,6 +259,7 @@ html{scroll-behavior:smooth}
     <a href="#tefa">TEFA basics</a>
     <a href="#plans">For vendors</a>
     <a href="#community">Community</a>
+    <a href="#jobs">Jobs</a>
     <a href="#newsletter">Newsletter</a>
     <a href="#submit">Add a listing</a>
   </nav>
@@ -425,6 +426,33 @@ html{scroll-behavior:smooth}
         </form>
         <div id="eventList" class="stack"></div>
       </div>
+    </div>
+  </section>
+
+  <section id="jobs">
+    <div class="intro">
+      <span class="label">Jobs &amp; tutors</span>
+      <h2>Teach, tutor or find help</h2>
+      <p>Co-ops, microschools and education businesses post openings for teachers and tutors. Families post when they're looking for a tutor. Responses come through the site, so nobody's contact details are shown.</p>
+    </div>
+    <div class="colhead"><span class="meta">Hiring posts are $39 for 30 days. Families post free.</span><button class="btn sm" type="button" id="newJobBtn" style="margin-top:0">Post a job or tutor request</button></div>
+    <form class="box2" id="jobForm" novalidate hidden>
+      <div class="field"><label for="j-kind">I'm</label><select id="j-kind"><option value="hiring">Hiring for a co-op, school or business ($39 for 30 days)</option><option value="seeking">A parent looking for a tutor (free)</option></select></div>
+      <div class="row2">
+        <div class="field"><label for="j-title">Headline</label><input id="j-title" maxlength="100" placeholder="e.g. Part-time science teacher, grades 6–8"></div>
+        <div class="field" id="j-org-wrap"><label for="j-org">Organization</label><input id="j-org" maxlength="100" placeholder="Co-op, school or business name"></div>
+        <div class="field"><label for="j-town">Town</label><input id="j-town" maxlength="40"></div>
+        <div class="field"><label for="j-pay">Pay (optional)</label><input id="j-pay" maxlength="60" placeholder="e.g. $30–40/hour"></div>
+        <div class="field"><label for="j-schedule">Schedule</label><input id="j-schedule" maxlength="80" placeholder="e.g. Fridays 9–1, or 2 hours a week"></div>
+        <div class="field" id="j-link-wrap"><label for="j-link">Application link (optional)</label><input id="j-link" type="url" maxlength="300" placeholder="https://"></div>
+      </div>
+      <div class="field"><label for="j-details">Details</label><textarea id="j-details" maxlength="800" placeholder="Subjects, ages, experience you're looking for"></textarea></div>
+      <div class="formfoot"><button class="btn" type="submit" style="margin-top:0" id="jobSubmit">Continue to payment</button><span class="status" id="jobStatus" role="status"></span></div>
+    </form>
+    <div id="jobNotice"></div>
+    <div class="community">
+      <div><div class="colhead"><h3>Now hiring</h3></div><div id="hiringList" class="stack"></div></div>
+      <div><div class="colhead"><h3>Families seeking a tutor</h3></div><div id="seekingList" class="stack"></div></div>
     </div>
   </section>
 
@@ -622,7 +650,7 @@ html{scroll-behavior:smooth}
 <script src="/listings.js"></script>
 <script>
 // Stripe Payment Links: paste each link here once created in the Stripe dashboard.
-const STRIPE_LINKS = { enhanced: "", partner: "" };
+const STRIPE_LINKS = { enhanced: "", partner: "", job: "" };
 
 // Listings live in /listings.js so the leader page shares them.
 
@@ -895,7 +923,7 @@ document.addEventListener("click",async e=>{
   if(rm){ rm.disabled=true; const r=await api("/api/board/remove",{id:Number(rm.dataset.remove)}); if(r.ok) loadBoard(); else rm.disabled=false; }
 });
 document.addEventListener("submit",async e=>{
-  const f=e.target; if(!f.matches("form.ask")) return; e.preventDefault();
+  const f=e.target; if(!f.matches("form.ask")||f.dataset.job) return; e.preventDefault();
   const st=f.querySelector(".status"), text=f.querySelector("textarea").value.trim(); st.className="status"; st.textContent="Sending…";
   let r;
   if(f.dataset.for){ const x=L.find(v=>slug(v.n)===f.dataset.for); r=await api("/api/questions",{slug:f.dataset.for,listing:x?x.n:"",question:text});
@@ -905,7 +933,45 @@ document.addEventListener("submit",async e=>{
   st.className="status err"; st.textContent=r.error;
 });
 async function loadQuestions(){ const r=await api("/api/questions"); if(r.ok){QA=r.questions||{}; render();} }
-render(); renderQuiz(); renderRegistration(); loadOverrides(); loadAcct(); loadBoard(); loadEvents(); loadQuestions();
+
+// ---- Jobs board ----
+function jobKindUI(){ const h=$("j-kind").value==="hiring"; $("j-org-wrap").hidden=!h; $("j-link-wrap").hidden=!h; $("jobSubmit").textContent=h?"Continue to payment":"Post"; }
+$("j-kind").addEventListener("change",jobKindUI); jobKindUI();
+$("newJobBtn").onclick=()=>{ if(ready()) $("jobForm").hidden=!$("jobForm").hidden; };
+$("jobForm").addEventListener("submit",async e=>{
+  e.preventDefault(); setS("jobStatus","","Sending…"); const v=id=>$(id).value.trim();
+  const r=await api("/api/jobs",{kind:v("j-kind"),title:v("j-title"),org:v("j-org"),town:v("j-town"),pay:v("j-pay"),schedule:v("j-schedule"),link:v("j-link"),details:v("j-details")});
+  if(!r.ok){setS("jobStatus","err",r.error);return;}
+  e.target.reset(); jobKindUI(); $("jobForm").hidden=true; setS("jobStatus","","");
+  if(r.needsPayment&&STRIPE_LINKS.job){ window.location.href=STRIPE_LINKS.job+(STRIPE_LINKS.job.includes("?")?"&":"?")+"client_reference_id=job-"+r.id; return; }
+  loadJobs();
+});
+function jobCard(j){
+  const meta=[j.org,j.town,j.schedule,j.pay].filter(Boolean).map(esc).join(" · ");
+  const act=j.mine?`<button class="linkbtn" type="button" data-jremove="${j.id}" style="align-self:flex-start">Remove my post</button>`
+    :`${j.apply_link?`<a href="${esc(j.apply_link)}" target="_blank" rel="noopener" style="font-weight:600">Apply ↗</a>`:""}<button class="linkbtn" type="button" data-jreply="${j.id}" style="align-self:flex-start">${j.kind==="hiring"?"Send a message":"Offer to help"}</button>
+      <form class="ask" data-job="${j.id}" hidden novalidate><textarea maxlength="1200" placeholder="${j.kind==="hiring"?"Introduce yourself and your experience.":"Introduce yourself, what you teach and your rate."} We'll send it with your email address."></textarea><div class="nrow"><button class="btn sm" type="submit" style="margin-top:0">Send</button></div><span class="status" role="status"></span></form>`;
+  return `<div class="post"><b>${esc(j.title)}</b>${meta?`<span class="meta">${meta}</span>`:""}<p>${esc(j.details)}</p><span class="meta">${esc(j.name||"")} · ${new Date(j.created_at+"Z").toLocaleDateString("en-US",{month:"short",day:"numeric"})}</span>${act}</div>`;
+}
+async function loadJobs(){
+  const r=await api("/api/jobs"); const jobs=(r.ok&&r.jobs)||[], waiting=(r.ok&&r.awaitingPayment)||[];
+  $("jobNotice").innerHTML=waiting.length?`<div class="emptynote" style="margin-bottom:12px">Your hiring post${waiting.length>1?"s are":" is"} saved and will go live once payment is received${STRIPE_LINKS.job?"":". We'll email you a payment link"}.</div>`:"";
+  const h=jobs.filter(j=>j.kind==="hiring"), s2=jobs.filter(j=>j.kind==="seeking");
+  $("hiringList").innerHTML=h.length?h.map(jobCard).join(""):`<div class="emptynote">No openings posted yet. Hiring a teacher or tutor? Post it here.</div>`;
+  $("seekingList").innerHTML=s2.length?s2.map(jobCard).join(""):`<div class="emptynote">No tutor requests yet. Parents can post for free.</div>`;
+}
+document.addEventListener("click",async e=>{
+  const rp=e.target.closest("[data-jreply]"), rm=e.target.closest("[data-jremove]");
+  if(rp){ if(!ready())return; const f=rp.parentElement.querySelector("form.ask"); f.hidden=!f.hidden; if(!f.hidden) f.querySelector("textarea").focus(); }
+  if(rm){ rm.disabled=true; const r=await api("/api/jobs/remove",{id:Number(rm.dataset.jremove)}); if(r.ok) loadJobs(); else rm.disabled=false; }
+});
+document.addEventListener("submit",async e=>{
+  const f=e.target; if(!f.dataset.job) return; e.preventDefault(); e.stopImmediatePropagation();
+  const st=f.querySelector(".status"); st.className="status"; st.textContent="Sending…";
+  const r=await api("/api/jobs/reply",{id:Number(f.dataset.job),message:f.querySelector("textarea").value.trim()});
+  if(r.ok){f.reset(); st.className="status ok"; st.textContent="Sent. They have your email now and can write back.";} else {st.className="status err"; st.textContent=r.error;}
+},true);
+render(); renderQuiz(); renderRegistration(); loadOverrides(); loadAcct(); loadBoard(); loadEvents(); loadQuestions(); loadJobs();
 // Scatter bluebonnets and draw the park-day gathering (seeded so it looks the same every load).
 (function(){
   let seed=11; const rnd=()=>((seed=(seed*16807)%2147483647)/2147483647);
