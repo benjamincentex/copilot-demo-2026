@@ -94,6 +94,13 @@ form.notify p{font-size:13px;margin:0;color:var(--muted)}
 .btn.sm{font-size:14px;padding:7px 12px;margin-top:0}
 .claimed{color:var(--oak);font-weight:600}
 @media (max-width:780px){.steps{grid-template-columns:1fr}}
+/* newsletter */
+.newsband{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:28px;align-items:center;background:var(--oak-soft);border:1px solid var(--line);border-radius:18px;padding:28px}
+.newscopy h2{margin:6px 0 10px}
+.newscopy p{color:var(--muted);margin:0 0 12px;max-width:52ch}
+.newsperks{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+.newsform{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:20px;display:flex;flex-direction:column;gap:12px;min-width:0}
+@media (max-width:780px){.newsband{grid-template-columns:1fr;padding:20px}}
 /* search + filters */
 .finder{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:12px;border-bottom:1px solid var(--line)}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
@@ -219,6 +226,7 @@ html{scroll-behavior:smooth}
     <a href="#fit">Find your fit</a>
     <a href="#tefa">TEFA basics</a>
     <a href="#plans">For vendors</a>
+    <a href="#newsletter">Newsletter</a>
     <a href="#leaders">For group leaders</a>
     <a href="#submit">Add a listing</a>
   </nav>
@@ -328,6 +336,38 @@ html{scroll-behavior:smooth}
       <p>Many co-ops open registration in spring for the fall semester, and popular ones fill fast. Groups that post their dates appear here and in the Friday email.</p>
     </div>
     <div id="regList"></div>
+  </section>
+
+  <section id="newsletter">
+    <div class="newsband">
+      <div class="newscopy">
+        <span class="label">The Friday email</span>
+        <h2>New groups and open spots, every Friday</h2>
+        <p>One short email a week for Central Texas homeschool families: groups that just opened spots, registration dates coming up, new listings near you, and events worth the drive.</p>
+        <ul class="newsperks">
+          <li>Registration deadlines before they pass</li>
+          <li>Openings at groups that are usually full</li>
+          <li>New co-ops, classes and park days by town</li>
+        </ul>
+      </div>
+      <form class="newsform" id="mainNewsForm" novalidate>
+        <div class="field">
+          <label for="nl-email">Email</label>
+          <input id="nl-email" type="email" placeholder="you@example.com" maxlength="160" autocomplete="email">
+        </div>
+        <div class="field">
+          <label for="nl-town">Your town</label>
+          <select id="nl-town">
+            <option value="">Anywhere in Central Texas</option>
+            <option>Leander</option><option>Cedar Park</option><option>Liberty Hill</option><option>Round Rock</option>
+            <option>Georgetown</option><option>Austin</option><option>Pflugerville</option><option>Hutto</option><option>Other</option>
+          </select>
+        </div>
+        <button class="btn" type="submit" style="margin-top:0">Sign me up</button>
+        <span class="status" id="nlStatus" role="status"></span>
+        <p class="where" style="margin:0;font-size:13px">Free. Unsubscribe anytime. We never share your email.</p>
+      </form>
+    </div>
   </section>
 
   <section id="leaders">
@@ -890,6 +930,16 @@ async function api(path,data){
     return res.ok?{ok:true,...out}:{ok:false,error:out.error||"That didn't go through. Please try again."};
   }catch(e){ return {ok:false,error:"That didn't go through. Check your connection and try again."}; }
 }
+
+$("mainNewsForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const st=$("nlStatus"), email=$("nl-email").value.trim(); st.className="status";
+  if(!/^\S+@\S+\.\S+$/.test(email)){st.className="status err";st.textContent="Enter a valid email address to sign up.";$("nl-email").focus();return;}
+  st.textContent="Signing you up…";
+  const r=await api("/api/subscribe",{email,source:"newsletter",answers:{town:$("nl-town").value}});
+  if(r.ok){e.target.reset(); st.className="status ok"; st.textContent="You're in. Watch for the first email on Friday."; if(isAdmin) loadAdmin();}
+  else{st.className="status err";st.textContent=r.error;}
+});
 $("form").addEventListener("submit",async e=>{
   e.preventDefault();
   const st=$("status"); st.className="status";
