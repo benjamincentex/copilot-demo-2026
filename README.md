@@ -25,7 +25,7 @@ The review panel and unmet-demand panel only appear for the email set in `ADMIN_
 
 ## Deploying
 
-Cloudflare deploys automatically every time code is pushed to the `main` branch of this repository (Workers Builds). The Worker name in Cloudflare must be `centexhomeschool`, matching `wrangler.jsonc`.
+Cloudflare deploys automatically every time code is pushed to the `main` branch of this repository (Workers Builds). The Worker name in Cloudflare must be `copilot-demo-2026`, matching `wrangler.jsonc`.
 
 ## Private launch
 
