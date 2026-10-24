@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS submissions (id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT, name TEXT, town TEXT, website TEXT, contact TEXT, email TEXT, details TEXT, availability TEXT, registration_opens TEXT, status TEXT DEFAULT 'new', created_at TEXT DEFAULT (datetime('now')));
+CREATE TABLE IF NOT EXISTS subscribers (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT NOT NULL, source TEXT, listing TEXT, answers TEXT, created_at TEXT DEFAULT (datetime('now')), unsubscribed_at TEXT);
+CREATE INDEX IF NOT EXISTS idx_subscribers_email ON subscribers(email);
+CREATE TABLE IF NOT EXISTS alerts (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT NOT NULL, listing_slug TEXT NOT NULL, listing TEXT, town TEXT, status_at_signup TEXT, created_at TEXT DEFAULT (datetime('now')), UNIQUE(email, listing_slug));
+CREATE TABLE IF NOT EXISTS demand (id INTEGER PRIMARY KEY AUTOINCREMENT, town TEXT, age TEXT, faith TEXT, want TEXT, interest TEXT, matches INTEGER, local_matches INTEGER, created_at TEXT DEFAULT (datetime('now')));
+CREATE TABLE IF NOT EXISTS listing_overrides (slug TEXT PRIMARY KEY, data TEXT NOT NULL, updated_at TEXT, updated_by TEXT);
+CREATE TABLE IF NOT EXISTS listing_edits (id INTEGER PRIMARY KEY AUTOINCREMENT, slug TEXT NOT NULL, listing TEXT, town TEXT, fields TEXT NOT NULL, prev_avail TEXT, editor_name TEXT, editor_email TEXT, role TEXT, status TEXT DEFAULT 'pending', alerts_queued INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')), reviewed_at TEXT);
+CREATE TABLE IF NOT EXISTS outbox (id INTEGER PRIMARY KEY AUTOINCREMENT, to_email TEXT NOT NULL, listing TEXT, kind TEXT, subject TEXT, body TEXT, status TEXT DEFAULT 'queued', created_at TEXT DEFAULT (datetime('now')), sent_at TEXT);
+CREATE TABLE IF NOT EXISTS clicks (id INTEGER PRIMARY KEY AUTOINCREMENT, listing_slug TEXT, kind TEXT, created_at TEXT DEFAULT (datetime('now')));

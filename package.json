@@ -1,0 +1,10 @@
+{
+  "name": "centexhomeschool",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:schema": "wrangler d1 execute centexhomeschool --remote --file=schema.sql"
+  },
+  "devDependencies": { "wrangler": "4.40.0" }
+}

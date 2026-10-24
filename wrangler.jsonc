@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "centexhomeschool",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "centexhomeschool",
+      "database_id": "93208096-bf65-468d-9a5d-58422e6066d7"
+    }
+  ],
+  "vars": {
+    "SITE_URL": "https://centexhomeschool.org",
+    // Comma-separated emails allowed into the owner tools. Set this to your own email
+    // in the Cloudflare dashboard (Worker > Settings > Variables) or here.
+    "ADMIN_EMAIL": ""
+  },
+  "observability": { "enabled": true }
+}
