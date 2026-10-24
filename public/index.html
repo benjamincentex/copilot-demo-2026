@@ -590,7 +590,7 @@ html{scroll-behavior:smooth}
           <option>Claim or correct a listing</option>
           <option>Add an event</option>
           <option>Get an Enhanced listing</option>
-          <option>Become a Partner</option>
+          <option>Get a Featured listing</option>
         </select>
       </div>
       <div class="field">
@@ -677,7 +677,7 @@ function matches(x){
 function card(x){
   const [tl,tc]=TYPES[x.type];
   const tut=x.type==="tutor"; const facts=[["Ages",x.ages],[tut?"Format":"Meets",x.sched],[tut?"Rate":"Cost",x.cost],["For members",x.members]].filter(f=>f[1]);
-  return `<article class="card${x.plan==="partner"?" partner":""}">${x.plan==="partner"?`<span class="ribbon">Featured partner</span>`:""}
+  return `<article class="card${x.plan==="partner"?" partner":""}">${x.plan==="partner"?`<span class="ribbon">Featured</span>`:""}
     <div class="head"><h3>${esc(x.n)}</h3><span class="type ${tc}">${tl}</span></div>
     <div class="where">${esc(townsOf(x).join(" · "))}</div>
     <p>${esc(x.d)}</p>
@@ -827,7 +827,7 @@ async function recordDemand(res){
 document.querySelectorAll("[data-plan]").forEach(b=>b.addEventListener("click",()=>{
   const link=STRIPE_LINKS[b.dataset.plan];
   if(link){window.location.href=link;return;}
-  goForm(b.dataset.plan==="enhanced"?"Get an Enhanced listing":"Become a Partner");
+  goForm(b.dataset.plan==="enhanced"?"Get an Enhanced listing":"Get a Featured listing");
 }));
 document.querySelectorAll("[data-kind]").forEach(a=>a.addEventListener("click",e=>{e.preventDefault();goForm(a.dataset.kind);}));
 

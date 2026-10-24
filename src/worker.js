@@ -611,7 +611,7 @@ const routes = {
         `Hi ${c.name || "there"},\n\nYour claim for ${c.listing} is approved. Sign in at ${env.SITE_URL || "https://centexhomeschool.org"}/leaders.html with this email address to update your details and availability anytime.\n\n` +
         `A few things that help families find you:\n- Mark your availability (open spots, waitlist or full)\n- Add your next open house or application deadline to the community calendar\n- Answer families' questions on your listing\n\n` +
         `When you mark open spots or post a registration date, families waiting on your group get an email right away.\n\n` +
-        (paid ? `P.S. Want families to enroll in one click? An Enhanced listing adds photos, your class schedule and a "Sign up" button that goes straight to your registration page. Details: ${env.SITE_URL || "https://centexhomeschool.org"}/leaders.html#plans\n\n` : "") +
+        (paid ? `P.S. Want families to enroll in one click? An Enhanced listing adds photos, a "Register" button that goes straight to your registration page, a longer description and a monthly report on how your listing is doing. Details: ${env.SITE_URL || "https://centexhomeschool.org"}/leaders.html#plans\n\n` : "") +
         `Thanks,\nBenjamin\nCenTex Homeschool Hub`);
     } catch (e) { console.error("approval email failed", e.code, e.message); }
     return json({ ok: true });
