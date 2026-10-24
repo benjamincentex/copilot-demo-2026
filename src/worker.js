@@ -1,24 +1,70 @@
 // CenTex Homeschool Hub — API for the directory site.
 // Static pages are served from /public; everything under /api/ runs here.
-// Admin routes (/api/admin/*) only answer for the email in ADMIN_EMAIL, as
-// verified by Cloudflare Access (the Cf-Access-Authenticated-User-Email header).
+//
+// Who can do what:
+// - Anyone: browse, take the quiz, sign up for the newsletter or alerts, suggest a listing.
+// - Group leaders: sign in with a one-time code sent to their email. Once the site owner
+//   approves their claim to a listing, they can update it themselves and changes go live.
+// - Site owner: /api/admin/* only answers for ADMIN_EMAIL, as verified by Cloudflare Access
+//   (the Cf-Access-Authenticated-User-Email header).
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
-const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: JSON_HEADERS });
+const json = (data, status = 200, extra = {}) => new Response(JSON.stringify(data), { status, headers: { ...JSON_HEADERS, ...extra } });
 const bad = (message, status = 400) => json({ error: message }, status);
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const clip = (v, n) => (typeof v === "string" ? v.trim().slice(0, n) : "");
 const AVAIL = new Set(["open", "waitlist", "full", "opens", "unknown"]);
+const now = () => Date.now();
+const SESSION_DAYS = 30, CODE_MINUTES = 10, MAX_CODE_ATTEMPTS = 5, MAX_CODES_PER_15_MIN = 3;
 
 async function body(request) {
   try { return await request.json(); } catch { return null; }
+}
+
+async function sha256(text) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+function randomToken(bytes = 32) {
+  const a = crypto.getRandomValues(new Uint8Array(bytes));
+  return [...a].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+function sixDigitCode() {
+  const n = crypto.getRandomValues(new Uint32Array(1))[0] % 1000000;
+  return String(n).padStart(6, "0");
 }
 
 function adminEmail(request, env) {
   const who = (request.headers.get("cf-access-authenticated-user-email") || "").toLowerCase();
   const allowed = (env.ADMIN_EMAIL || "").toLowerCase().split(",").map((s) => s.trim()).filter(Boolean);
   return who && allowed.includes(who) ? who : null;
+}
+
+function cookie(request, name) {
+  const m = (request.headers.get("cookie") || "").match(new RegExp("(?:^|;\\s*)" + name + "=([^;]+)"));
+  return m ? m[1] : null;
+}
+async function leaderEmail(request, env) {
+  const token = cookie(request, "cth_session");
+  if (!token) return null;
+  const row = await env.DB.prepare("SELECT email, expires_at FROM sessions WHERE token_hash=?").bind(await sha256(token)).first();
+  return row && row.expires_at > now() ? row.email : null;
+}
+
+// Sends through Cloudflare Email Service when the EMAIL binding is configured.
+// Returns true if sent, false if email sending isn't set up yet.
+async function sendMail(env, to, subject, text) {
+  // Local testing only: with EMAIL_DEBUG=1 and no email binding, print the email to the dev console.
+  if (env.EMAIL_DEBUG === "1" && !env.EMAIL) { console.log(`[email to ${to}] ${subject}\n${text}`); return true; }
+  if (!env.EMAIL || typeof env.EMAIL.send !== "function") return false;
+  await env.EMAIL.send({
+    to,
+    from: { email: env.MAIL_FROM || "hello@centexhomeschool.org", name: "CenTex Homeschool Hub" },
+    subject,
+    text,
+  });
+  return true;
 }
 
 function alertEmail(listing, town, avail, siteUrl) {
@@ -30,6 +76,42 @@ function alertEmail(listing, town, avail, siteUrl) {
       `Spots at popular groups go quickly, so reach out soon. See their details and how to join: ${siteUrl}\n\n` +
       `CenTex Homeschool Hub\nYou're getting this because you signed up for alerts about ${listing}. Reply "unsubscribe" to stop.`,
   };
+}
+
+// Publish a listing change and, if it opens spots or posts a registration date, alert waiting families.
+async function publishListing(env, slug, listing, town, fields, updatedBy) {
+  const prevRow = await env.DB.prepare("SELECT data FROM listing_overrides WHERE slug=?").bind(slug).first();
+  const prev = prevRow ? JSON.parse(prevRow.data) : {};
+  const merged = { ...prev, ...fields, claimed: true };
+  const stamp = new Date().toISOString();
+  await env.DB.prepare(
+    "INSERT INTO listing_overrides (slug, data, updated_at, updated_by) VALUES (?,?,?,?) ON CONFLICT(slug) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at, updated_by=excluded.updated_by"
+  ).bind(slug, JSON.stringify(merged), stamp, updatedBy).run();
+
+  const av = fields.avail || {}, was = prev.avail || {};
+  let alerted = 0;
+  if ((av.s === "open" || av.s === "opens") && (av.s !== was.s || (av.when || "") !== (was.when || ""))) {
+    const { results } = await env.DB.prepare("SELECT DISTINCT email FROM alerts WHERE listing_slug=?").bind(slug).all();
+    const mail = alertEmail(listing, town, av, env.SITE_URL || "https://centexhomeschool.org");
+    for (const r of results) {
+      let sent = false;
+      try { sent = await sendMail(env, r.email, mail.subject, mail.body); } catch (e) { console.error("alert send failed", e.code, e.message); }
+      await env.DB.prepare("INSERT INTO outbox (to_email, listing, kind, subject, body, status, sent_at) VALUES (?,?,?,?,?,?,?)")
+        .bind(r.email, listing, av.s === "open" ? "opening" : "registration", mail.subject, mail.body, sent ? "sent" : "queued", sent ? stamp : null).run();
+      alerted++;
+    }
+  }
+  return alerted;
+}
+
+function cleanFields(f) {
+  f = f || {};
+  const fields = {};
+  for (const [k, n] of [["d", 600], ["ages", 40], ["sched", 80], ["cost", 80], ["site", 300]]) { const v = clip(f[k], n); if (v) fields[k] = v; }
+  if (fields.site && !/^https?:\/\//i.test(fields.site)) delete fields.site;
+  const a = f.avail || {};
+  fields.avail = { s: AVAIL.has(a.s) ? a.s : "unknown", when: clip(a.when, 40) };
+  return fields;
 }
 
 const routes = {
@@ -83,85 +165,137 @@ const routes = {
     return json({ ok: true });
   },
 
-  "POST /api/listing-edits": async (req, env) => {
-    const b = await body(req); if (!b) return bad("Invalid request.");
-    const slug = clip(b.slug, 120), email = clip(b.editorEmail, 160), name = clip(b.editorName, 80);
-    if (!slug) return bad("Pick your listing.");
-    if (!name) return bad("Add your name.");
-    if (!EMAIL_RE.test(email)) return bad("Add a valid email address.");
-    const f = b.fields || {}, fields = {};
-    for (const [k, n] of [["d", 600], ["ages", 40], ["sched", 80], ["cost", 80], ["site", 300]]) { const v = clip(f[k], n); if (v) fields[k] = v; }
-    if (fields.site && !/^https?:\/\//i.test(fields.site)) delete fields.site;
-    const a = f.avail || {};
-    fields.avail = { s: AVAIL.has(a.s) ? a.s : "unknown", when: clip(a.when, 40) };
-    await env.DB.prepare("INSERT INTO listing_edits (slug, listing, town, fields, prev_avail, editor_name, editor_email, role) VALUES (?,?,?,?,?,?,?,?)")
-      .bind(slug, clip(b.listing, 140), clip(b.town, 60), JSON.stringify(fields), clip(b.prevAvail, 20), name, email, clip(b.role, 60)).run();
-    return json({ ok: true });
-  },
-
   "POST /api/click": async (req, env) => {
     const b = await body(req); if (!b) return json({ ok: true });
     await env.DB.prepare("INSERT INTO clicks (listing_slug, kind) VALUES (?,?)").bind(clip(b.slug, 120), clip(b.kind, 20)).run();
     return json({ ok: true });
   },
 
+  // ---------- group leader sign-in ----------
+  "POST /api/auth/request-code": async (req, env) => {
+    const b = await body(req); const email = clip(b && b.email, 160).toLowerCase();
+    if (!EMAIL_RE.test(email)) return bad("Enter a valid email address.");
+    const recent = await env.DB.prepare("SELECT COUNT(*) AS n FROM login_codes WHERE email=? AND created_at>?").bind(email, now() - 15 * 60000).first();
+    if (recent.n >= MAX_CODES_PER_15_MIN) return bad("Too many codes requested. Wait 15 minutes and try again.", 429);
+    const code = sixDigitCode();
+    let sent = false;
+    try {
+      sent = await sendMail(env, email, `Your CenTex Homeschool Hub sign-in code: ${code}`,
+        `Your sign-in code is ${code}\n\nEnter it on the site within ${CODE_MINUTES} minutes to manage your listing.\n\nIf you didn't ask for this, you can ignore this email.\n\nCenTex Homeschool Hub`);
+    } catch (e) { console.error("code send failed", e.code, e.message); return bad("We couldn't send the email. Check the address and try again.", 502); }
+    if (!sent) return bad("Email sign-in isn't switched on yet. Please check back soon.", 503);
+    await env.DB.prepare("INSERT INTO login_codes (email, code_hash, expires_at, created_at) VALUES (?,?,?,?)")
+      .bind(email, await sha256(email + ":" + code), now() + CODE_MINUTES * 60000, now()).run();
+    return json({ ok: true });
+  },
+
+  "POST /api/auth/verify": async (req, env) => {
+    const b = await body(req); const email = clip(b && b.email, 160).toLowerCase(), code = clip(b && b.code, 10).replace(/\D/g, "");
+    if (!EMAIL_RE.test(email) || code.length !== 6) return bad("Enter the 6-digit code from your email.");
+    const row = await env.DB.prepare("SELECT id, code_hash, expires_at, attempts FROM login_codes WHERE email=? AND used=0 ORDER BY id DESC LIMIT 1").bind(email).first();
+    if (!row || row.expires_at < now()) return bad("That code has expired. Request a new one.");
+    if (row.attempts >= MAX_CODE_ATTEMPTS) return bad("Too many tries. Request a new code.");
+    if (row.code_hash !== (await sha256(email + ":" + code))) {
+      await env.DB.prepare("UPDATE login_codes SET attempts=attempts+1 WHERE id=?").bind(row.id).run();
+      return bad("That code doesn't match. Check your email and try again.");
+    }
+    const token = randomToken();
+    await env.DB.batch([
+      env.DB.prepare("UPDATE login_codes SET used=1 WHERE id=?").bind(row.id),
+      env.DB.prepare("INSERT INTO sessions (token_hash, email, expires_at, created_at) VALUES (?,?,?,?)").bind(await sha256(token), email, now() + SESSION_DAYS * 86400000, now()),
+    ]);
+    return json({ ok: true, email }, 200, { "set-cookie": `cth_session=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_DAYS * 86400}` });
+  },
+
+  "POST /api/auth/logout": async (req, env) => {
+    const token = cookie(req, "cth_session");
+    if (token) await env.DB.prepare("DELETE FROM sessions WHERE token_hash=?").bind(await sha256(token)).run();
+    return json({ ok: true }, 200, { "set-cookie": "cth_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0" });
+  },
+
+  // ---------- group leader (signed in) ----------
+  "GET /api/leader/me": async (req, env) => {
+    const email = await leaderEmail(req, env);
+    if (!email) return json({ signedIn: false });
+    const { results: owned } = await env.DB.prepare("SELECT slug FROM listing_owners WHERE email=?").bind(email).all();
+    const { results: pending } = await env.DB.prepare("SELECT slug, listing FROM claims WHERE email=? AND status='pending'").bind(email).all();
+    return json({ signedIn: true, email, owned: owned.map((r) => r.slug), pending });
+  },
+
+  "POST /api/leader/claim": async (req, env) => {
+    const email = await leaderEmail(req, env); if (!email) return bad("Sign in first.", 401);
+    const b = await body(req); const slug = clip(b && b.slug, 120);
+    if (!slug) return bad("Pick your listing.");
+    if (!clip(b.name, 80)) return bad("Add your name so we can confirm you lead this group.");
+    const owned = await env.DB.prepare("SELECT 1 FROM listing_owners WHERE slug=? AND email=?").bind(slug, email).first();
+    if (owned) return json({ ok: true, already: true });
+    const dup = await env.DB.prepare("SELECT 1 FROM claims WHERE slug=? AND email=? AND status='pending'").bind(slug, email).first();
+    if (!dup) {
+      await env.DB.prepare("INSERT INTO claims (slug, listing, town, email, name, role, note) VALUES (?,?,?,?,?,?,?)")
+        .bind(slug, clip(b.listing, 140), clip(b.town, 60), email, clip(b.name, 80), clip(b.role, 60), clip(b.note, 500)).run();
+    }
+    return json({ ok: true });
+  },
+
+  "POST /api/leader/update": async (req, env) => {
+    const email = await leaderEmail(req, env); if (!email) return bad("Sign in first.", 401);
+    const b = await body(req); const slug = clip(b && b.slug, 120);
+    const owned = await env.DB.prepare("SELECT 1 FROM listing_owners WHERE slug=? AND email=?").bind(slug, email).first();
+    if (!owned) return bad("You can only update listings you've claimed. If you've asked to claim this one, we'll email you once it's approved.", 403);
+    const alerted = await publishListing(env, slug, clip(b.listing, 140), clip(b.town, 60), cleanFields(b.fields), email);
+    return json({ ok: true, alerted });
+  },
+
   // ---------- admin (owner only, via Cloudflare Access) ----------
   "GET /api/admin/me": async (req, env) => json({ admin: !!adminEmail(req, env) }),
 
-  "GET /api/admin/edits": async (req, env) => {
-    const { results } = await env.DB.prepare("SELECT * FROM listing_edits WHERE status='pending' ORDER BY id DESC LIMIT 200").all();
-    return json({ edits: results.map((r) => ({ ...r, fields: JSON.parse(r.fields || "{}") })) });
+  "GET /api/admin/claims": async (req, env) => {
+    const { results } = await env.DB.prepare("SELECT * FROM claims WHERE status='pending' ORDER BY id DESC LIMIT 200").all();
+    return json({ claims: results });
   },
 
-  "POST /api/admin/edits/approve": async (req, env) => {
+  "POST /api/admin/claims/approve": async (req, env) => {
     const b = await body(req); const id = Number(b && b.id); if (!id) return bad("Missing id.");
-    const ed = await env.DB.prepare("SELECT * FROM listing_edits WHERE id=? AND status='pending'").bind(id).first();
-    if (!ed) return bad("That update was already handled.", 404);
-    const fields = JSON.parse(ed.fields || "{}");
-    const prevRow = await env.DB.prepare("SELECT data FROM listing_overrides WHERE slug=?").bind(ed.slug).first();
+    const c = await env.DB.prepare("SELECT * FROM claims WHERE id=? AND status='pending'").bind(id).first();
+    if (!c) return bad("That claim was already handled.", 404);
+    const stamp = new Date().toISOString();
+    await env.DB.batch([
+      env.DB.prepare("INSERT OR REPLACE INTO listing_owners (slug, email, name, role, approved_at) VALUES (?,?,?,?,?)").bind(c.slug, c.email, c.name, c.role, stamp),
+      env.DB.prepare("UPDATE claims SET status='approved', reviewed_at=? WHERE id=?").bind(stamp, id),
+    ]);
+    // Mark the listing as claimed so families see it's managed by the group.
+    const prevRow = await env.DB.prepare("SELECT data FROM listing_overrides WHERE slug=?").bind(c.slug).first();
     const prev = prevRow ? JSON.parse(prevRow.data) : {};
-    const merged = { ...prev, ...fields, claimed: true };
-    const now = new Date().toISOString();
-    const stmts = [
-      env.DB.prepare("INSERT INTO listing_overrides (slug, data, updated_at, updated_by) VALUES (?,?,?,?) ON CONFLICT(slug) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at, updated_by=excluded.updated_by")
-        .bind(ed.slug, JSON.stringify(merged), now, ed.editor_name),
-    ];
-    let queued = 0;
-    const av = fields.avail || {}, wasS = (prev.avail && prev.avail.s) || ed.prev_avail, wasWhen = (prev.avail && prev.avail.when) || "";
-    if ((av.s === "open" || av.s === "opens") && (av.s !== wasS || (av.when || "") !== wasWhen)) {
-      const { results } = await env.DB.prepare("SELECT DISTINCT email FROM alerts WHERE listing_slug=?").bind(ed.slug).all();
-      const mail = alertEmail(ed.listing, ed.town, av, env.SITE_URL || "https://centexhomeschool.org");
-      for (const r of results) {
-        stmts.push(env.DB.prepare("INSERT INTO outbox (to_email, listing, kind, subject, body) VALUES (?,?,?,?,?)")
-          .bind(r.email, ed.listing, av.s === "open" ? "opening" : "registration", mail.subject, mail.body));
-        queued++;
-      }
-    }
-    stmts.push(env.DB.prepare("UPDATE listing_edits SET status='approved', reviewed_at=?, alerts_queued=? WHERE id=?").bind(now, queued, id));
-    await env.DB.batch(stmts);
-    return json({ ok: true, queued });
+    await env.DB.prepare("INSERT INTO listing_overrides (slug, data, updated_at, updated_by) VALUES (?,?,?,?) ON CONFLICT(slug) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at")
+      .bind(c.slug, JSON.stringify({ ...prev, claimed: true }), stamp, "owner").run();
+    try {
+      await sendMail(env, c.email, `You can now manage ${c.listing} on CenTex Homeschool Hub`,
+        `Hi ${c.name || "there"},\n\nYour claim for ${c.listing} is approved. Sign in at ${env.SITE_URL || "https://centexhomeschool.org"}/#leaders with this email address to update your details and availability anytime.\n\nWhen you mark open spots or post a registration date, families waiting on your group get an email right away.\n\nCenTex Homeschool Hub`);
+    } catch (e) { console.error("approval email failed", e.code, e.message); }
+    return json({ ok: true });
   },
 
-  "POST /api/admin/edits/reject": async (req, env) => {
+  "POST /api/admin/claims/reject": async (req, env) => {
     const b = await body(req); const id = Number(b && b.id); if (!id) return bad("Missing id.");
-    await env.DB.prepare("UPDATE listing_edits SET status='rejected', reviewed_at=? WHERE id=?").bind(new Date().toISOString(), id).run();
+    await env.DB.prepare("UPDATE claims SET status='rejected', reviewed_at=? WHERE id=?").bind(new Date().toISOString(), id).run();
     return json({ ok: true });
   },
 
   "GET /api/admin/summary": async (req, env) => {
     const one = (sql) => env.DB.prepare(sql).first();
-    const [subs, alerts, subm, outbox, quizzes] = await Promise.all([
+    const [subs, alerts, subm, outbox, quizzes, owners] = await Promise.all([
       one("SELECT COUNT(DISTINCT email) AS n FROM subscribers WHERE unsubscribed_at IS NULL"),
       one("SELECT COUNT(*) AS n FROM alerts"),
       one("SELECT COUNT(*) AS n FROM submissions WHERE status='new'"),
       one("SELECT COUNT(*) AS n FROM outbox WHERE status='queued'"),
       one("SELECT COUNT(*) AS n FROM demand"),
+      one("SELECT COUNT(DISTINCT slug) AS n FROM listing_owners"),
     ]);
     const { results: gaps } = await env.DB.prepare(
       "SELECT town, faith, want, COUNT(*) AS n FROM demand WHERE local_matches=0 GROUP BY town, faith, want ORDER BY n DESC LIMIT 10"
     ).all();
-    const { results: newSubs } = await env.DB.prepare("SELECT * FROM submissions WHERE status='new' ORDER BY id DESC LIMIT 50").all();
-    return json({ subscribers: subs.n, alerts: alerts.n, newSubmissions: subm.n, queuedEmails: outbox.n, quizzes: quizzes.n, gaps, submissions: newSubs });
+    return json({ subscribers: subs.n, alerts: alerts.n, newSubmissions: subm.n, queuedEmails: outbox.n, quizzes: quizzes.n,
+      claimedListings: owners.n, emailEnabled: !!(env.EMAIL && env.EMAIL.send), gaps });
   },
 };
 

@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Figtree:wght@400;500;600;700&display=swap">
 <style>
-/* Layout: field-guide directory — a short masthead, then search + filter rail over a grid of listing cards, then a weekday planner, TEFA basics, plans and a submit form. */
+/* Layout: field-guide directory — a short masthead, then search + filter rail over a grid of listing cards, then a quiz, TEFA basics, plans and a submit form. */
 :root{
   --bg:#F8F1E7; --surface:#FFFBF5; --ink:#2A2219; --muted:#76675A; --line:#EADCC9;
   --sky1:#9FCDEB; --sky2:#FBE6C4; --glow:#FFD25E; --hill-far:#C9C79A; --hill-mid:#9DB27E; --hill-near:#6E9660; --grass:#5C8650; --trunk:#5B4232; --leaf:#4C7446; --blanket:#D9725A; --blanket2:#F2C46D; --skin:#F3D2B3; --skin2:#EDC4A0; --skin3:#D4A07A; --skin4:#A56E4A; --skin5:#6E4430; --shirt1:#3546A8; --shirt2:#E59A3C; --shirt3:#7A5BA6;
@@ -227,7 +227,6 @@ html{scroll-behavior:smooth}
     <a href="#tefa">TEFA basics</a>
     <a href="#plans">For vendors</a>
     <a href="#newsletter">Newsletter</a>
-    <a href="#leaders">For group leaders</a>
     <a href="#submit">Add a listing</a>
   </nav>
 </header>
@@ -321,19 +320,13 @@ html{scroll-behavior:smooth}
       <p>Tell us a little about your family and we'll pick the co-ops, groups and classes that fit, out of every listing in the directory.</p>
     </div>
     <div class="quiz" id="quiz" aria-live="polite"></div>
-    <div class="demand" id="demandPanel" hidden>
-      <span class="label">Only you can see this</span>
-      <h3 style="font-size:22px;margin:6px 0 4px">Unmet demand</h3>
-      <p class="where" style="margin:0 0 12px">What families asked for in the quiz where no listing near them fit. Use it to recruit groups, or to pitch people starting new co-ops and microschools.</p>
-      <div id="demandBody" class="where">No quiz results yet. Each finished quiz is counted here, without names or emails.</div>
-    </div>
   </section>
 
   <section id="register">
     <div class="intro">
       <span class="label">Registration calendar</span>
       <h2>Registration opening soon</h2>
-      <p>Many co-ops open registration in spring for the fall semester, and popular ones fill fast. Groups that post their dates appear here and in the Friday email.</p>
+      <p>Many co-ops open registration in spring for the fall semester, and popular ones fill fast. Groups that post their dates appear here and in the monthly newsletter.</p>
     </div>
     <div id="regList"></div>
   </section>
@@ -341,9 +334,9 @@ html{scroll-behavior:smooth}
   <section id="newsletter">
     <div class="newsband">
       <div class="newscopy">
-        <span class="label">The Friday email</span>
-        <h2>New groups and open spots, every Friday</h2>
-        <p>One short email a week for Central Texas homeschool families: groups that just opened spots, registration dates coming up, new listings near you, and events worth the drive.</p>
+        <span class="label">The monthly newsletter</span>
+        <h2>What's new in Central Texas homeschooling, once a month</h2>
+        <p>One email at the start of each month: groups that opened spots, registration dates coming up, new listings near you, and a few things worth knowing. Short enough to read over coffee.</p>
         <ul class="newsperks">
           <li>Registration deadlines before they pass</li>
           <li>Openings at groups that are usually full</li>
@@ -370,81 +363,6 @@ html{scroll-behavior:smooth}
     </div>
   </section>
 
-  <section id="leaders">
-    <div class="intro">
-      <span class="label">For group leaders &amp; vendors</span>
-      <h2>Keep your listing current</h2>
-      <p>Update your details anytime. When you open spots or post a registration date, every family on your alert list gets an email, so you fill seats without answering the same question twenty times.</p>
-    </div>
-    <ol class="steps">
-      <li>Pick your listing and update what's changed.</li>
-      <li>The first time, we confirm you lead the group. Usually within two days.</li>
-      <li>Your changes go live, and families waiting on you are emailed.</li>
-    </ol>
-    <form class="submit" id="leaderForm" novalidate>
-      <div class="field full">
-        <label for="l-listing">Your listing</label>
-        <select id="l-listing"></select>
-      </div>
-      <div class="field">
-        <label for="l-avail">Availability right now</label>
-        <select id="l-avail">
-          <option value="open">Open spots</option>
-          <option value="waitlist">Waitlist</option>
-          <option value="full">Full</option>
-          <option value="opens">Registration opens soon</option>
-          <option value="unknown">Not sure / ask us</option>
-        </select>
-      </div>
-      <div class="field">
-        <label for="l-when">Registration opens</label>
-        <input id="l-when" placeholder="e.g. March 2027" maxlength="40">
-      </div>
-      <div class="field">
-        <label for="l-ages">Ages or grades</label>
-        <input id="l-ages" placeholder="e.g. K–8" maxlength="40">
-      </div>
-      <div class="field">
-        <label for="l-sched">When you meet</label>
-        <input id="l-sched" placeholder="e.g. Fridays, 9–1" maxlength="80">
-      </div>
-      <div class="field">
-        <label for="l-cost">Cost</label>
-        <input id="l-cost" placeholder="e.g. $200/semester" maxlength="80">
-      </div>
-      <div class="field">
-        <label for="l-site">Website or sign-up link</label>
-        <input id="l-site" type="url" placeholder="https://" maxlength="300">
-      </div>
-      <div class="field full">
-        <label for="l-desc">Description</label>
-        <textarea id="l-desc" maxlength="600"></textarea>
-      </div>
-      <div class="field">
-        <label for="l-name">Your name</label>
-        <input id="l-name" maxlength="80">
-      </div>
-      <div class="field">
-        <label for="l-email">Your email</label>
-        <input id="l-email" type="email" maxlength="160">
-      </div>
-      <div class="field">
-        <label for="l-role">Your role</label>
-        <input id="l-role" placeholder="e.g. Co-op director" maxlength="60">
-      </div>
-      <div class="formfoot">
-        <button class="btn" type="submit" style="margin-top:0">Submit update</button>
-        <span class="status" id="leaderStatus" role="status"></span>
-      </div>
-    </form>
-    <div class="demand" id="reviewPanel" hidden>
-      <span class="label">Only you can see this</span>
-      <h3 style="font-size:22px;margin:6px 0 4px">Review listing updates</h3>
-      <p class="where" style="margin:0 0 12px">Approve an update to publish it. If it opens spots or posts a registration date, alert emails are queued for every family waiting on that group.</p>
-      <div id="reviewBody" class="where">No updates waiting.</div>
-      <p class="where" id="outboxLine" style="margin:12px 0 0"></p>
-    </div>
-  </section>
 
   <section id="tefa">
     <div class="intro">
@@ -498,7 +416,7 @@ html{scroll-behavior:smooth}
           <li>Top placement in your town and category</li>
           <li>Photos, class schedule and sign-up link</li>
           <li>TEFA-approved badge once verified</li>
-          <li>One spot in the weekly family newsletter each month</li>
+          <li>A mention in the monthly family newsletter</li>
         </ul>
         <button class="btn" type="button" data-plan="featured">Become a featured vendor</button>
       </div>
@@ -508,7 +426,7 @@ html{scroll-behavior:smooth}
         <ul>
           <li>Everything in Featured</li>
           <li>Sponsor banner on a town page</li>
-          <li>Newsletter feature every week</li>
+          <li>Featured spot in every monthly newsletter</li>
           <li>Limited to 10 founding sponsors</li>
         </ul>
         <button class="btn ghost" type="button" data-plan="sponsor">Become a sponsor</button>
@@ -579,50 +497,18 @@ html{scroll-behavior:smooth}
   </section>
 
   <footer>
+    <a href="/leaders.html" class="where">Lead a group? Claim or update your listing</a>
     <span>CenTex Homeschool Hub · Leander, Cedar Park, Round Rock, Georgetown, Austin</span>
     <span>Listings marked "Unclaimed" come from public sources and haven't been confirmed by the group yet.</span>
   </footer>
 </div>
 
+<script src="/listings.js"></script>
 <script>
 // Stripe Payment Links: paste each link here once created in the Stripe dashboard.
 const STRIPE_LINKS = { featured: "", sponsor: "" };
 
-const L = [
- {n:"Monarch Classical",site:"https://www.monarchclassical.org/",town:"Cedar Park",type:"coop",tags:["Christian","Classical"],days:[],sched:"One morning a week",d:"Affordable, cooperative classical learning in a Christian setting."},
- {n:"Coram Deo Classical Co-op",site:"https://www.homeschool-life.com/tx/coramdeo/",town:"Cedar Park",type:"coop",tags:["Classical"],days:[],d:"A community of learners pursuing truth, wisdom and virtue through classical education."},
- {n:"Classical Christian Home School of Austin (CCHSA)",site:"https://www.classicalchristianaustin.com",town:"Cedar Park",type:"class",tags:["Christian","Classical"],ages:"K–12",days:[],sched:"One day a week",d:"One-day-a-week program built to support learning at home, with a college-prep focus in the upper grades."},
- {n:"Lake Travis STEM Academy Enrichment",site:"https://www.ltstemacademy.org",town:"Cedar Park",type:"class",tags:["STEM","Arts"],days:["Fri"],sched:"Fridays + summer camps",d:"Classes in game design, programming, digital photo and video, digital music, fine art and Minecraft modding."},
- {n:"Apogee Cedar Park",site:"https://www.facebook.com/apogeecedarpark/",town:"Cedar Park",type:"micro",tags:[],ages:"Pre-K–8",cost:"About $1,400/month",days:[],d:"Microschool option for families wanting a full-time small-group setting."},
- {n:"REACH Math & Science Academy",town:"Cedar Park",also:["Round Rock","Austin"],type:"class",tags:["STEM"],days:["Tue","Wed","Thu"],sched:"Round Rock Tue · South Austin Wed · Cedar Park Thu",d:"Math and science classes for homeschoolers at three locations around the metro."},
- {n:"GRACE Co-op",site:"https://www.homeschool-life.com/tx/grace/",town:"Georgetown",type:"coop",tags:["Christian"],ages:"Pre-K–12",cost:"From $200",days:["Fri"],sched:"Fridays",d:"Georgetown Regional Area Christian Educators. Academic, creative and physical classes. Families apply and interview."},
- {n:"Georgetown Homeschool Group",site:"https://www.facebook.com/p/Georgetown-Homeschool-Group-100070888959397/",town:"Georgetown",type:"group",tags:["Christian"],ages:"Pre-K–12",cost:"Class fees vary",days:[],d:"Christian group blending learning, fun and personal growth."},
- {n:"Scholé Hall",town:"Georgetown",type:"coop",tags:["Classical"],ages:"Pre-K–12",cost:"Class fees vary",days:[],d:"Classical approach. Co-op activities for younger kids; à la carte classes for older students."},
- {n:"WATCH Co-op",site:"https://watchco-op.yolasite.com",town:"Georgetown",type:"coop",tags:["Christian"],days:["Fri"],sched:"Fridays",d:"Williamson Area Teachers of Christian Homeschoolers. Parent-led Friday classes in academics, arts and PE."},
- {n:"Code Ninjas Georgetown",site:"https://www.facebook.com/CodeNinjasGeorgetown/",town:"Georgetown",type:"class",tags:["STEM"],days:[],d:"Coding, Roblox and robotics classes open to homeschool families."},
- {n:"Georgetown Public Library: Homeschool Happenings",site:"https://www.facebook.com/GeorgetownTexasLibrary/",town:"Georgetown",type:"class",tags:["Free"],cost:"Free",days:[],d:"Library programs scheduled for homeschoolers."},
- {n:"Round Rock HOME",site:"https://www.homeschoolinginroundrock.net/",town:"Round Rock",type:"group",tags:["Christian"],days:[],d:"Round Rock Home-Educators Offering Moms Encouragement, a support group for homeschooling parents."},
- {n:"Austin Area Homeschoolers (AAH)",site:"https://www.facebook.com/groups/austinareahomeschoolers",town:"Austin",type:"group",tags:["Secular"],days:[],d:"The oldest and largest secular homeschool organization in Austin, with several hundred families. A common first stop."},
- {n:"AAH Friday Co-op",site:"https://sites.google.com/site/aahfridaycoopinfo/",town:"Austin",type:"coop",tags:["Secular"],ages:"K–12",cost:"Low: membership + class fees",days:["Fri"],sched:"Fridays",d:"Inclusive once-a-week co-op. Every parent helps by teaching, assisting or handling admin."},
- {n:"Austin Monday Co-op",town:"Austin",type:"coop",tags:["Secular"],ages:"K–12",cost:"Low",days:["Mon"],sched:"Mondays",d:"Parent-taught co-op connected with 4-H."},
- {n:"Agora Community",site:"https://www.facebook.com/agoracommunityfb/",town:"Austin",type:"class",tags:["Secular"],ages:"5+",cost:"Per-class tuition",days:[],d:"Discussion-based classes, a strong fit for intellectually curious teens."},
- {n:"SPARK Austin",site:"https://sparkhomeschool.org/",town:"Austin",type:"coop",tags:["Secular","Nature-based"],ages:"K–8",cost:"Membership + class fees",days:["Mon","Thu"],sched:"Mondays & Thursdays",d:"Nature-based enrichment co-op."},
- {n:"The Hedge School Cooperative",site:"https://www.hedgeschoolcoop.com",town:"Austin",type:"coop",tags:["Secular"],ages:"Grades 8–12",days:[],d:"Inclusive, secular co-op for teens, meeting at Still Waters Retreat Center."},
- {n:"Vine Classical Community",site:"https://www.facebook.com/vineclassicalcommunity/",town:"Austin",type:"coop",tags:["Christian","Classical"],days:["Tue"],sched:"Tuesdays, 25 weeks",d:"Scholé group in central Austin, with a 7th-grade Bridge program and à la carte classes for grades 8–11 through sister community Manna."},
- {n:"Studio Preparatory",site:"https://studioprep.org/",town:"Austin",type:"micro",tags:["Christian"],ages:"Elementary–high school",days:[],sched:"Three days a week",d:"Acton Academy affiliate (formerly Acton Imprimis). Christian nonprofit serving families of all faiths."},
- {n:"AHB Community School",site:"https://ahbcs.org",town:"Austin",type:"micro",tags:["Arts"],ages:"K–8",days:[],sched:"Three-day core program",d:"Hybrid homeschool with thematic, hands-on learning and social-emotional learning."},
- {n:"Austin Micro School",site:"https://www.austinmicroschool.org",town:"Austin",type:"micro",tags:[],cost:"Hybrid from about $5,000/yr",days:["Mon","Tue","Wed","Thu","Fri"],sched:"Full-time or 1–3 day hybrid",d:"South Austin / Manchaca. Hybrid families get weekly learning plans and teacher support."},
- {n:"Austin Rising School",site:"https://www.facebook.com/AustinRisingSchoolHomeschool/",town:"Austin",type:"coop",tags:[],ages:"K–6",days:[],sched:"Two days a week",d:"Homeschool co-op for elementary students."},
- {n:"Holy Family Homeschoolers of Greater Austin",site:"https://groups.io/g/hfh",town:"Austin",type:"group",tags:["Catholic"],days:[],d:"Catholic support group: field trips, co-ops, park days, rosaries and a Blessing Mass."},
- {n:"Catholic Family Educators of Central Texas",town:"Austin",also:["San Marcos","Waco"],type:"group",tags:["Catholic"],days:[],d:"Listings of Catholic support groups and suppliers, plus a small annual convention."},
- {n:"GROW Homeschool Group",town:"Austin",type:"group",tags:["Christian","Charlotte Mason"],ages:"K–8 co-op",cost:"Membership",days:[],d:"Christian nonprofit serving Austin since 2013: play dates, field trips, service projects, moms' fellowship and a Charlotte Mason co-op."},
- {n:"Forge Christian Homeschool Community",site:"https://www.homeschool-life.com/tx/forge/",town:"Austin",type:"group",tags:["Christian"],days:[],d:"Christian homeschool community offering academic enrichment."},
- {n:"TREA",site:"https://therockenrichmentacademy.org/",town:"Austin",type:"class",tags:["Christian"],ages:"Pre-K–12",cost:"Per course",days:[],sched:"Up to 4 days a week",d:"Christian enrichment classes."},
- {n:"One Day Academy",site:"https://www.onedayacademy.com/",town:"Austin",type:"micro",tags:["Christian"],ages:"K–12",cost:"Monthly tuition",days:[],sched:"One day a week",d:"Christian hybrid program."},
- {n:"Standards of Excellence",site:"https://txsoe.com/",town:"Austin",type:"class",tags:[],days:[],d:"Classes, tutorials and academic fairs for Austin-area homeschoolers."},
- {n:"Starry Sky Austin",site:"https://www.starryskyaustin.com/",town:"Austin",type:"class",tags:["STEM"],ages:"8+",days:[],d:"Astronomy classes, day and night, under real skies."},
- {n:"SECTX Homeschool",town:"Bastrop area",type:"group",tags:["Secular","Gifted / 2e"],days:[],d:"Inclusive secular community for families of gifted and twice-exceptional kids, serving Fayette, Bastrop, Caldwell and nearby counties."}
-];
+// Listings live in /listings.js so the leader page shares them.
 
 const TYPES={coop:["Co-op","t-coop"],group:["Support group","t-group"],class:["Class","t-class"],micro:["Microschool / hybrid","t-micro"]};
 const TOWNS=["All","Leander","Cedar Park","Round Rock","Georgetown","Austin","Bastrop area"];
@@ -637,6 +523,7 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"
 
 function townsOf(x){return [x.town].concat(x.also||[])}
 function matches(x){
+  if(x.test) return false;
   if(state.open && x.avail.s!=="open") return false;
   if(state.type && x.type!==state.type) return false;
   if(state.approach && !x.tags.includes(state.approach)) return false;
@@ -656,12 +543,12 @@ function card(x){
     ${x.tags.length?`<div class="tags">${x.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join("")}</div>`:""}
     <div class="avail"><span class="ab ${AV[x.avail.s][1]}">${esc(availLabel(x))}</span>${x.avail.s!=="open"?`<button class="linkbtn" type="button" data-notify="${esc(x.n)}">Notify me when spots open</button>`:""}</div>
     <form class="notify" data-for="${esc(x.n)}" hidden novalidate>
-      <p>We'll email you when ${esc(x.n)} has openings or opens registration, plus the Friday email with new matches near you.</p>
+      <p>We'll email you when ${esc(x.n)} has openings or opens registration, plus the monthly newsletter with new matches near you.</p>
       <div class="nrow"><input type="email" placeholder="you@example.com" maxlength="160" aria-label="Email for alerts"><button class="btn" type="submit">Alert me</button></div>
       <span class="status" role="status"></span>
     </form>
     ${x.site||x.phone?`<div class="contact">${x.site?`<a href="${esc(x.site)}" target="_blank" rel="noopener" data-site="${esc(slug(x.n))}">${/facebook\.com/i.test(x.site)?"Facebook page":"Visit website"} ↗</a>`:""}${x.phone?`<span>${esc(x.phone)}</span>`:""}</div>`:""}
-    <div class="foot">${x.claimed?`<span class="claimed">Updated by the group</span><button class="linkbtn" type="button" data-claim="${esc(x.n)}">Update listing</button>`:`<span>Unclaimed</span><button class="linkbtn" type="button" data-claim="${esc(x.n)}">Is this yours? Claim it</button>`}</div>
+    <div class="foot">${x.claimed?`<span class="claimed">Updated by the group</span>`:`<span>Unclaimed</span>`}<a class="linkbtn" href="/leaders.html#${esc(slug(x.n))}">${x.claimed?"Manage listing":"Is this yours? Claim it"}</a></div>
   </article>`;
 }
 function render(){
@@ -672,7 +559,7 @@ function render(){
     ?'No groups have confirmed open spots yet. As leaders claim their listings and post availability, they\'ll show up here. Turn off "Open now" to see everyone, and use "Notify me" on any group you like.'
     :'No listings match yet. Try another town, or <a href="#submit">add the group you know about</a>.';
   $("openNow").setAttribute("aria-pressed",state.open);
-  $("count").textContent=`${res.length} of ${L.length} listings`;
+  $("count").textContent=`${res.length} of ${L.filter(x=>!x.test).length} listings`;
   document.querySelectorAll("#townChips .chip").forEach(c=>c.setAttribute("aria-pressed",c.dataset.town===state.town));
 }
 // ---- Find your fit quiz ----
@@ -717,15 +604,15 @@ function renderQuiz(){
       <div class="qnav">${qi>0?`<button type="button" class="linkbtn" id="qBack">Back</button>`:"<span></span>"}</div>`;
     return;
   }
-  const res=L.map(scoreOf).filter(r=>r&&r.s>0).sort((a,b)=>b.s-a.s).slice(0,5);
+  const res=L.filter(x=>!x.test).map(scoreOf).filter(r=>r&&r.s>0).sort((a,b)=>b.s-a.s).slice(0,5);
   recordDemand(res);
   box.innerHTML=`<div class="qprog"><span class="label">Your matches</span><button type="button" class="linkbtn" id="qRetake">Start over</button></div>
     <h3>${res.length?`Your top ${res.length} ${res.length===1?"match":"matches"}`:"No close matches yet"}</h3>
     ${res.length?`<div class="matches">${res.map((r,i)=>`<div class="match"><div class="rank">${i+1}</div><div><h4>${esc(r.x.n)}</h4><p>${esc(townsOf(r.x).join(" · "))} · ${esc(r.x.d)}</p><div class="why">${r.why.map(w=>`<span class="tag">${esc(w)}</span>`).join("")}</div></div><button type="button" class="linkbtn" data-see="${esc(r.x.n)}">See listing</button></div>`).join("")}</div>`
-      :`<p class="where" style="margin-bottom:18px">We're still adding groups in your area. Get the Friday email and we'll tell you when one that fits is listed.</p>`}
+      :`<p class="where" style="margin-bottom:18px">We're still adding groups in your area. Get the monthly newsletter and we'll tell you when one that fits is listed.</p>`}
     <form class="news" id="newsForm" novalidate>
-      <h4>Get new matches every Friday</h4>
-      <p>New groups, open spots and events near you, in one short weekly email. Unsubscribe anytime.</p>
+      <h4>Get new matches once a month</h4>
+      <p>New groups, open spots and events near you, in one email a month. Unsubscribe anytime.</p>
       <div class="newsrow"><label for="n-email" hidden>Email</label><input id="n-email" type="email" placeholder="you@example.com" required maxlength="160"><button class="btn" type="submit" style="margin-top:0">Sign me up</button></div>
       <span class="status" id="newsStatus" role="status"></span>
     </form>`;
@@ -745,7 +632,7 @@ $("quiz").addEventListener("submit",async e=>{
   if(!/^\S+@\S+\.\S+$/.test(email)){st.className="status err";st.textContent="Enter a valid email address to sign up.";$("n-email").focus();return;}
   st.textContent="Signing you up…";
   const r=await api("/api/subscribe",{email,source:"quiz",answers:ans});
-  if(r.ok){e.target.reset(); st.className="status ok"; st.textContent="You're in. Watch for the first email on Friday.";}
+  if(r.ok){e.target.reset(); st.className="status ok"; st.textContent="You're in. Your first newsletter arrives at the start of next month.";}
   else{st.className="status err";st.textContent=r.error;}
 });
 
@@ -763,7 +650,6 @@ function goForm(kind,name){
   setTimeout(()=>$(name?"f-email":"f-name").focus({preventScroll:true}),400);
 }
 $("grid").addEventListener("click",e=>{
-  const b=e.target.closest("[data-claim]"); if(b){goLeader(b.dataset.claim);return;}
   const n=e.target.closest("[data-notify]");
   if(n){const f=n.closest(".card").querySelector("form.notify"); f.hidden=!f.hidden; if(!f.hidden) f.querySelector("input").focus();}
 });
@@ -782,7 +668,7 @@ function renderRegistration(){
   const items=L.filter(x=>x.avail.s==="opens"||x.avail.s==="waitlist");
   $("regList").innerHTML=items.length
     ?`<div class="reglist">${items.map(x=>`<div class="regcard"><span class="ab ${AV[x.avail.s][1]}" style="align-self:flex-start">${esc(availLabel(x))}</span><h3>${esc(x.n)}</h3><span class="where">${esc(townsOf(x).join(" · "))} · ${TYPES[x.type][0]}</span></div>`).join("")}</div>`
-    :`<div class="regempty"><b style="color:var(--ink)">No registration dates posted yet.</b> When a group shares when it opens enrollment, it shows up here and in the Friday email. Leading a group? <a href="#submit" data-kind="Claim or correct a listing">Post your registration date</a>.</div>`;
+    :`<div class="regempty"><b style="color:var(--ink)">No registration dates posted yet.</b> When a group shares when it opens enrollment, it shows up here and in the monthly newsletter. Leading a group? <a href="/leaders.html">Post your registration date</a>.</div>`;
   $("regList").querySelectorAll("[data-kind]").forEach(a=>a.addEventListener("click",ev=>{ev.preventDefault();goForm(a.dataset.kind);}));
 }
 // Unmet demand: each finished quiz is counted (answers only, no personal details).
@@ -791,7 +677,6 @@ async function recordDemand(res){
   if(demandSent) return; demandSent=true;
   const local=res.filter(r=>r.why.includes("Near you")).length;
   await api("/api/demand",{...ans,matches:res.length,localMatches:local});
-  if(isAdmin) loadAdmin();
 }
 document.querySelectorAll("[data-plan]").forEach(b=>b.addEventListener("click",()=>{
   const link=STRIPE_LINKS[b.dataset.plan];
@@ -800,37 +685,11 @@ document.querySelectorAll("[data-plan]").forEach(b=>b.addEventListener("click",(
 }));
 document.querySelectorAll("[data-kind]").forEach(a=>a.addEventListener("click",e=>{e.preventDefault();goForm(a.dataset.kind);}));
 
-$("statListings").textContent=L.length;
-$("statTowns").textContent=new Set(L.flatMap(townsOf)).size;
+$("statListings").textContent=L.filter(x=>!x.test).length;
+$("statTowns").textContent=new Set(L.filter(x=>!x.test).flatMap(townsOf)).size;
 
-// ---- Group leader updates + opening alerts ----
+// ---- Listing data shared with the leader page ----
 const slug=n=>n.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,120);
-const FIELDS=[["d","l-desc"],["ages","l-ages"],["sched","l-sched"],["cost","l-cost"],["site","l-site"]];
-$("l-listing").innerHTML=L.slice().sort((a,b)=>a.n.localeCompare(b.n)).map(x=>`<option value="${esc(slug(x.n))}">${esc(x.n)} (${esc(x.town)})</option>`).join("");
-function fillLeader(){
-  const x=L.find(v=>slug(v.n)===$("l-listing").value); if(!x) return;
-  FIELDS.forEach(([k,id])=>{$(id).value=x[k]||"";});
-  $("l-avail").value=x.avail.s; $("l-when").value=x.avail.when||"";
-}
-$("l-listing").addEventListener("change",fillLeader); fillLeader();
-function goLeader(name){
-  $("l-listing").value=slug(name); fillLeader(); $("leaderStatus").textContent="";
-  document.getElementById("leaders").scrollIntoView({behavior:"smooth"});
-  setTimeout(()=>$("l-avail").focus({preventScroll:true}),400);
-}
-$("leaderForm").addEventListener("submit",async e=>{
-  e.preventDefault();
-  const st=$("leaderStatus"); st.className="status";
-  const x=L.find(v=>slug(v.n)===$("l-listing").value), email=$("l-email").value.trim(), name=$("l-name").value.trim();
-  if(!name){st.className="status err";st.textContent="Add your name so we can confirm you lead this group.";$("l-name").focus();return;}
-  if(!/^\S+@\S+\.\S+$/.test(email)){st.className="status err";st.textContent="Add your email so we can confirm the update.";$("l-email").focus();return;}
-  const fields={avail:{s:$("l-avail").value,when:$("l-when").value.trim()}};
-  FIELDS.forEach(([k,id])=>{const v=$(id).value.trim(); if(v&&v!==(x[k]||"")) fields[k]=v;});
-  st.textContent="Sending…";
-  const r=await api("/api/listing-edits",{slug:slug(x.n),listing:x.n,town:x.town,fields,prevAvail:x.avail.s,editorName:name,editorEmail:email,role:$("l-role").value.trim()});
-  if(r.ok){st.className="status ok"; st.textContent="Thanks! We'll confirm and publish your update, usually within two days."; if(isAdmin) loadAdmin();}
-  else{st.className="status err";st.textContent=r.error;}
-});
 // Approved updates are stored per listing and applied over the built-in data.
 async function loadOverrides(){
   const r=await api("/api/listings"); if(!r.ok||!r.overrides) return;
@@ -838,37 +697,9 @@ async function loadOverrides(){
     ["d","ages","sched","cost","site"].forEach(k=>{if(o[k]) x[k]=o[k];});
     if(o.avail&&AV[o.avail.s]) x.avail={s:o.avail.s,when:o.avail.when||""};
     if(o.claimed) x.claimed=true;});
-  render(); renderRegistration(); fillLeader();
+  render(); renderRegistration();
 }
-// ---- Owner tools: shown only when signed in through Cloudflare Access as the site owner ----
-let isAdmin=false;
-async function loadAdmin(justQueued){
-  const me=await api("/api/admin/me"); isAdmin=!!(me.ok&&me.admin); if(!isAdmin) return;
-  $("reviewPanel").hidden=false; $("demandPanel").hidden=false;
-  const [ed,sum]=await Promise.all([api("/api/admin/edits"),api("/api/admin/summary")]);
-  const label={d:"Description",ages:"Ages",sched:"Meets",cost:"Cost",site:"Website"};
-  const items=(ed.ok&&ed.edits)||[];
-  $("reviewBody").innerHTML=items.length?items.map(it=>`<div class="rev">
-    <b style="color:var(--ink)">${esc(it.listing)}</b>
-    <span>From ${esc(it.editor_name||"")}${it.role?", "+esc(it.role):""} · ${esc(it.editor_email||"")}</span>
-    <dl><dt>Availability</dt><dd>${esc(AV[(it.fields.avail||{}).s]?AV[it.fields.avail.s][0]:"")}${it.fields.avail&&it.fields.avail.when?" · "+esc(it.fields.avail.when):""}</dd>
-    ${Object.keys(label).filter(k=>it.fields[k]).map(k=>`<dt>${label[k]}</dt><dd>${esc(it.fields[k])}</dd>`).join("")}</dl>
-    <div class="row"><button class="btn sm" type="button" data-approve="${it.id}">Approve and publish</button><button class="btn ghost sm" type="button" data-reject="${it.id}">Reject</button></div>
-  </div>`).join(""):"No updates waiting.";
-  if(sum.ok){
-    const n=sum.queuedEmails;
-    $("outboxLine").textContent=(justQueued?`${justQueued} alert ${justQueued===1?"email":"emails"} queued just now. `:"")+(n?`${n} alert ${n===1?"email is":"emails are"} ready to send once email sending is connected.`:"No alert emails waiting.")+` · ${sum.subscribers} newsletter subscribers · ${sum.alerts} alert sign-ups · ${sum.newSubmissions} new form submissions`;
-    $("demandBody").innerHTML=sum.quizzes?`<p style="margin:0 0 10px;color:var(--ink)">${sum.quizzes} quizzes finished</p>`+
-      (sum.gaps.length?`<table><thead><tr><th>Looking for (town · faith · type)</th><th style="text-align:right">Families with no nearby match</th></tr></thead><tbody>${sum.gaps.map(g=>`<tr><td>${esc([g.town,g.faith,g.want].filter(Boolean).join(" · "))}</td><td class="n">${g.n}</td></tr>`).join("")}</tbody></table>`:"<p>Every family so far found something nearby.</p>"):"No quiz results yet. Each finished quiz is counted here, without names or emails.";
-  }
-}
-$("reviewPanel").addEventListener("click",async e=>{
-  const a=e.target.closest("[data-approve]"), rj=e.target.closest("[data-reject]");
-  if(a){a.disabled=true; a.textContent="Publishing…"; const r=await api("/api/admin/edits/approve",{id:Number(a.dataset.approve)});
-    if(r.ok){await loadOverrides(); await loadAdmin(r.queued);} else {a.disabled=false;a.textContent="Approve and publish";$("outboxLine").textContent=r.error;}}
-  if(rj){rj.disabled=true; const r=await api("/api/admin/edits/reject",{id:Number(rj.dataset.reject)}); if(r.ok) loadAdmin(); else rj.disabled=false;}
-});
-render(); renderQuiz(); renderRegistration(); loadOverrides(); loadAdmin();
+render(); renderQuiz(); renderRegistration(); loadOverrides();
 // Scatter bluebonnets and draw the park-day gathering (seeded so it looks the same every load).
 (function(){
   let seed=11; const rnd=()=>((seed=(seed*16807)%2147483647)/2147483647);
@@ -935,7 +766,7 @@ $("mainNewsForm").addEventListener("submit",async e=>{
   if(!/^\S+@\S+\.\S+$/.test(email)){st.className="status err";st.textContent="Enter a valid email address to sign up.";$("nl-email").focus();return;}
   st.textContent="Signing you up…";
   const r=await api("/api/subscribe",{email,source:"newsletter",answers:{town:$("nl-town").value}});
-  if(r.ok){e.target.reset(); st.className="status ok"; st.textContent="You're in. Watch for the first email on Friday."; if(isAdmin) loadAdmin();}
+  if(r.ok){e.target.reset(); st.className="status ok"; st.textContent="You're in. Your first newsletter arrives at the start of next month.";}
   else{st.className="status err";st.textContent=r.error;}
 });
 $("form").addEventListener("submit",async e=>{
@@ -947,7 +778,7 @@ $("form").addEventListener("submit",async e=>{
   st.textContent="Sending…";
   const r=await api("/api/submissions",{kind:$("f-kind").value,name,town:$("f-town").value.trim(),website:$("f-site").value.trim(),
     contact:$("f-contact").value.trim(),email,availability:$("f-avail").value,registrationOpens:$("f-regdate").value.trim(),details:$("f-details").value.trim()});
-  if(r.ok){e.target.reset(); st.className="status ok"; st.textContent="Thanks! It's in the review queue."; if(isAdmin) loadAdmin();}
+  if(r.ok){e.target.reset(); st.className="status ok"; st.textContent="Thanks! It's in the review queue.";}
   else{st.className="status err";st.textContent=r.error;}
 });
 </script>
