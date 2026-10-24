@@ -155,6 +155,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .t-coop{background:var(--oak-soft);color:var(--oak)}
 .t-group{background:var(--bonnet-soft);color:var(--bonnet)}
 .t-class{background:var(--sun-soft);color:var(--ink)}
+.t-tutor{background:var(--bonnet-soft);color:var(--ink)}
 .t-micro{background:var(--line);color:var(--ink)}
 .where{font-size:14px;color:var(--muted)}
 .card p{margin:0;font-size:15px}
@@ -269,7 +270,7 @@ html{scroll-behavior:smooth}
   <div>
     <span class="label">Central Texas homeschool directory</span>
     <h1>Find your homeschool <em>people</em>, from Leander to South Austin.</h1>
-    <p>Co-ops, support groups, classes and microschools across Williamson and Travis counties, searchable by town, approach and meeting day. Free for families. Free for groups.</p>
+    <p>Co-ops, support groups, classes microschools and tutors across Williamson and Travis counties, searchable by town, approach and meeting day. Free for families. Free for groups.</p>
   </div>
   <div class="stats" aria-label="Directory at a glance">
     <div class="stat"><b id="statListings">0</b><span>listings</span></div>
@@ -327,6 +328,7 @@ html{scroll-behavior:smooth}
         <option value="group">Support groups</option>
         <option value="class">Classes &amp; enrichment</option>
         <option value="micro">Microschools &amp; hybrids</option>
+        <option value="tutor">Tutors</option>
       </select>
       <select id="approachSel" aria-label="Approach">
         <option value="">Any approach</option>
@@ -654,7 +656,7 @@ const STRIPE_LINKS = { enhanced: "", partner: "", job: "" };
 
 // Listings live in /listings.js so the leader page shares them.
 
-const TYPES={coop:["Co-op","t-coop"],group:["Support group","t-group"],class:["Class","t-class"],micro:["Microschool / hybrid","t-micro"]};
+const TYPES={coop:["Co-op","t-coop"],group:["Support group","t-group"],class:["Class","t-class"],micro:["Microschool / hybrid","t-micro"],tutor:["Tutor","t-tutor"]};
 const TOWNS=["All","Leander","Cedar Park","Round Rock","Georgetown","Austin","Bastrop area"];
 // Availability per listing: s = open | waitlist | full | opens | unknown; "opens" also takes when:"March 2027".
 // Everything starts unknown until a group leader confirms it.
@@ -678,7 +680,7 @@ function matches(x){
 }
 function card(x){
   const [tl,tc]=TYPES[x.type];
-  const facts=[["Ages",x.ages],["Meets",x.sched],["Cost",x.cost]].filter(f=>f[1]);
+  const tut=x.type==="tutor"; const facts=[["Ages",x.ages],[tut?"Format":"Meets",x.sched],[tut?"Rate":"Cost",x.cost]].filter(f=>f[1]);
   return `<article class="card">
     <div class="head"><h3>${esc(x.n)}</h3><span class="type ${tc}">${tl}</span></div>
     <div class="where">${esc(townsOf(x).join(" · "))}</div>
@@ -691,9 +693,9 @@ function card(x){
       <div class="nrow"><input type="email" placeholder="you@example.com" maxlength="160" aria-label="Email for alerts"><button class="btn" type="submit">Alert me</button></div>
       <span class="status" role="status"></span>
     </form>
-    ${x.site||x.phone?`<div class="contact">${x.site?`<a href="${esc(x.site)}" target="_blank" rel="noopener" data-site="${esc(slug(x.n))}">${/facebook\.com/i.test(x.site)?"Facebook page":"Visit website"} ↗</a>`:""}${x.phone?`<span>${esc(x.phone)}</span>`:""}</div>`:""}
+    ${x.site||x.phone?`<div class="contact">${x.site?`<a href="${esc(x.site)}" target="_blank" rel="noopener" data-site="${esc(sid(x))}">${/facebook\.com/i.test(x.site)?"Facebook page":"Visit website"} ↗</a>`:""}${x.phone?`<span>${esc(x.phone)}</span>`:""}</div>`:""}
     ${qaBlock(x)}
-    <div class="foot">${x.claimed?`<span class="claimed">Updated by the group</span>`:`<span>Unclaimed</span>`}<a class="linkbtn" href="/leaders.html#${esc(slug(x.n))}">${x.claimed?"Manage listing":"Is this yours? Claim it"}</a></div>
+    <div class="foot">${x.claimed?`<span class="claimed">${x.type==="tutor"?"Managed by the tutor":"Updated by the group"}</span>`:`<span>Unclaimed</span>`}<a class="linkbtn" href="/leaders.html#${esc(sid(x))}">${x.claimed?"Manage listing":"Is this yours? Claim it"}</a></div>
   </article>`;
 }
 function render(){
@@ -712,11 +714,11 @@ const QS=[
  {k:"town",q:"Where do you live?",o:[["Leander / Cedar Park","Northwest suburbs"],["Round Rock",""],["Georgetown",""],["Austin","Including South Austin"],["Anywhere nearby","We'll drive for the right fit"]]},
  {k:"age",q:"How old are your kids?",multi:false,o:[["Little ones","Pre-K and kindergarten"],["Elementary","Grades 1–5"],["Middle school","Grades 6–8"],["High school","Grades 9–12"]]},
  {k:"faith",q:"Does faith matter in your group?",o:[["Christian","Faith-based community"],["Catholic","Catholic community"],["Secular","Inclusive, no religious content"],["No preference","Open to either"]]},
- {k:"want",q:"What are you looking for most?",o:[["Friends & community","Park days, field trips, support"],["A teaching co-op","Parents share the teaching"],["Classes & enrichment","Pay-per-class subjects and activities"],["More structure","Hybrid or microschool, 1–5 days"]]},
+ {k:"want",q:"What are you looking for most?",o:[["Friends & community","Park days, field trips, support"],["A teaching co-op","Parents share the teaching"],["Classes & enrichment","Classes, tutors and enrichment"],["More structure","Hybrid or microschool, 1–5 days"]]},
  {k:"interest",q:"Any special interest?",o:[["Classical",""],["Nature & outdoors",""],["STEM & coding",""],["Arts & music",""],["Gifted / 2e",""],["Nothing specific",""]]}
 ];
 const GRADE={"Little ones":[-1,0],"Elementary":[1,5],"Middle school":[6,8],"High school":[9,12]};
-const WANT={"Friends & community":["group","coop"],"A teaching co-op":["coop"],"Classes & enrichment":["class"],"More structure":["micro"]};
+const WANT={"Friends & community":["group","coop"],"A teaching co-op":["coop"],"Classes & enrichment":["class","tutor"],"More structure":["micro"]};
 const INTEREST={"Classical":["Classical"],"Nature & outdoors":["Nature-based","Charlotte Mason"],"STEM & coding":["STEM"],"Arts & music":["Arts"],"Gifted / 2e":["Gifted / 2e"]};
 const TOWNMAP={"Leander / Cedar Park":["Leander","Cedar Park"],"Round Rock":["Round Rock"],"Georgetown":["Georgetown"],"Austin":["Austin"]};
 let qi=0, ans={};
@@ -804,7 +806,7 @@ $("grid").addEventListener("submit",async e=>{
   if(!/^\S+@\S+\.\S+$/.test(email)){st.className="status err";st.textContent="Enter a valid email address.";return;}
   st.textContent="Saving…";
   const x=L.find(v=>v.n===f.dataset.for);
-  const r=await api("/api/alerts",{email,slug:slug(x.n),listing:x.n,town:x.town,status:x.avail.s});
+  const r=await api("/api/alerts",{email,slug:sid(x),listing:x.n,town:x.town,status:x.avail.s});
   if(r.ok){f.reset(); st.className="status ok"; st.textContent="Done. We'll email you when spots open.";}
   else{st.className="status err";st.textContent=r.error;}
 });
@@ -834,11 +836,15 @@ $("statListings").textContent=L.filter(x=>!x.test).length;
 $("statTowns").textContent=new Set(L.filter(x=>!x.test).flatMap(townsOf)).size;
 
 // ---- Listing data shared with the leader page ----
+const sid=x=>x.slug||slug(x.n);
 const slug=n=>n.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,120);
 // Approved updates are stored per listing and applied over the built-in data.
 async function loadOverrides(){
   const r=await api("/api/listings"); if(!r.ok||!r.overrides) return;
-  Object.entries(r.overrides).forEach(([id,o])=>{const x=L.find(v=>slug(v.n)===id); if(!x) return;
+  (r.custom||[]).forEach(c=>{ if(!L.some(x=>x.slug===c.slug)) L.push({...c,avail:{s:"unknown"}}); });
+  $("statListings").textContent=L.filter(x=>!x.test).length;
+  $("statTowns").textContent=new Set(L.filter(x=>!x.test).flatMap(townsOf)).size;
+  Object.entries(r.overrides).forEach(([id,o])=>{const x=L.find(v=>sid(v)===id); if(!x) return;
     ["d","ages","sched","cost","site"].forEach(k=>{if(o[k]) x[k]=o[k];});
     if(o.avail&&AV[o.avail.s]) x.avail={s:o.avail.s,when:o.avail.when||""};
     if(o.claimed) x.claimed=true;});
@@ -849,10 +855,10 @@ async function loadOverrides(){
 let acct={signedIn:false}, QA={};
 const fmtDate=d=>{const t=new Date(d+"T12:00:00");return {m:t.toLocaleString("en-US",{month:"short"}),d:t.getDate(),w:t.toLocaleString("en-US",{weekday:"long"})};};
 function qaBlock(x){
-  const list=QA[slug(x.n)]||[];
+  const list=QA[sid(x)]||[];
   return `<div class="qa">${list.slice(0,3).map(q=>`<p class="q"><b>Q:</b> ${esc(q.question)} <span class="meta">— ${esc(q.name||"A parent")}</span></p><p class="a"><b>${esc(x.n)}:</b> ${esc(q.answer)}</p>`).join("")}
-    <button class="linkbtn" type="button" data-ask="${esc(slug(x.n))}" style="align-self:flex-start">Ask ${list.length?"another":"a"} question</button>
-    <form class="ask" data-for="${esc(slug(x.n))}" hidden novalidate><textarea maxlength="300" placeholder="e.g. Do you take mid-year families?"></textarea><div class="nrow"><button class="btn sm" type="submit" style="margin-top:0">Send question</button></div><span class="status" role="status"></span></form>
+    <button class="linkbtn" type="button" data-ask="${esc(sid(x))}" style="align-self:flex-start">Ask ${list.length?"another":"a"} question</button>
+    <form class="ask" data-for="${esc(sid(x))}" hidden novalidate><textarea maxlength="300" placeholder="e.g. Do you take mid-year families?"></textarea><div class="nrow"><button class="btn sm" type="submit" style="margin-top:0">Send question</button></div><span class="status" role="status"></span></form>
   </div>`;
 }
 function needSignIn(){ document.getElementById("community").scrollIntoView({behavior:"smooth"}); showSignIn(); }
@@ -926,7 +932,7 @@ document.addEventListener("submit",async e=>{
   const f=e.target; if(!f.matches("form.ask")||f.dataset.job) return; e.preventDefault();
   const st=f.querySelector(".status"), text=f.querySelector("textarea").value.trim(); st.className="status"; st.textContent="Sending…";
   let r;
-  if(f.dataset.for){ const x=L.find(v=>slug(v.n)===f.dataset.for); r=await api("/api/questions",{slug:f.dataset.for,listing:x?x.n:"",question:text});
+  if(f.dataset.for){ const x=L.find(v=>sid(v)===f.dataset.for); r=await api("/api/questions",{slug:f.dataset.for,listing:x?x.n:"",question:text});
     if(r.ok){f.reset(); st.className="status ok"; st.textContent=r.hasLeader?"Sent. The group will answer here, and we'll email you when they do.":"Sent. This group hasn't claimed its listing yet, so an answer may take longer."; return;} }
   else { r=await api("/api/board/reply",{id:Number(f.dataset.post),message:text});
     if(r.ok){f.reset(); st.className="status ok"; st.textContent="Sent. They have your email now and can write back."; return;} }

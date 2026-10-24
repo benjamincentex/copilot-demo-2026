@@ -239,7 +239,7 @@ html{scroll-behavior:smooth}
   <div class="intro">
     <span class="label">For group leaders &amp; vendors</span>
     <h2>Manage your listing</h2>
-    <p>Sign in with your email to claim your group's listing. Once we confirm you lead the group, you can update it anytime and changes go live right away. When you open spots or post a registration date, families waiting on your group get an email.</p>
+    <p>Sign in with your email to claim your group's listing, or create one if you're an independent tutor. Once we confirm you lead the group, you can update it anytime and changes go live right away. When you open spots or post a registration date, families waiting on your group get an email.</p>
   </div>
   <ol class="steps">
     <li>Sign in with a one-time code sent to your email.</li>
@@ -265,6 +265,25 @@ html{scroll-behavior:smooth}
     </div>
     <div class="box" id="qBox" hidden><h2>Questions from families</h2><p class="where" style="margin:0">Your answers show on your listing so other families see them too.</p><div id="qList" class="stack"></div></div>
     <div id="myListings"></div>
+    <div class="box">
+      <h2>Tutor? Create your own listing</h2>
+      <p class="where" style="margin:0">Independent tutors can list themselves for free. It goes live right away, and families can find you by subject and town.</p>
+      <button class="btn ghost" type="button" id="tutorToggle" style="align-self:flex-start">Create a tutor listing</button>
+      <form id="tutorForm" novalidate hidden>
+        <div class="row2">
+          <div class="field"><label for="t-name">Name families will see</label><input id="t-name" maxlength="80" placeholder="e.g. Ms. Rivera Math Tutoring"></div>
+          <div class="field"><label for="t-town">Town</label><input id="t-town" maxlength="40" placeholder="e.g. Cedar Park"></div>
+          <div class="field"><label for="t-subjects">Subjects (separate with commas)</label><input id="t-subjects" maxlength="120" placeholder="e.g. Algebra, Geometry, SAT prep"></div>
+          <div class="field"><label for="t-ages">Ages or grades</label><input id="t-ages" maxlength="40" placeholder="e.g. Grades 6–12"></div>
+          <div class="field"><label for="t-rate">Rate</label><input id="t-rate" maxlength="60" placeholder="e.g. $45/hour"></div>
+          <div class="field"><label for="t-format">Format</label><select id="t-format"><option>In person</option><option>Online</option><option>In person or online</option></select></div>
+        </div>
+        <div class="field" style="margin-top:12px"><label for="t-site">Website (optional)</label><input id="t-site" type="url" maxlength="300" placeholder="https://"></div>
+        <div class="field" style="margin-top:12px"><label for="t-desc">About you</label><textarea id="t-desc" maxlength="600" placeholder="Your background, teaching style and what families can expect"></textarea></div>
+        <div class="formfoot" style="margin-top:12px"><button class="btn" type="submit" style="margin-top:0">Publish my listing</button><span class="status" id="tutorStatus" role="status"></span></div>
+        <p class="where" style="margin:8px 0 0;font-size:13px">Please don't include your phone number or home address. Families contact you through your website or by asking a question on your listing.</p>
+      </form>
+    </div>
     <div class="box" id="pendingBox" hidden><h2>Waiting for approval</h2><div id="pendingList"></div></div>
     <div class="box">
       <h2>Claim a listing</h2>
@@ -294,14 +313,15 @@ async function api(path,data){
 }
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const sid=x=>x.slug||slug(x.n);
 const slug=n=>n.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,120);
 const setStatus=(id,kind,msg)=>{const el=$(id); el.className="status"+(kind?" "+kind:""); el.textContent=msg;};
 
 const AVL={open:"Open spots",waitlist:"Waitlist",full:"Full",opens:"Registration opens soon",unknown:"Not sure / ask us"};
 let me=null, overrides={};
-const bySlug=()=>Object.fromEntries(L.map(x=>[slug(x.n),x]));
-function current(x){const o=overrides[slug(x.n)]||{}; return {...x,...o,avail:o.avail||{s:"unknown",when:""}};}
-$("c-listing").innerHTML=L.slice().sort((a,b)=>a.n.localeCompare(b.n)).map(x=>`<option value="${esc(slug(x.n))}">${esc(x.n)} (${esc(x.town)})${x.test?" · demo":""}</option>`).join("");
+const bySlug=()=>Object.fromEntries(L.map(x=>[sid(x),x]));
+function current(x){const o=overrides[sid(x)]||{}; return {...x,...o,avail:o.avail||{s:"unknown",when:""}};}
+$("c-listing").innerHTML=L.slice().sort((a,b)=>a.n.localeCompare(b.n)).map(x=>`<option value="${esc(sid(x))}">${esc(x.n)} (${esc(x.town)})${x.test?" · demo":""}</option>`).join("");
 const wanted=decodeURIComponent((location.hash||"").slice(1)); if(wanted&&bySlug()[wanted]) $("c-listing").value=wanted;
 
 $("codeForm").addEventListener("submit",async e=>{
@@ -324,7 +344,7 @@ $("verifyForm").addEventListener("submit",async e=>{
 $("logout").addEventListener("click",async()=>{await api("/api/auth/logout",{}); location.reload();});
 
 function editor(x){
-  const id=slug(x.n), c=current(x);
+  const id=sid(x), c=current(x);
   return `<form class="box" data-slug="${esc(id)}" novalidate>
     <h2>${esc(x.n)}</h2><span class="where" style="margin-top:-8px">${esc(x.town)}${x.test?" · demo listing":""}</span>
     <div class="row2">
@@ -359,7 +379,7 @@ $("claimForm").addEventListener("submit",async e=>{
 });
 async function load(){
   const [m,o]=await Promise.all([api("/api/leader/me"),api("/api/listings")]);
-  if(o.ok) overrides=o.overrides||{};
+  if(o.ok){ overrides=o.overrides||{}; (o.custom||[]).forEach(c=>{ if(!L.some(x=>x.slug===c.slug)) L.push(c); }); }
   if(!m.ok||!m.signedIn){$("signinBox").hidden=false;$("account").hidden=true;return;}
   me=m; $("signinBox").hidden=true; loadQs(); $("account").hidden=false; $("whoami").textContent=m.email;
   const map=bySlug();
@@ -380,6 +400,14 @@ document.addEventListener("submit",async e=>{
   const st=f.querySelector(".status"); st.className="status"; st.textContent="Posting…";
   const r=await api("/api/leader/answer",{id:Number(f.dataset.q),answer:f.querySelector("textarea").value.trim()});
   st.className="status "+(r.ok?"ok":"err"); st.textContent=r.ok?"Posted on your listing.":r.error;
+});
+$("tutorToggle").onclick=()=>{$("tutorForm").hidden=!$("tutorForm").hidden;};
+$("tutorForm").addEventListener("submit",async e=>{
+  e.preventDefault(); setStatus("tutorStatus","","Publishing…"); const v=id=>$(id).value.trim();
+  const r=await api("/api/leader/create-listing",{name:v("t-name"),town:v("t-town"),subjects:v("t-subjects"),ages:v("t-ages"),rate:v("t-rate"),format:v("t-format"),site:v("t-site"),description:v("t-desc")});
+  if(!r.ok){setStatus("tutorStatus","err",r.error);return;}
+  e.target.reset(); $("tutorForm").hidden=true; setStatus("tutorStatus","ok","");
+  await load(); const f=document.querySelector(`form[data-slug="${r.slug}"]`); if(f){f.scrollIntoView({behavior:"smooth",block:"start"}); f.querySelector(".status").className="status ok"; f.querySelector(".status").textContent="Your listing is live. Add your availability here anytime.";}
 });
 load().then(()=>{ if(me) loadQs(); });
 </script>

@@ -21,3 +21,5 @@ CREATE TABLE IF NOT EXISTS questions (id INTEGER PRIMARY KEY AUTOINCREMENT, slug
 CREATE INDEX IF NOT EXISTS idx_questions_slug ON questions(slug);
 -- Jobs board: paid "hiring" posts (live once paid, 30 days) and free "seeking a tutor" posts from families (60 days)
 CREATE TABLE IF NOT EXISTS jobs (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT NOT NULL, name TEXT, kind TEXT NOT NULL, title TEXT NOT NULL, org TEXT, town TEXT, pay TEXT, schedule TEXT, details TEXT NOT NULL, apply_link TEXT, status TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now')), expires_at TEXT);
+-- Listings created on the site (independent tutors)
+CREATE TABLE IF NOT EXISTS user_listings (slug TEXT PRIMARY KEY, email TEXT NOT NULL, data TEXT NOT NULL, status TEXT DEFAULT 'live', created_at TEXT DEFAULT (datetime('now')));

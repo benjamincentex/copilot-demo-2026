@@ -133,7 +133,10 @@ const routes = {
     const { results } = await env.DB.prepare("SELECT slug, data FROM listing_overrides").all();
     const out = {};
     for (const r of results) { try { out[r.slug] = JSON.parse(r.data); } catch {} }
-    return json({ overrides: out });
+    const { results: made } = await env.DB.prepare("SELECT slug, data FROM user_listings WHERE status='live' ORDER BY created_at").all();
+    const custom = [];
+    for (const r of made) { try { custom.push({ ...JSON.parse(r.data), slug: r.slug }); } catch {} }
+    return json({ overrides: out, custom });
   },
 
   "POST /api/submissions": async (req, env) => {
@@ -476,6 +479,43 @@ const routes = {
     } else if (b.action === "remove") {
       await env.DB.prepare("UPDATE jobs SET status='removed' WHERE id=?").bind(id).run();
     } else return bad("Unknown action.");
+    return json({ ok: true });
+  },
+
+
+  "POST /api/leader/create-listing": async (req, env) => {
+    const email = await leaderEmail(req, env); if (!email) return bad("Sign in first.", 401);
+    const b = await body(req) || {};
+    const n = clip(b.name, 80), town = clip(b.town, 40), d = clip(b.description, 600), subjects = clip(b.subjects, 120);
+    if (!n) return bad("Add your name or business name.");
+    if (!town) return bad("Add the town you're based in.");
+    if (!subjects) return bad("List the subjects you teach.");
+    if (d.length < 30) return bad("Add a description of at least a couple of sentences.");
+    const site = clip(b.site, 300); if (site && !/^https?:\/\//i.test(site)) return bad("The website should start with https://");
+    const problem = privacyProblem(d + " " + n); if (problem) return bad(problem);
+    const mine = await env.DB.prepare("SELECT COUNT(*) AS n FROM user_listings WHERE email=? AND status='live'").bind(email).first();
+    if (mine.n >= 3) return bad("You can create up to 3 listings.");
+    const base = n.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "tutor";
+    const slug = base + "-" + randomToken(2);
+    const format = ["In person", "Online", "In person or online"].includes(b.format) ? b.format : "";
+    const data = { n, town, type: "tutor", tags: subjects.split(/[,;/]+/).map((t) => t.trim()).filter(Boolean).slice(0, 6), days: [],
+      ages: clip(b.ages, 40), cost: clip(b.rate, 60), sched: format, d, site };
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO user_listings (slug, email, data) VALUES (?,?,?)").bind(slug, email, JSON.stringify(data)),
+      env.DB.prepare("INSERT OR REPLACE INTO listing_owners (slug, email, name, role, approved_at) VALUES (?,?,?,?,?)").bind(slug, email, n, "tutor", new Date().toISOString()),
+      env.DB.prepare("INSERT INTO listing_overrides (slug, data, updated_at, updated_by) VALUES (?,?,?,?) ON CONFLICT(slug) DO NOTHING").bind(slug, JSON.stringify({ claimed: true }), new Date().toISOString(), email),
+    ]);
+    return json({ ok: true, slug });
+  },
+
+  "GET /api/admin/user-listings": async (req, env) => {
+    const { results } = await env.DB.prepare("SELECT slug, email, data, created_at FROM user_listings WHERE status='live' ORDER BY created_at DESC LIMIT 100").all();
+    return json({ listings: results.map((r) => ({ ...r, data: JSON.parse(r.data) })) });
+  },
+
+  "POST /api/admin/user-listings/remove": async (req, env) => {
+    const b = await body(req); const slug = clip(b && b.slug, 140);
+    await env.DB.prepare("UPDATE user_listings SET status='removed' WHERE slug=?").bind(slug).run();
     return json({ ok: true });
   },
 
