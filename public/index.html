@@ -126,6 +126,9 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .tag{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:2px 7px}
 .card.flash{outline:3px solid var(--sun);outline-offset:2px;transition:outline-color .4s}
 @media (prefers-reduced-motion:reduce){.card.flash{transition:none}}
+.contact{display:flex;gap:14px;flex-wrap:wrap;font-size:14px;font-weight:600}
+.contact a{color:var(--bonnet)}
+.contact span{color:var(--ink);font-variant-numeric:tabular-nums}
 .card .foot{margin-top:auto;display:flex;justify-content:space-between;align-items:center;gap:10px;padding-top:10px;border-top:1px dashed var(--line);font-size:13px;color:var(--muted)}
 .empty{padding:40px 0;color:var(--muted)}
 
@@ -546,40 +549,40 @@ html{scroll-behavior:smooth}
 const STRIPE_LINKS = { featured: "", sponsor: "" };
 
 const L = [
- {n:"Monarch Classical",town:"Cedar Park",type:"coop",tags:["Christian","Classical"],days:[],sched:"One morning a week",d:"Affordable, cooperative classical learning in a Christian setting."},
- {n:"Coram Deo Classical Co-op",town:"Cedar Park",type:"coop",tags:["Classical"],days:[],d:"A community of learners pursuing truth, wisdom and virtue through classical education."},
- {n:"Classical Christian Home School of Austin (CCHSA)",town:"Cedar Park",type:"class",tags:["Christian","Classical"],ages:"K–12",days:[],sched:"One day a week",d:"One-day-a-week program built to support learning at home, with a college-prep focus in the upper grades."},
- {n:"Lake Travis STEM Academy Enrichment",town:"Cedar Park",type:"class",tags:["STEM","Arts"],days:["Fri"],sched:"Fridays + summer camps",d:"Classes in game design, programming, digital photo and video, digital music, fine art and Minecraft modding."},
- {n:"Apogee Cedar Park",town:"Cedar Park",type:"micro",tags:[],ages:"Pre-K–8",cost:"About $1,400/month",days:[],d:"Microschool option for families wanting a full-time small-group setting."},
+ {n:"Monarch Classical",site:"https://www.monarchclassical.org/",town:"Cedar Park",type:"coop",tags:["Christian","Classical"],days:[],sched:"One morning a week",d:"Affordable, cooperative classical learning in a Christian setting."},
+ {n:"Coram Deo Classical Co-op",site:"https://www.homeschool-life.com/tx/coramdeo/",town:"Cedar Park",type:"coop",tags:["Classical"],days:[],d:"A community of learners pursuing truth, wisdom and virtue through classical education."},
+ {n:"Classical Christian Home School of Austin (CCHSA)",site:"https://www.classicalchristianaustin.com",town:"Cedar Park",type:"class",tags:["Christian","Classical"],ages:"K–12",days:[],sched:"One day a week",d:"One-day-a-week program built to support learning at home, with a college-prep focus in the upper grades."},
+ {n:"Lake Travis STEM Academy Enrichment",site:"https://www.ltstemacademy.org",town:"Cedar Park",type:"class",tags:["STEM","Arts"],days:["Fri"],sched:"Fridays + summer camps",d:"Classes in game design, programming, digital photo and video, digital music, fine art and Minecraft modding."},
+ {n:"Apogee Cedar Park",site:"https://www.facebook.com/apogeecedarpark/",town:"Cedar Park",type:"micro",tags:[],ages:"Pre-K–8",cost:"About $1,400/month",days:[],d:"Microschool option for families wanting a full-time small-group setting."},
  {n:"REACH Math & Science Academy",town:"Cedar Park",also:["Round Rock","Austin"],type:"class",tags:["STEM"],days:["Tue","Wed","Thu"],sched:"Round Rock Tue · South Austin Wed · Cedar Park Thu",d:"Math and science classes for homeschoolers at three locations around the metro."},
- {n:"GRACE Co-op",town:"Georgetown",type:"coop",tags:["Christian"],ages:"Pre-K–12",cost:"From $200",days:["Fri"],sched:"Fridays",d:"Georgetown Regional Area Christian Educators. Academic, creative and physical classes. Families apply and interview."},
- {n:"Georgetown Homeschool Group",town:"Georgetown",type:"group",tags:["Christian"],ages:"Pre-K–12",cost:"Class fees vary",days:[],d:"Christian group blending learning, fun and personal growth."},
+ {n:"GRACE Co-op",site:"https://www.homeschool-life.com/tx/grace/",town:"Georgetown",type:"coop",tags:["Christian"],ages:"Pre-K–12",cost:"From $200",days:["Fri"],sched:"Fridays",d:"Georgetown Regional Area Christian Educators. Academic, creative and physical classes. Families apply and interview."},
+ {n:"Georgetown Homeschool Group",site:"https://www.facebook.com/p/Georgetown-Homeschool-Group-100070888959397/",town:"Georgetown",type:"group",tags:["Christian"],ages:"Pre-K–12",cost:"Class fees vary",days:[],d:"Christian group blending learning, fun and personal growth."},
  {n:"Scholé Hall",town:"Georgetown",type:"coop",tags:["Classical"],ages:"Pre-K–12",cost:"Class fees vary",days:[],d:"Classical approach. Co-op activities for younger kids; à la carte classes for older students."},
- {n:"WATCH Co-op",town:"Georgetown",type:"coop",tags:["Christian"],days:["Fri"],sched:"Fridays",d:"Williamson Area Teachers of Christian Homeschoolers. Parent-led Friday classes in academics, arts and PE."},
- {n:"Round Rock/Georgetown Homeschool Swim",town:"Georgetown",type:"class",tags:["Sports"],days:[],d:"Swim classes organized for homeschool students."},
- {n:"Code Ninjas Georgetown",town:"Georgetown",type:"class",tags:["STEM"],days:[],d:"Coding, Roblox and robotics classes open to homeschool families."},
- {n:"Georgetown Public Library: Homeschool Happenings",town:"Georgetown",type:"class",tags:["Free"],cost:"Free",days:[],d:"Library programs scheduled for homeschoolers."},
- {n:"Round Rock HOME",town:"Round Rock",type:"group",tags:["Christian"],days:[],d:"Round Rock Home-Educators Offering Moms Encouragement, a support group for homeschooling parents."},
- {n:"Austin Area Homeschoolers (AAH)",town:"Austin",type:"group",tags:["Secular"],days:[],d:"The oldest and largest secular homeschool organization in Austin, with several hundred families. A common first stop."},
- {n:"AAH Friday Co-op",town:"Austin",type:"coop",tags:["Secular"],ages:"K–12",cost:"Low: membership + class fees",days:["Fri"],sched:"Fridays",d:"Inclusive once-a-week co-op. Every parent helps by teaching, assisting or handling admin."},
+ {n:"WATCH Co-op",site:"https://watchco-op.yolasite.com",town:"Georgetown",type:"coop",tags:["Christian"],days:["Fri"],sched:"Fridays",d:"Williamson Area Teachers of Christian Homeschoolers. Parent-led Friday classes in academics, arts and PE."},
+ {n:"Round Rock/Georgetown Homeschool Swim",site:"https://www.swim-for-all.com/",town:"Georgetown",type:"class",tags:["Sports"],days:[],d:"Swim classes organized for homeschool students."},
+ {n:"Code Ninjas Georgetown",site:"https://www.facebook.com/CodeNinjasGeorgetown/",town:"Georgetown",type:"class",tags:["STEM"],days:[],d:"Coding, Roblox and robotics classes open to homeschool families."},
+ {n:"Georgetown Public Library: Homeschool Happenings",site:"https://www.facebook.com/GeorgetownTexasLibrary/",town:"Georgetown",type:"class",tags:["Free"],cost:"Free",days:[],d:"Library programs scheduled for homeschoolers."},
+ {n:"Round Rock HOME",site:"https://www.homeschoolinginroundrock.net/",town:"Round Rock",type:"group",tags:["Christian"],days:[],d:"Round Rock Home-Educators Offering Moms Encouragement, a support group for homeschooling parents."},
+ {n:"Austin Area Homeschoolers (AAH)",site:"https://www.facebook.com/groups/austinareahomeschoolers",town:"Austin",type:"group",tags:["Secular"],days:[],d:"The oldest and largest secular homeschool organization in Austin, with several hundred families. A common first stop."},
+ {n:"AAH Friday Co-op",site:"https://sites.google.com/site/aahfridaycoopinfo/",town:"Austin",type:"coop",tags:["Secular"],ages:"K–12",cost:"Low: membership + class fees",days:["Fri"],sched:"Fridays",d:"Inclusive once-a-week co-op. Every parent helps by teaching, assisting or handling admin."},
  {n:"Austin Monday Co-op",town:"Austin",type:"coop",tags:["Secular"],ages:"K–12",cost:"Low",days:["Mon"],sched:"Mondays",d:"Parent-taught co-op connected with 4-H."},
- {n:"Agora Community",town:"Austin",type:"class",tags:["Secular"],ages:"5+",cost:"Per-class tuition",days:[],d:"Discussion-based classes, a strong fit for intellectually curious teens."},
- {n:"SPARK Austin",town:"Austin",type:"coop",tags:["Secular","Nature-based"],ages:"K–8",cost:"Membership + class fees",days:["Mon","Thu"],sched:"Mondays & Thursdays",d:"Nature-based enrichment co-op."},
- {n:"The Hedge School Cooperative",town:"Austin",type:"coop",tags:["Secular"],ages:"Grades 8–12",days:[],d:"Inclusive, secular co-op for teens, meeting at Still Waters Retreat Center."},
- {n:"Vine Classical Community",town:"Austin",type:"coop",tags:["Christian","Classical"],days:["Tue"],sched:"Tuesdays, 25 weeks",d:"Scholé group in central Austin, with a 7th-grade Bridge program and à la carte classes for grades 8–11 through sister community Manna."},
- {n:"Studio Preparatory",town:"Austin",type:"micro",tags:["Christian"],ages:"Elementary–high school",days:[],sched:"Three days a week",d:"Acton Academy affiliate (formerly Acton Imprimis). Christian nonprofit serving families of all faiths."},
- {n:"AHB Community School",town:"Austin",type:"micro",tags:["Arts"],ages:"K–8",days:[],sched:"Three-day core program",d:"Hybrid homeschool with thematic, hands-on learning and social-emotional learning."},
- {n:"Austin Micro School",town:"Austin",type:"micro",tags:[],cost:"Hybrid from about $5,000/yr",days:["Mon","Tue","Wed","Thu","Fri"],sched:"Full-time or 1–3 day hybrid",d:"South Austin / Manchaca. Hybrid families get weekly learning plans and teacher support."},
- {n:"Austin Rising School",town:"Austin",type:"coop",tags:[],ages:"K–6",days:[],sched:"Two days a week",d:"Homeschool co-op for elementary students."},
- {n:"Holy Family Homeschoolers of Greater Austin",town:"Austin",type:"group",tags:["Catholic"],days:[],d:"Catholic support group: field trips, co-ops, park days, rosaries and a Blessing Mass."},
+ {n:"Agora Community",site:"https://www.facebook.com/agoracommunityfb/",town:"Austin",type:"class",tags:["Secular"],ages:"5+",cost:"Per-class tuition",days:[],d:"Discussion-based classes, a strong fit for intellectually curious teens."},
+ {n:"SPARK Austin",site:"https://sparkhomeschool.org/",town:"Austin",type:"coop",tags:["Secular","Nature-based"],ages:"K–8",cost:"Membership + class fees",days:["Mon","Thu"],sched:"Mondays & Thursdays",d:"Nature-based enrichment co-op."},
+ {n:"The Hedge School Cooperative",site:"https://www.hedgeschoolcoop.com",town:"Austin",type:"coop",tags:["Secular"],ages:"Grades 8–12",days:[],d:"Inclusive, secular co-op for teens, meeting at Still Waters Retreat Center."},
+ {n:"Vine Classical Community",site:"https://www.facebook.com/vineclassicalcommunity/",town:"Austin",type:"coop",tags:["Christian","Classical"],days:["Tue"],sched:"Tuesdays, 25 weeks",d:"Scholé group in central Austin, with a 7th-grade Bridge program and à la carte classes for grades 8–11 through sister community Manna."},
+ {n:"Studio Preparatory",site:"https://studioprep.org/",town:"Austin",type:"micro",tags:["Christian"],ages:"Elementary–high school",days:[],sched:"Three days a week",d:"Acton Academy affiliate (formerly Acton Imprimis). Christian nonprofit serving families of all faiths."},
+ {n:"AHB Community School",site:"https://ahbcs.org",town:"Austin",type:"micro",tags:["Arts"],ages:"K–8",days:[],sched:"Three-day core program",d:"Hybrid homeschool with thematic, hands-on learning and social-emotional learning."},
+ {n:"Austin Micro School",site:"https://www.austinmicroschool.org",town:"Austin",type:"micro",tags:[],cost:"Hybrid from about $5,000/yr",days:["Mon","Tue","Wed","Thu","Fri"],sched:"Full-time or 1–3 day hybrid",d:"South Austin / Manchaca. Hybrid families get weekly learning plans and teacher support."},
+ {n:"Austin Rising School",site:"https://www.facebook.com/AustinRisingSchoolHomeschool/",town:"Austin",type:"coop",tags:[],ages:"K–6",days:[],sched:"Two days a week",d:"Homeschool co-op for elementary students."},
+ {n:"Holy Family Homeschoolers of Greater Austin",site:"https://groups.io/g/hfh",town:"Austin",type:"group",tags:["Catholic"],days:[],d:"Catholic support group: field trips, co-ops, park days, rosaries and a Blessing Mass."},
  {n:"Catholic Family Educators of Central Texas",town:"Austin",also:["San Marcos","Waco"],type:"group",tags:["Catholic"],days:[],d:"Listings of Catholic support groups and suppliers, plus a small annual convention."},
  {n:"GROW Homeschool Group",town:"Austin",type:"group",tags:["Christian","Charlotte Mason"],ages:"K–8 co-op",cost:"Membership",days:[],d:"Christian nonprofit serving Austin since 2013: play dates, field trips, service projects, moms' fellowship and a Charlotte Mason co-op."},
- {n:"Forge Christian Homeschool Community",town:"Austin",type:"group",tags:["Christian"],days:[],d:"Christian homeschool community offering academic enrichment."},
- {n:"TREA",town:"Austin",type:"class",tags:["Christian"],ages:"Pre-K–12",cost:"Per course",days:[],sched:"Up to 4 days a week",d:"Christian enrichment classes."},
- {n:"One Day Academy",town:"Austin",type:"micro",tags:["Christian"],ages:"K–12",cost:"Monthly tuition",days:[],sched:"One day a week",d:"Christian hybrid program."},
- {n:"Standards of Excellence",town:"Austin",type:"class",tags:[],days:[],d:"Classes, tutorials and academic fairs for Austin-area homeschoolers."},
- {n:"Starry Sky Austin",town:"Austin",type:"class",tags:["STEM"],ages:"8+",days:[],d:"Astronomy classes, day and night, under real skies."},
- {n:"Austin Youth Orchestra",town:"Austin",type:"class",tags:["Arts"],days:[],d:"Intensive orchestral training with regular performances."},
+ {n:"Forge Christian Homeschool Community",site:"https://www.homeschool-life.com/tx/forge/",town:"Austin",type:"group",tags:["Christian"],days:[],d:"Christian homeschool community offering academic enrichment."},
+ {n:"TREA",site:"https://therockenrichmentacademy.org/",town:"Austin",type:"class",tags:["Christian"],ages:"Pre-K–12",cost:"Per course",days:[],sched:"Up to 4 days a week",d:"Christian enrichment classes."},
+ {n:"One Day Academy",site:"https://www.onedayacademy.com/",town:"Austin",type:"micro",tags:["Christian"],ages:"K–12",cost:"Monthly tuition",days:[],sched:"One day a week",d:"Christian hybrid program."},
+ {n:"Standards of Excellence",site:"https://txsoe.com/",town:"Austin",type:"class",tags:[],days:[],d:"Classes, tutorials and academic fairs for Austin-area homeschoolers."},
+ {n:"Starry Sky Austin",site:"https://www.starryskyaustin.com/",town:"Austin",type:"class",tags:["STEM"],ages:"8+",days:[],d:"Astronomy classes, day and night, under real skies."},
+ {n:"Austin Youth Orchestra",site:"https://www.austinyouthorchestra.org/",town:"Austin",type:"class",tags:["Arts"],days:[],d:"Intensive orchestral training with regular performances."},
  {n:"SECTX Homeschool",town:"Bastrop area",type:"group",tags:["Secular","Gifted / 2e"],days:[],d:"Inclusive secular community for families of gifted and twice-exceptional kids, serving Fayette, Bastrop, Caldwell and nearby counties."}
 ];
 
@@ -619,7 +622,7 @@ function card(x){
       <div class="nrow"><input type="email" placeholder="you@example.com" maxlength="160" aria-label="Email for alerts"><button class="btn" type="submit">Alert me</button></div>
       <span class="status" role="status"></span>
     </form>
-    ${x.site?`<a class="where" href="${esc(x.site)}" target="_blank" rel="noopener" data-site="${esc(slug(x.n))}">Visit website</a>`:""}
+    ${x.site||x.phone?`<div class="contact">${x.site?`<a href="${esc(x.site)}" target="_blank" rel="noopener" data-site="${esc(slug(x.n))}">${/facebook\.com/i.test(x.site)?"Facebook page":"Visit website"} ↗</a>`:""}${x.phone?`<span>${esc(x.phone)}</span>`:""}</div>`:""}
     <div class="foot">${x.claimed?`<span class="claimed">Updated by the group</span><button class="linkbtn" type="button" data-claim="${esc(x.n)}">Update listing</button>`:`<span>Unclaimed</span><button class="linkbtn" type="button" data-claim="${esc(x.n)}">Is this yours? Claim it</button>`}</div>
   </article>`;
 }
