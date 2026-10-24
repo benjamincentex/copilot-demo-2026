@@ -951,7 +951,13 @@ $("calPrev").onclick=()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getM
 $("calNext").onclick=()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+1,1);calDay=null;renderCalendar();};
 $("calGrid").addEventListener("click",e=>{const b=e.target.closest("[data-day]"); if(!b) return; calDay=calDay===b.dataset.day?null:b.dataset.day; renderCalendar();});
 async function loadEvents(){
-  const r=await api("/api/events"); EVENTS=(r.ok&&r.events)||[]; renderCalendar();
+  const r=await api("/api/events"); EVENTS=(r.ok&&r.events)||[];
+  if(!r.ok) console.error("Calendar couldn't load events:", r.error);
+  // Open on the month of the next upcoming event when this month has none.
+  const now=new Date(), key=ymd(now), next=EVENTS.find(ev=>ev.event_date>=key);
+  const thisMonth=key.slice(0,7);
+  if(next && !EVENTS.some(ev=>ev.event_date.slice(0,7)===thisMonth && ev.event_date>=key)){ const [y,m]=next.event_date.split("-").map(Number); calMonth=new Date(y,m-1,1); }
+  renderCalendar();
 }
 document.addEventListener("click",async e=>{
   const ask=e.target.closest("[data-ask]"), rep=e.target.closest("[data-reply]"), rm=e.target.closest("[data-remove]");
