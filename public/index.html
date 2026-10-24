@@ -101,6 +101,14 @@ form.notify p{font-size:13px;margin:0;color:var(--muted)}
 .newsperks{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
 .newsform{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:20px;display:flex;flex-direction:column;gap:12px;min-width:0}
 @media (max-width:780px){.newsband{grid-template-columns:1fr;padding:20px}}
+/* tefa resources */
+.tefa-status{margin-top:16px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;background:var(--bonnet-soft);border-color:var(--bonnet)}
+.tefa-h{font-size:22px;margin:24px 0 12px}
+.tefa-links{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+.tefa-links a{display:flex;flex-direction:column;gap:4px;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);text-decoration:none;color:var(--ink)}
+.tefa-links a:hover{border-color:var(--oak)}
+.tefa-links b{color:var(--bonnet)}
+.tefa-links span{font-size:14px;color:var(--muted)}
 /* search + filters */
 .finder{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:12px;border-bottom:1px solid var(--line)}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
@@ -387,9 +395,25 @@ html{scroll-behavior:smooth}
           <li>A filter to show only classes and tutors you can pay for with TEFA funds.</li>
           <li>Reminders before the next application window opens.</li>
         </ul>
-        <p class="where" style="margin-top:12px">Rules and amounts can change. Always confirm on the Texas Comptroller's official TEFA site before you spend.</p>
+        <p class="where" style="margin-top:12px">Rules and amounts can change. Always confirm on the official TEFA site before you spend.</p>
       </div>
     </div>
+    <div class="panel tefa-status">
+      <b>Where things stand:</b> the 2026–27 application window closed March 31, 2026. No date has been announced for 2027–28 yet. Join the state's interest list to hear when it opens.
+      <a class="btn" href="https://educationfreedom.texas.gov/interest-list/" target="_blank" rel="noopener" style="margin-top:0">Join the 2027–28 interest list ↗</a>
+    </div>
+    <h3 class="tefa-h">Official TEFA resources</h3>
+    <div class="tefa-links">
+      <a href="https://educationfreedom.texas.gov/" target="_blank" rel="noopener"><b>TEFA official site ↗</b><span>Eligibility, FAQs and program news from the Texas Comptroller</span></a>
+      <a href="https://educationfreedom.texas.gov/families/" target="_blank" rel="noopener"><b>Information for families ↗</b><span>How accounts work and what to expect after approval</span></a>
+      <a href="https://educationfreedom.texas.gov/families/#approved-expenses" target="_blank" rel="noopener"><b>What you can spend it on ↗</b><span>The official list of approved education expenses</span></a>
+      <a href="https://finder.educationfreedom.texas.gov/" target="_blank" rel="noopener"><b>Find approved providers ↗</b><span>Search the schools, tutors and services that accept TEFA</span></a>
+      <a href="https://educationfreedom.texas.gov/wp-content/uploads/2026/02/TEFA-Parent-Application-Guide.pdf" target="_blank" rel="noopener"><b>Parent application guide ↗</b><span>Step-by-step guide to applying (PDF)</span></a>
+      <a href="https://support.withodyssey.com/hc/en-us/categories/44027751004699-Texas-Education-Freedom-Accounts-Program" target="_blank" rel="noopener"><b>Account and payment help ↗</b><span>Support from Odyssey, the company that runs the family portal</span></a>
+      <a href="https://educationfreedom.texas.gov/events" target="_blank" rel="noopener"><b>Webinars and events ↗</b><span>Info sessions from the program</span></a>
+      <a href="https://educationfreedom.texas.gov/contact-us/" target="_blank" rel="noopener"><b>Contact the program ↗</b><span>Questions about your application or account</span></a>
+    </div>
+    <p class="where" style="margin-top:12px">CenTex Homeschool Hub isn't affiliated with the TEFA program. Links go to official state pages or the state's program partner.</p>
   </section>
 
   <section id="plans">
