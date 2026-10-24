@@ -482,7 +482,7 @@ html{scroll-behavior:smooth}
       <h2>Teach, tutor or find help</h2>
       <p>Co-ops, microschools and education businesses post openings for teachers and tutors. Families post when they're looking for a tutor. Responses come through the site, so nobody's contact details are shown.</p>
     </div>
-    <div class="colhead"><span class="meta">Families can post tutor requests for free.</span><button class="btn sm" type="button" id="newJobBtn" style="margin-top:0">Post a job or tutor request</button></div>
+    <div class="colhead"><span>Hiring a teacher, or are you a tutor for hire? <a href="/leaders.html">Tutors can create a free listing.</a></span><button class="btn sm" type="button" id="newJobBtn" style="margin-top:0">Post a job or tutor request</button></div>
     <form class="box2" id="jobForm" novalidate hidden>
       <div class="field"><label for="j-kind">I'm</label><select id="j-kind"><option value="hiring">Hiring for a co-op, school or business ($39 for 30 days)</option><option value="seeking">A parent looking for a tutor (free)</option></select></div>
       <div class="row2">
@@ -1003,7 +1003,7 @@ async function loadJobs(){
   const r=await api("/api/jobs"); const jobs=(r.ok&&r.jobs)||[], waiting=(r.ok&&r.awaitingPayment)||[];
   $("jobNotice").innerHTML=waiting.length?`<div class="emptynote" style="margin-bottom:12px">Your hiring post${waiting.length>1?"s are":" is"} saved and will go live once payment is received${STRIPE_LINKS.job?"":". We'll email you a payment link"}.</div>`:"";
   const h=jobs.filter(j=>j.kind==="hiring"), s2=jobs.filter(j=>j.kind==="seeking");
-  $("hiringList").innerHTML=h.length?h.map(jobCard).join(""):`<div class="emptynote">No openings posted yet. Hiring a teacher or tutor? Post it here.</div>`;
+  $("hiringList").innerHTML=h.length?h.map(jobCard).join(""):`<div class="emptynote">No openings posted yet. Hiring a teacher, or are you a tutor for hire? Post a job here, or <a href="/leaders.html">create a free tutor listing</a>.</div>`;
   $("seekingList").innerHTML=s2.length?s2.map(jobCard).join(""):`<div class="emptynote">No tutor requests yet. Parents can post for free.</div>`;
 }
 document.addEventListener("click",async e=>{
