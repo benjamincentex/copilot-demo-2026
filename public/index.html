@@ -478,11 +478,11 @@ html{scroll-behavior:smooth}
         </ul>
       </div>
       <div class="panel">
-        <h3 style="font-size:22px">Coming to this directory</h3>
+        <h3 style="font-size:22px">Before you spend TEFA funds</h3>
         <ul>
-          <li>A <b>TEFA-approved</b> badge on vendors we've checked against the state's provider list.</li>
-          <li>A filter to show only classes and tutors you can pay for with TEFA funds.</li>
-          <li>Reminders before the next application window opens.</li>
+          <li>Check that the tutor, class or program is approved using the state's <a href="https://finder.educationfreedom.texas.gov/" target="_blank" rel="noopener">provider finder</a>.</li>
+          <li>Ask the provider whether they accept payment through the TEFA family portal.</li>
+          <li>Sign up for our monthly newsletter for a reminder when the next application window opens.</li>
         </ul>
         <p class="where" style="margin-top:12px">Rules and amounts can change. Always confirm on the official TEFA site before you spend.</p>
       </div>
@@ -508,41 +508,44 @@ html{scroll-behavior:smooth}
   <section id="plans">
     <div class="intro">
       <span class="label">For groups &amp; vendors</span>
-      <h2>Get in front of local homeschool families</h2>
-      <p>Co-ops and parent-run groups are always free. Tutors, classes, camps and curriculum sellers can upgrade to reach families looking for exactly what they offer.</p>
+      <h2>Show families what you offer</h2>
+      <p>Every listing is free, and every listing appears in the same order for every family. Tutors, classes and programs can upgrade to add photos, a class schedule and a sign-up button, so families can see what you offer and enroll in one click.</p>
     </div>
     <div class="plans">
       <div class="plan">
-        <span class="label">Groups &amp; co-ops</span>
+        <span class="label">Basic listing</span>
         <div class="price">Free</div>
         <ul>
-          <li>Full listing with meeting days, ages and cost</li>
-          <li>Claim and edit your page anytime</li>
-          <li>Post events to the calendar</li>
+          <li>Description, ages, meeting days, cost and website</li>
+          <li>Availability status and opening alerts to waiting families</li>
+          <li>Answer families' questions on your listing</li>
+          <li>Post events to the community calendar</li>
         </ul>
-        <a class="btn ghost" href="#submit" data-kind="Add a free listing">List your group</a>
+        <a class="btn ghost" href="/leaders.html">Claim your free listing</a>
       </div>
       <div class="plan featured">
-        <span class="label">Featured vendor</span>
-        <div class="price">$29<small> / month</small></div>
+        <span class="label">Enhanced listing</span>
+        <div class="price">$19<small> / month</small></div>
         <ul>
-          <li>Top placement in your town and category</li>
-          <li>Photos, class schedule and sign-up link</li>
-          <li>TEFA-approved badge once verified</li>
-          <li>A mention in the monthly family newsletter</li>
+          <li>Everything in Basic</li>
+          <li>Photo gallery, up to 6 photos</li>
+          <li>Class schedule with days, times, ages and prices</li>
+          <li>A "Sign up" button that goes straight to your registration page</li>
+          <li>Longer description</li>
         </ul>
-        <button class="btn" type="button" data-plan="featured">Become a featured vendor</button>
+        <button class="btn" type="button" data-plan="enhanced">Get an Enhanced listing</button>
       </div>
       <div class="plan">
-        <span class="label">Founding sponsor</span>
-        <div class="price">$99<small> / month</small></div>
+        <span class="label">Partner</span>
+        <div class="price">$49<small> / month</small></div>
         <ul>
-          <li>Everything in Featured</li>
-          <li>Sponsor banner on a town page</li>
-          <li>Featured spot in every monthly newsletter</li>
-          <li>Limited to 10 founding sponsors</li>
+          <li>Everything in Enhanced</li>
+          <li>A feature in the monthly newsletter each quarter</li>
+          <li>Your events mentioned in the newsletter</li>
+          <li>Monthly results report: views, clicks and questions</li>
+          <li>Up to 3 listings for multiple locations or programs</li>
         </ul>
-        <button class="btn ghost" type="button" data-plan="sponsor">Become a sponsor</button>
+        <button class="btn ghost" type="button" data-plan="partner">Become a Partner</button>
       </div>
     </div>
   </section>
@@ -560,8 +563,8 @@ html{scroll-behavior:smooth}
           <option>Add a free listing</option>
           <option>Claim or correct a listing</option>
           <option>Add an event</option>
-          <option>Become a featured vendor</option>
-          <option>Become a sponsor</option>
+          <option>Get an Enhanced listing</option>
+          <option>Become a Partner</option>
         </select>
       </div>
       <div class="field">
@@ -619,7 +622,7 @@ html{scroll-behavior:smooth}
 <script src="/listings.js"></script>
 <script>
 // Stripe Payment Links: paste each link here once created in the Stripe dashboard.
-const STRIPE_LINKS = { featured: "", sponsor: "" };
+const STRIPE_LINKS = { enhanced: "", partner: "" };
 
 // Listings live in /listings.js so the leader page shares them.
 
@@ -795,7 +798,7 @@ async function recordDemand(res){
 document.querySelectorAll("[data-plan]").forEach(b=>b.addEventListener("click",()=>{
   const link=STRIPE_LINKS[b.dataset.plan];
   if(link){window.location.href=link;return;}
-  goForm(b.dataset.plan==="featured"?"Become a featured vendor":"Become a sponsor");
+  goForm(b.dataset.plan==="enhanced"?"Get an Enhanced listing":"Become a Partner");
 }));
 document.querySelectorAll("[data-kind]").forEach(a=>a.addEventListener("click",e=>{e.preventDefault();goForm(a.dataset.kind);}));
 
