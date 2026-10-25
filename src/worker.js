@@ -125,6 +125,7 @@ const paidOn = (env) => env.PAID_PLANS === "1";
 
 // Free listings get a 75-character description; Featured listings get up to 2,000.
 const DESC_FREE = 75, DESC_FEATURED = 2000;
+const FREE_EVENT_LIMIT = 2; // upcoming calendar events per free listing (Featured: unlimited)
 function cleanFields(f, dMax = DESC_FREE) {
   f = f || {};
   const fields = {};
@@ -355,6 +356,15 @@ const routes = {
     const b = await body(req) || {}; const slug = clip(b.slug, 140);
     const owned = await env.DB.prepare("SELECT 1 FROM listing_owners WHERE slug=? AND email=?").bind(slug, email).first();
     if (!owned) return bad("You can only add events for listings you manage.", 403);
+    // Featured plan perk: unlimited calendar events. Free listings get FREE_EVENT_LIMIT upcoming events (only enforced when paid plans are on).
+    if (paidOn(env)) {
+      const ov = await env.DB.prepare("SELECT data FROM listing_overrides WHERE slug=?").bind(slug).first();
+      const plan = ov ? (JSON.parse(ov.data).plan || "") : "";
+      if (!["featured", "partner", "enhanced"].includes(plan)) {
+        const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM events WHERE slug=? AND source='leader' AND status='approved' AND event_date >= date('now')").bind(slug).first();
+        if (n.n >= FREE_EVENT_LIMIT) return bad(`Free listings can have ${FREE_EVENT_LIMIT} upcoming events on the calendar at a time. Featured listings can add as many as they like.`);
+      }
+    }
     const title = clip(b.title, 100), date = clip(b.date, 10), link = clip(b.link, 300), details = clip(b.details, 500);
     if (!title) return bad("Add a title for the event.");
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return bad("Pick the event date.");
