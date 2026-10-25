@@ -120,6 +120,16 @@ form.notify p{font-size:13px;margin:0;color:var(--muted)}
 .faq details{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:0 16px}
 .faq summary{cursor:pointer;font-weight:600;padding:14px 0;list-style-position:outside}
 .faq details p{margin:0 0 14px;color:var(--ink);font-size:15px}
+[data-view][hidden]{display:none!important}
+nav.links a[aria-current="page"]{color:var(--oak);text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:6px}
+.pagehead{padding-block:28px 4px}
+.pagehead h1{font-size:clamp(30px,4.4vw,44px)}
+.pagehead p{color:var(--muted);margin:8px 0 0;max-width:62ch}
+.explore{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.explore a{display:flex;flex-direction:column;gap:4px;padding:18px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);text-decoration:none;color:var(--ink)}
+.explore a:hover{border-color:var(--oak)}
+.explore b{font-family:var(--display);font-weight:400;font-size:20px;color:var(--oak)}
+.explore span{font-size:14px;color:var(--muted)}
 .tefa-h{font-size:22px;margin:24px 0 12px}
 .tefa-links{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
 .tefa-links a{display:flex;flex-direction:column;gap:4px;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);text-decoration:none;color:var(--ink)}
@@ -299,29 +309,29 @@ html{scroll-behavior:smooth}
 
 <div class="wrap">
 <header class="top">
-  <a class="brand" href="#directory" aria-label="CenTex Homeschool Hub home">
+  <a class="brand" href="/" aria-label="CenTex Homeschool Hub home">
     <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="14" fill="var(--oak)"/><path d="M15 23V12M15 15c-3 0-5-2-5-5 3 0 5 2 5 5zm0 2c3 0 5-2 5-5-3 0-5 2-5 5z" stroke="var(--bg)" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
     CenTex Homeschool Hub
   </a>
   <nav class="links" aria-label="Sections">
-    <a href="#directory">Directory</a>
-    <a href="#calendar">Calendar</a>
-    <a href="#community">Community</a>
-    <a href="#resources">Resources</a>
-    <a href="#jobs">Jobs/Tutors</a>
-    <a href="#newsletter">Newsletter</a>
+    <a href="/directory">Directory</a>
+    <a href="/calendar">Calendar</a>
+    <a href="/community">Community</a>
+    <a href="/resources">Resources</a>
+    <a href="/jobs">Jobs/Tutors</a>
+    <a href="/newsletter">Newsletter</a>
   </nav>
 </header>
 
-<div class="hero">
+<div class="hero" data-view="home">
   <div>
     <span class="label">The free guide to homeschooling in Central Texas</span>
     <h1>Find your homeschool <em>people</em>, from Liberty Hill to South Austin.</h1>
     <p>Co-ops, classes, tutors and microschools from Liberty Hill and Leander to South Austin, plus events, registration deadlines and TEFA help, all in one place. Always free for families.</p>
     <div class="heroacts">
-      <a class="btn" href="#directory" style="margin-top:0">Browse groups</a>
+      <a class="btn" href="/directory" style="margin-top:0">Browse the directory</a>
       <a class="btn ghost" href="#fit" style="margin-top:0">New to homeschooling? Take the quiz</a>
-      <a class="btn ghost" href="#calendar" style="margin-top:0">See what's happening</a>
+      <a class="btn ghost" href="/calendar" style="margin-top:0">See what's happening</a>
     </div>
   </div>
   <div class="stats" aria-label="Directory at a glance">
@@ -330,7 +340,7 @@ html{scroll-behavior:smooth}
     <div class="stat"><b>$2,000</b><span>TEFA per homeschooler</span></div>
   </div>
 </div>
-<figure class="scene" aria-label="Illustration of families gathered for a park day under a huge live oak in the Texas Hill Country">
+<figure class="scene" data-view="home" aria-label="Illustration of families gathered for a park day under a huge live oak in the Texas Hill Country">
   <svg viewBox="0 0 1200 380" preserveAspectRatio="xMidYMid slice" role="img" aria-hidden="true">
     <defs>
       <linearGradient id="skyG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--sky1)"/><stop offset="1" stop-color="var(--sky2)"/></linearGradient>
@@ -366,7 +376,7 @@ html{scroll-behavior:smooth}
     <g id="gathering"></g>
   </svg>
 </figure>
-  <section id="fit" style="padding-block:24px 8px">
+  <section id="fit" data-view="home" style="padding-block:24px 8px">
     <div class="intro">
       <span class="label">Find your fit</span>
       <h2>Five questions to your best-matched groups</h2>
@@ -374,9 +384,24 @@ html{scroll-behavior:smooth}
     </div>
     <div class="quiz" id="quiz" aria-live="polite"></div>
   </section>
+  <section id="explore" data-view="home" style="padding-block:40px 8px">
+    <div class="intro"><span class="label">Explore</span><h2>Everything in one place</h2></div>
+    <div class="explore">
+      <a href="/directory"><b>Directory</b><span>Co-ops, classes, tutors and microschools by town, ages and approach</span></a>
+      <a href="/calendar"><b>Calendar</b><span>Open houses, application deadlines and public homeschool events</span></a>
+      <a href="/community"><b>Community</b><span>Post what your family is looking for and meet families nearby</span></a>
+      <a href="/resources"><b>Resources</b><span>Getting started, Texas homeschool law, TEFA funding and FAQ</span></a>
+      <a href="/jobs"><b>Jobs/Tutors</b><span>Hiring a teacher, or a tutor for hire</span></a>
+    </div>
+  </section>
 </div>
 
-<div class="dirwrap">
+<div class="wrap pagehead" data-view="directory">
+  <span class="label">Directory</span>
+  <h1>Central Texas homeschool directory</h1>
+  <p>Co-ops, support groups, classes, tutors and microschools from Liberty Hill to South Austin. Filter by town, type and approach.</p>
+</div>
+<div class="dirwrap" data-view="directory">
 <div class="finder" id="directory">
   <div class="wrap">
     <div class="searchrow">
@@ -412,9 +437,10 @@ html{scroll-behavior:smooth}
 </div>
 </div>
 <div class="wrap">
-  <div class="empty" id="empty" hidden><span id="emptyMsg">No listings match yet. Try another town, or <a href="#submit">add the group you know about</a>.</span></div>
+  <div id="acctSlotDir" data-view="directory"></div>
+  <div data-view="directory"><div class="empty" id="empty" hidden><span id="emptyMsg">No listings match yet. Try another town, or <a href="#submit">add the school you know about</a>.</span></div></div>
 
-  <section id="calendar">
+  <section id="calendar" data-view="calendar">
     <div class="intro">
       <span class="label">Community calendar</span>
       <h2>What's happening around Central Texas</h2>
@@ -448,12 +474,13 @@ html{scroll-behavior:smooth}
       </div>
     </div>
   </section>
-  <section id="community">
+  <section id="community" data-view="community">
     <div class="intro">
       <span class="label">Community</span>
       <h2>Connect with local homeschool families</h2>
       <p>Post what your family is looking for and meet other homeschool families nearby. You can also ask any group a question right on its listing. Accounts are for parents and group leaders. Be kind, keep it about homeschooling, and keep kids' details private. We remove posts that don't follow these rules.</p>
     </div>
+    <div id="acctBlock">
     <div class="acctbar" id="acctBar"></div>
     <div class="box2" id="signinPanel" hidden>
       <form id="cEmailForm" novalidate class="inline">
@@ -476,6 +503,7 @@ html{scroll-behavior:smooth}
       <span class="status" id="cProfileStatus" role="status"></span>
       <p class="where" style="margin:0;font-size:13px">Use a first name and last initial. Please don't share your kids' names or photos.</p>
     </div>
+    </div>
 
     <div>
       <div>
@@ -494,7 +522,7 @@ html{scroll-behavior:smooth}
       </div>
     </div>
   </section>
-  <section id="jobs">
+  <section id="jobs" data-view="jobs">
     <div class="intro">
       <span class="label">Jobs/Tutors</span>
       <h2>Teach, tutor or find help</h2>
@@ -520,7 +548,7 @@ html{scroll-behavior:smooth}
       <div><div class="colhead"><h3>Families seeking a tutor</h3></div><div id="seekingList" class="stack"></div></div>
     </div>
   </section>
-  <section id="resources">
+  <section id="resources" data-view="resources">
     <div class="intro">
       <span class="label">Resources</span>
       <h2>Homeschooling in Texas, in plain terms</h2>
@@ -537,7 +565,7 @@ html{scroll-behavior:smooth}
         <li><b>Know the basics of the law</b><p>Homeschools are private schools in Texas. You don't register with the state, take required tests or need a teaching certificate. See the law section below.</p></li>
         <li><b>Withdraw in writing, if your child is enrolled</b><p>Send the school a short, signed and dated letter saying you're homeschooling and when it starts. You don't have to go in person or show your curriculum.</p></li>
         <li><b>Choose a curriculum</b><p>Cover reading, spelling, grammar, math and good citizenship using real materials: books, workbooks or online courses. Many families add science, history and the arts.</p></li>
-        <li><b>Find your people</b><p>A co-op, support group or class makes a big difference, especially in the first year. <a href="#fit">Take the quiz</a> or <a href="#directory">browse the directory</a>.</p></li>
+        <li><b>Find your people</b><p>A co-op, support group or class makes a big difference, especially in the first year. <a href="/#fit">Take the quiz</a> or <a href="/directory">browse the directory</a>.</p></li>
         <li><b>Keep simple records</b><p>Not required by the state, but a list of what you covered, samples of work and a running transcript in the high school years help later.</p></li>
         <li><b>Check TEFA funding</b><p>Homeschool students in the program get $2,000 a year for curriculum, classes and tutoring from approved providers. See the TEFA section below.</p></li>
       </ol>
@@ -625,7 +653,7 @@ html{scroll-behavior:smooth}
         <details><summary>How many days or hours do we have to school?</summary><p>Texas doesn't set a number for homeschools. Most families follow a school-year rhythm, but you choose the schedule.</p></details>
         <details><summary>What about high school and diplomas?</summary><p>As the private school, you issue your student's transcript and diploma. Keep a transcript with courses, grades and credits as you go. Dual credit through a community college is a popular option, and a 2025 law guarantees homeschoolers equal treatment in public college admissions.</p></details>
         <details><summary>Can my kids play sports or join band at the public school?</summary><p>Often, yes. Under a 2025 law, homeschool students can join UIL activities at their local district unless that district opts out. Ask your district about its sign-up steps.</p></details>
-        <details><summary>How do we make friends and find community?</summary><p>That's what this site is for. Co-ops, support groups, park days and classes are everywhere in Central Texas. Try the <a href="#fit">quiz</a>, the <a href="#calendar">calendar</a> or the <a href="#community">community board</a>.</p></details>
+        <details><summary>How do we make friends and find community?</summary><p>That's what this site is for. Co-ops, support groups, park days and classes are everywhere in Central Texas. Try the <a href="/#fit">quiz</a>, the <a href="/calendar">calendar</a> or the <a href="/community">community board</a>.</p></details>
         <details><summary>How much does homeschooling cost?</summary><p>Anywhere from nearly free, using the library and free online materials, to a few thousand dollars a year with paid classes or a hybrid school. TEFA funds can cover $2,000 a year of approved costs for students in the program.</p></details>
       </div>
     </div>
@@ -641,7 +669,7 @@ html{scroll-behavior:smooth}
       <p class="where" style="margin-top:12px">Links go to outside organizations. CenTex Homeschool Hub isn't affiliated with them.</p>
     </div>
   </section>
-  <section id="newsletter">
+  <section id="newsletter" data-view="home newsletter">
     <div class="newsband">
       <div class="newscopy">
         <span class="label">The monthly newsletter</span>
@@ -672,9 +700,9 @@ html{scroll-behavior:smooth}
       </form>
     </div>
   </section>
-  <section id="submit">
+  <section id="submit" data-view="directory">
     <div class="intro">
-      <span class="label">Suggest a group</span>
+      <span class="label">Suggest a school or group</span>
       <h2>Know a school we're missing?</h2>
       <p>Send it in and we'll review it within a few days. Group leaders can claim their listing here too.</p>
     </div>
@@ -699,20 +727,6 @@ html{scroll-behavior:smooth}
       <div class="field">
         <label for="f-site">Website or Facebook page</label>
         <input id="f-site" type="url" placeholder="https://" maxlength="300">
-      </div>
-      <div class="field">
-        <label for="f-avail">Current availability</label>
-        <select id="f-avail">
-          <option value="">Not sure / not applicable</option>
-          <option value="open">Open spots</option>
-          <option value="waitlist">Waitlist</option>
-          <option value="full">Full</option>
-          <option value="opens">Registration opens soon</option>
-        </select>
-      </div>
-      <div class="field">
-        <label for="f-regdate">Registration opens (if known)</label>
-        <input id="f-regdate" placeholder="e.g. March 2027" maxlength="40">
       </div>
       <div class="field">
         <label for="f-contact">Your name</label>
@@ -746,6 +760,43 @@ html{scroll-behavior:smooth}
 const STRIPE_LINKS = { featured: "", job: "" };
 
 // Listings live in /listings.js so the leader page shares them.
+
+// ---- Pages: each area has its own address (/directory, /calendar, ...) served by this one file ----
+const VIEWS={"/":"home","/directory":"directory","/calendar":"calendar","/community":"community","/resources":"resources","/jobs":"jobs","/newsletter":"newsletter"};
+const TITLES={home:"CenTex Homeschool Hub",directory:"Directory",calendar:"Calendar",community:"Community",resources:"Resources",jobs:"Jobs/Tutors",newsletter:"Newsletter"};
+// Old one-page links like /#calendar keep working.
+const LEGACY={directory:"/directory",calendar:"/calendar",register:"/calendar",community:"/community",jobs:"/jobs",resources:"/resources",tefa:"/resources#tefa",start:"/resources#start",law:"/resources#law",faq:"/resources#faq",reading:"/resources#reading",newsletter:"/newsletter",submit:"/directory#submit"};
+let curView="home";
+function viewOf(path){ path=path.replace(/\/index\.html$/,"/").replace(/(.)\/+$/,"$1"); return VIEWS[path]||"home"; }
+function placeAcct(scroll){
+  const blk=$("acctBlock"); if(!blk) return;
+  const host=curView==="directory"?$("acctSlotDir"):document.querySelector(`#${curView} > .intro`);
+  if(host){ curView==="directory"?host.appendChild(blk):host.after(blk); if(scroll) blk.scrollIntoView({behavior:"smooth",block:"center"}); }
+}
+function showView(noScroll){
+  curView=viewOf(location.pathname);
+  document.querySelectorAll("[data-view]").forEach(el=>{ el.hidden=!el.dataset.view.split(" ").includes(curView); });
+  document.querySelectorAll("nav.links a").forEach(a=>{ if(viewOf(new URL(a.href).pathname)===curView&&curView!=="home") a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
+  document.title=curView==="home"?"CenTex Homeschool Hub":TITLES[curView]+" · CenTex Homeschool Hub";
+  if(curView==="community"||curView==="jobs"||curView==="calendar") placeAcct(false);
+  if(noScroll) return;
+  const t=location.hash&&document.getElementById(decodeURIComponent(location.hash.slice(1)));
+  if(t&&!t.closest("[hidden]")) setTimeout(()=>t.scrollIntoView(),0); else window.scrollTo(0,0);
+}
+function go(url,noScroll){ history.pushState(null,"",url); showView(noScroll); }
+document.addEventListener("click",e=>{
+  const a=e.target.closest("a[href]"); if(!a||a.target||e.defaultPrevented||e.button||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey) return;
+  const u=new URL(a.getAttribute("href"),location.href); if(u.origin!==location.origin) return;
+  let dest=null;
+  if(u.pathname in VIEWS||u.pathname==="/index.html") dest=u.pathname+u.hash;
+  if(u.pathname===location.pathname&&u.hash){ const h=u.hash.slice(1), el=document.getElementById(h);
+    if(el&&!el.closest("[hidden]")) return;          // same-page jump: let the browser scroll
+    if(LEGACY[h]) dest=LEGACY[h]; }
+  if(!dest) return;
+  e.preventDefault(); go(dest);
+});
+window.addEventListener("popstate",()=>showView());
+function initPages(){ const h=location.hash.slice(1); if(viewOf(location.pathname)==="home"&&LEGACY[h]) history.replaceState(null,"",LEGACY[h]); showView(); }
 
 const TYPES={coop:["Co-op","t-coop"],group:["Support group","t-group"],class:["Class","t-class"],micro:["Microschool / hybrid","t-micro"],tutor:["Tutor","t-tutor"]};
 const TOWNS=["All","Liberty Hill","Leander","Cedar Park","Round Rock","Georgetown","Austin","Bastrop area"];
@@ -801,7 +852,7 @@ function render(){
   $("empty").hidden=res.length>0;
   $("emptyMsg").innerHTML=state.open&&!L.some(x=>x.avail.s==="open")
     ?'No groups have confirmed open spots yet. As leaders claim their listings and post availability, they\'ll show up here. Turn off "Open now" to see everyone, and use "Notify me" on any group you like.'
-    :'No listings match yet. Try another town, or <a href="#submit">add the group you know about</a>.';
+    :'No listings match yet. Try another town, or <a href="#submit">add the school you know about</a>.';
   $("openNow").setAttribute("aria-pressed",state.open);
   $("count").textContent=`${res.length} of ${L.filter(x=>!x.test).length} listings`;
   document.querySelectorAll("#townChips .chip").forEach(c=>c.setAttribute("aria-pressed",c.dataset.town===state.town));
@@ -868,7 +919,7 @@ $("quiz").addEventListener("click",e=>{
   if(e.target.id==="qBack"){qi=Math.max(0,qi-1); renderQuiz(); return;}
   if(e.target.id==="qRetake"){qi=0; ans={}; renderQuiz(); return;}
   const see=e.target.closest("[data-see]");
-  if(see){Object.assign(state,{q:see.dataset.see,type:"",approach:"",town:"All",open:false});$("q").value=see.dataset.see;$("typeSel").value="";$("approachSel").value="";render();const c=document.querySelector("#grid .card"); if(c){c.scrollIntoView({behavior:"smooth",block:"center"}); c.classList.add("flash"); setTimeout(()=>c.classList.remove("flash"),2200);}}
+  if(see){Object.assign(state,{q:see.dataset.see,type:"",approach:"",town:"All",open:false});$("q").value=see.dataset.see;$("typeSel").value="";$("approachSel").value="";render();go("/directory",true);const c=document.querySelector("#grid .card"); if(c){c.scrollIntoView({behavior:"smooth",block:"center"}); c.classList.add("flash"); setTimeout(()=>c.classList.remove("flash"),2200);}}
 });
 $("quiz").addEventListener("submit",async e=>{
   if(e.target.id!=="newsForm") return;
@@ -891,7 +942,7 @@ $("clearBtn").addEventListener("click",()=>{Object.assign(state,{q:"",type:"",ap
 
 function goForm(kind,name){
   $("f-kind").value=kind; if(name) $("f-name").value=name;
-  document.getElementById("submit").scrollIntoView({behavior:"smooth"});
+  go("/directory#submit");
   setTimeout(()=>$(name?"f-email":"f-name").focus({preventScroll:true}),400);
 }
 $("grid").addEventListener("click",e=>{
@@ -958,7 +1009,7 @@ function qaBlock(x){
     <form class="ask" data-for="${esc(sid(x))}" hidden novalidate><textarea maxlength="300" placeholder="e.g. Do you take mid-year families?"></textarea><div class="nrow"><button class="btn sm" type="submit" style="margin-top:0">Send question</button></div><span class="status" role="status"></span></form>
   </div>`;
 }
-function needSignIn(){ document.getElementById("community").scrollIntoView({behavior:"smooth"}); showSignIn(); }
+function needSignIn(){ placeAcct(true); showSignIn(); }
 function showSignIn(){ $("signinPanel").hidden=false; $("profilePanel").hidden=true; setTimeout(()=>$("c-email").focus({preventScroll:true}),400); }
 function renderAcct(){
   if(!acct.signedIn){ $("acctBar").innerHTML=`<span class="meta">Sign in to post, reply or ask a question.</span><button class="btn sm" type="button" id="signInBtn" style="margin-top:0">Sign in</button>`; $("signInBtn").onclick=showSignIn; return; }
@@ -1114,7 +1165,7 @@ document.addEventListener("submit",async e=>{
   const r=await api("/api/jobs/reply",{id:Number(f.dataset.job),message:f.querySelector("textarea").value.trim()});
   if(r.ok){f.reset(); st.className="status ok"; st.textContent="Sent. They have your email now and can write back.";} else {st.className="status err"; st.textContent=r.error;}
 },true);
-render(); renderQuiz(); renderRegistration(); loadOverrides(); loadAcct(); loadBoard(); loadEvents(); loadQuestions(); loadJobs();
+initPages(); render(); renderQuiz(); renderRegistration(); loadOverrides(); loadAcct(); loadBoard(); loadEvents(); loadQuestions(); loadJobs();
 // Scatter bluebonnets and draw the park-day gathering (seeded so it looks the same every load).
 (function(){
   let seed=11; const rnd=()=>((seed=(seed*16807)%2147483647)/2147483647);
@@ -1192,7 +1243,7 @@ $("form").addEventListener("submit",async e=>{
   if(!/^\S+@\S+\.\S+$/.test(email)){st.className="status err";st.textContent="Add an email address so we can follow up.";$("f-email").focus();return;}
   st.textContent="Sending…";
   const r=await api("/api/submissions",{kind:$("f-kind").value,name,town:$("f-town").value.trim(),website:$("f-site").value.trim(),
-    contact:$("f-contact").value.trim(),email,availability:$("f-avail").value,registrationOpens:$("f-regdate").value.trim(),details:$("f-details").value.trim()});
+    contact:$("f-contact").value.trim(),email,details:$("f-details").value.trim()});
   if(r.ok){e.target.reset(); st.className="status ok"; st.textContent="Thanks! It's in the review queue.";}
   else{st.className="status err";st.textContent=r.error;}
 });
