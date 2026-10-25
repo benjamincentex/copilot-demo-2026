@@ -466,7 +466,13 @@ html{scroll-behavior:smooth}
     <div class="intro">
       <span class="label">Community calendar</span>
       <h2>What's happening around Central Texas</h2>
-      <p>Open houses, info sessions, application deadlines and homeschool events that are open to the public. Some dates come from groups' own websites, so confirm with the group before you go.</p>
+      <p>Open houses, application deadlines, homeschool activities and public homeschool events around Central Texas. Some dates come from groups' own websites, so confirm before you go.</p>
+    </div>
+    <div class="dirtabs" role="tablist" aria-label="Show events" id="calFilters" style="margin:0 0 16px">
+      <button type="button" role="tab" data-calf="all" aria-selected="true">All events</button>
+      <button type="button" role="tab" data-calf="schools" aria-selected="false">Schools &amp; deadlines</button>
+      <button type="button" role="tab" data-calf="activity" aria-selected="false">Activities</button>
+      <button type="button" role="tab" data-calf="public" aria-selected="false">Public homeschool events</button>
     </div>
     <div class="calwrap">
       <div class="cal">
@@ -477,7 +483,7 @@ html{scroll-behavior:smooth}
         <div class="colhead"><h3 id="calListTitle">Coming up</h3><button class="linkbtn" type="button" id="newEventBtn">Add an event</button></div>
         <form class="box2" id="eventForm" novalidate hidden>
           <p class="where" style="margin:0;font-size:13px">Group leaders: <a href="/leaders.html">add events from your leader page</a> so they show as posted by your group.</p>
-          <div class="field"><label for="e-cat">Type of event</label><select id="e-cat"><option value="">Choose one</option><option value="openhouse">Open house or info session</option><option value="deadline">Application or registration deadline</option><option value="public">Public homeschool event (library program, curriculum fair, field trip open to all)</option><option value="other">Other public event</option></select></div>
+          <div class="field"><label for="e-cat">Type of event</label><select id="e-cat"><option value="">Choose one</option><option value="openhouse">Open house or info session</option><option value="activity">Homeschool activity or class (sports, music, art, swim and more)</option><option value="deadline">Application or registration deadline</option><option value="public">Public homeschool event (library program, curriculum fair, field trip open to all)</option><option value="other">Other public event</option></select></div>
           <div class="field"><label for="e-title">Event</label><input id="e-title" maxlength="100" placeholder="e.g. Homeschool day at the library"></div>
           <div class="row2">
             <div class="field"><label for="e-date">Date</label><input id="e-date" type="date"></div>
@@ -492,6 +498,7 @@ html{scroll-behavior:smooth}
           <div class="formfoot"><button class="btn" type="submit" style="margin-top:0">Post event</button><span class="status" id="eventStatus" role="status"></span></div>
         </form>
         <div id="eventList" class="stack"></div>
+        <div id="weeklyActs"></div>
         <div id="regList"></div>
       </div>
     </div>
@@ -863,7 +870,7 @@ function card(x){
   return `<article class="card${isFeat(x)?" partner":""}" data-slug="${esc(sid(x))}">${isFeat(x)?`<span class="ribbon">Featured</span>`:""}
     <div class="head"><h3>${esc(x.n)}</h3><span class="type ${tc}">${tl}</span></div>
     <div class="where">${esc(townsOf(x).join(" · "))}</div>
-    ${x.daytime?`<span class="ab a-open" style="align-self:flex-start">Daytime classes</span>`:""}
+    ${x.daytime?`<span class="ab a-open" style="align-self:flex-start">Daytime classes</span>`:x.homeschool?`<span class="ab a-open" style="align-self:flex-start">Homeschool program</span>`:""}
     ${descHtml(x)}
     ${facts.length?`<dl class="facts">${facts.map(f=>`<dt>${f[0]}</dt><dd>${esc(f[1])}</dd>`).join("")}</dl>`:""}
     ${x.tags.length?`<div class="tags">${x.tags.map(t=>`<span class="tag${t==="Littles welcome"?" littles":""}"${t==="Littles welcome"?' title="Little ones are welcome, and some groups offer care or classes for babies and toddlers. Ask the group for details."':""}>${esc(t)}</span>`).join("")}</div>`:""}
@@ -881,7 +888,7 @@ function card(x){
 let showAll=false;
 function render(){
   const res=L.filter(matches);
-  if(state.section==="activity") res.sort((a,b)=>(b.daytime?1:0)-(a.daytime?1:0)); // daytime classes first
+  if(state.section==="activity") res.sort((a,b)=>((b.daytime?2:b.homeschool?1:0)-(a.daytime?2:a.homeschool?1:0))); // daytime classes first
   const filtering=state.q||state.type||state.approach||state.town!=="All"||state.open;
   const shown=(filtering||showAll)?res:res.slice(0,12);
   $("grid").innerHTML=shown.map(card).join("");
@@ -1132,7 +1139,21 @@ function sourceLine(ev){
   if(ev.source==="leader") return `Posted by ${esc(ev.host)}`;
   return ev.host?`Hosted by ${esc(ev.host)}`:"Posted by a parent";
 }
-const CATS={"openhouse":"Open house or info session","deadline":"Application or registration deadline","public":"Public homeschool event","other":"Other public event"};
+const CATS={"openhouse":"Open house or info session","deadline":"Application or registration deadline","public":"Public homeschool event","activity":"Homeschool activity","other":"Other public event"};
+let calFilter="all";
+const CALF={all:null,schools:["openhouse","deadline"],activity:["activity"],public:["public","other"]};
+const shownEvents=()=>CALF[calFilter]?EVENTS.filter(ev=>CALF[calFilter].includes(ev.category)):EVENTS;
+document.addEventListener("click",e=>{const b=e.target.closest("[data-calf]"); if(!b) return; calFilter=b.dataset.calf; calDay=null;
+  document.querySelectorAll("[data-calf]").forEach(x=>x.setAttribute("aria-selected",x===b)); renderCalendar(); renderWeekly();});
+// Weekly homeschool activities: recurring daytime/homeschool sessions from Activities listings (no invented dates)
+const DAYNAME={Mon:"Monday",Tue:"Tuesday",Wed:"Wednesday",Thu:"Thursday",Fri:"Friday"};
+function renderWeekly(){
+  const box=$("weeklyActs"); if(!box) return;
+  if(calFilter==="schools"||calFilter==="public"){ box.innerHTML=""; return; }
+  const acts=L.filter(x=>!x.test&&x.type==="activity"&&(x.daytime||x.homeschool)&&x.days&&x.days.length);
+  const rows=Object.keys(DAYNAME).map(d=>[d,acts.filter(x=>x.days.includes(d))]).filter(r=>r[1].length);
+  box.innerHTML=rows.length?`<h3 style="font-size:20px;margin:18px 0 8px">Weekly homeschool activities</h3><p class="where" style="margin:0 0 8px">Recurring daytime sessions. Confirm times and sign-up with each provider.</p><div class="stack">${rows.map(([d,xs])=>`<div class="post"><b>${DAYNAME[d]}</b>${xs.map(x=>`<span class="meta">${x.site?`<a href="${esc(x.site)}" target="_blank" rel="noopener">${esc(x.n)}</a>`:esc(x.n)} · ${esc(townsOf(x).join(", "))}${x.sched?` · ${esc(x.sched)}`:""}</span>`).join("")}</div>`).join("")}</div><p class="where" style="margin:8px 0 0"><a href="/activities">See all homeschool-friendly activities</a></p>`:"";
+}
 function eventCard(ev){
   const d=fmtDate(ev.event_date);
   return `<div class="event"><div class="datebox"><span>${d.m}</span><b>${d.d}</b></div><div style="display:flex;flex-direction:column;gap:4px;min-width:0">${ev.category&&CATS[ev.category]?`<span class="tag" style="align-self:flex-start">${esc(CATS[ev.category])}</span>`:""}<b>${esc(ev.title)}</b>
@@ -1143,7 +1164,7 @@ function renderCalendar(){
   const today=new Date(); if(!calMonth) calMonth=new Date(today.getFullYear(),today.getMonth(),1);
   $("calTitle").textContent=calMonth.toLocaleString("en-US",{month:"long",year:"numeric"});
   const first=new Date(calMonth), start=new Date(first); start.setDate(1-first.getDay());
-  const byDay={}; EVENTS.forEach(ev=>(byDay[ev.event_date]=byDay[ev.event_date]||[]).push(ev));
+  const byDay={}; shownEvents().forEach(ev=>(byDay[ev.event_date]=byDay[ev.event_date]||[]).push(ev));
   let cells=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d=>`<div class="dow">${d}</div>`).join("");
   for(let k=0;k<42;k++){
     const d=new Date(start); d.setDate(start.getDate()+k); const key=ymd(d), evs=byDay[key]||[];
@@ -1153,10 +1174,10 @@ function renderCalendar(){
   }
   $("calGrid").innerHTML=cells;
   const todayKey=ymd(today);
-  const list=calDay?(byDay[calDay]||[]):EVENTS.filter(ev=>ev.event_date>=todayKey).slice(0,8);
+  const list=calDay?(byDay[calDay]||[]):shownEvents().filter(ev=>ev.event_date>=todayKey).slice(0,8);
   $("calListTitle").textContent=calDay?new Date(calDay+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}):"Coming up";
   $("eventList").innerHTML=list.length?list.map(eventCard).join("")+(calDay?`<button class="linkbtn" type="button" id="calClear" style="align-self:flex-start">Show all upcoming</button>`:"")
-    :`<div class="emptynote">${calDay?"Nothing on this day.":"No upcoming events yet."} Hosting an open house or a public homeschool event? Add it here.</div>`;
+    :`<div class="emptynote">${calDay?"Nothing on this day.":calFilter==="all"?"No upcoming events yet.":"No upcoming events of this type yet."} Hosting an open house, a homeschool class or a public homeschool event? Add it here.</div>`;
   const c=$("calClear"); if(c) c.onclick=()=>{calDay=null;renderCalendar();};
 }
 $("calPrev").onclick=()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()-1,1);calDay=null;renderCalendar();};
@@ -1169,7 +1190,7 @@ async function loadEvents(){
   const now=new Date(), key=ymd(now), next=EVENTS.find(ev=>ev.event_date>=key);
   const thisMonth=key.slice(0,7);
   if(next && !EVENTS.some(ev=>ev.event_date.slice(0,7)===thisMonth && ev.event_date>=key)){ const [y,m]=next.event_date.split("-").map(Number); calMonth=new Date(y,m-1,1); }
-  renderCalendar();
+  renderCalendar(); renderWeekly();
 }
 document.addEventListener("click",async e=>{
   const ask=e.target.closest("[data-ask]")||e.target.closest("[data-answer]"), rep=e.target.closest("[data-reply]"), rm=e.target.closest("[data-remove]");

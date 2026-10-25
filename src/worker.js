@@ -15,7 +15,7 @@ const bad = (message, status = 400) => json({ error: message }, status);
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const clip = (v, n) => (typeof v === "string" ? v.trim().slice(0, n) : "");
 const AVAIL = new Set(["open", "waitlist", "full", "opens", "unknown"]);
-const EVENT_CATS = new Set(["openhouse", "deadline", "public", "other"]);
+const EVENT_CATS = new Set(["openhouse", "deadline", "public", "activity", "other"]);
 const now = () => Date.now();
 const SESSION_DAYS = 30, CODE_MINUTES = 10, MAX_CODE_ATTEMPTS = 5, MAX_CODES_PER_15_MIN = 3;
 
