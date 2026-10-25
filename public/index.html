@@ -749,7 +749,7 @@ html{scroll-behavior:smooth}
 
   <footer>
     <a href="/leaders.html" class="where">For groups, tutors &amp; vendors</a>
-    <span>CenTex Homeschool Hub · Liberty Hill, Leander, Cedar Park, Round Rock, Georgetown, Austin</span>
+    <span>CenTex Homeschool Hub · Liberty Hill, Leander, Cedar Park, Round Rock, Pflugerville, Georgetown, Austin</span>
     <span>Listings marked "Unclaimed" come from public sources and haven't been confirmed by the group yet.</span>
   </footer>
 </div>
@@ -799,7 +799,7 @@ window.addEventListener("popstate",()=>showView());
 function initPages(){ const h=location.hash.slice(1); if(viewOf(location.pathname)==="home"&&LEGACY[h]) history.replaceState(null,"",LEGACY[h]); showView(); }
 
 const TYPES={coop:["Co-op","t-coop"],group:["Support group","t-group"],class:["Class","t-class"],micro:["Microschool / hybrid","t-micro"],tutor:["Tutor","t-tutor"]};
-const TOWNS=["All","Liberty Hill","Leander","Cedar Park","Round Rock","Georgetown","Austin","Bastrop area"];
+const TOWNS=["All","Liberty Hill","Leander","Cedar Park","Round Rock","Pflugerville","Georgetown","Austin","Bastrop area"];
 // Availability per listing: s = open | waitlist | full | opens | unknown; "opens" also takes when:"March 2027".
 // Everything starts unknown until a group leader confirms it.
 L.forEach(x=>{ if(!x.avail) x.avail={s:"unknown"}; });
@@ -859,7 +859,7 @@ function render(){
 }
 // ---- Find your fit quiz ----
 const QS=[
- {k:"town",q:"Where do you live?",o:[["Liberty Hill","Includes nearby Leander, Cedar Park and Georgetown"],["Leander / Cedar Park","Northwest suburbs"],["Round Rock",""],["Georgetown",""],["Austin","Including South Austin"],["Anywhere nearby","We'll drive for the right fit"]]},
+ {k:"town",q:"Where do you live?",o:[["Liberty Hill","Includes nearby Leander, Cedar Park and Georgetown"],["Leander / Cedar Park","Northwest suburbs"],["Round Rock / Pflugerville",""],["Georgetown",""],["Austin","Including South Austin"],["Anywhere nearby","We'll drive for the right fit"]]},
  {k:"age",q:"How old are your kids?",multi:false,o:[["Little ones","Pre-K and kindergarten"],["Elementary","Grades 1–5"],["Middle school","Grades 6–8"],["High school","Grades 9–12"]]},
  {k:"faith",q:"Does faith matter in your group?",o:[["Christian","Faith-based community"],["Catholic","Catholic community"],["Secular","Inclusive, no religious content"],["No preference","Open to either"]]},
  {k:"want",q:"What are you looking for most?",o:[["Friends & community","Park days, field trips, support"],["A teaching co-op","Parents share the teaching"],["Classes & enrichment","Classes, tutors and enrichment"],["More structure","Hybrid or microschool, 1–5 days"]]},
@@ -868,7 +868,7 @@ const QS=[
 const GRADE={"Little ones":[-1,0],"Elementary":[1,5],"Middle school":[6,8],"High school":[9,12]};
 const WANT={"Friends & community":["group","coop"],"A teaching co-op":["coop"],"Classes & enrichment":["class","tutor"],"More structure":["micro"]};
 const INTEREST={"Classical":["Classical"],"Nature & outdoors":["Nature-based","Charlotte Mason"],"STEM & coding":["STEM"],"Arts & music":["Arts"],"Gifted / 2e":["Gifted / 2e"]};
-const TOWNMAP={"Liberty Hill":["Liberty Hill","Leander","Cedar Park","Georgetown"],"Leander / Cedar Park":["Leander","Cedar Park","Liberty Hill"],"Round Rock":["Round Rock"],"Georgetown":["Georgetown"],"Austin":["Austin"]};
+const TOWNMAP={"Liberty Hill":["Liberty Hill","Leander","Cedar Park","Georgetown"],"Leander / Cedar Park":["Leander","Cedar Park","Liberty Hill"],"Round Rock / Pflugerville":["Round Rock","Pflugerville"],"Georgetown":["Georgetown"],"Austin":["Austin"]};
 let qi=0, ans={};
 function gradeRange(x){
   if(!x.ages) return null;
