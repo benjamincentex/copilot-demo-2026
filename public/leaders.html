@@ -479,17 +479,17 @@ async function loadEv(){
   const map=bySlug(); const owned=(me&&me.owned||[]).filter(id=>map[id]);
   $("evBox").hidden=!owned.length; if(!owned.length) return;
   $("ev-listing").innerHTML=owned.map(id=>`<option value="${esc(id)}">${esc(map[id].n)}</option>`).join("");
-  const r=await api("/api/leader/events"); const evs=(r.ok&&r.events)||[];
+  const r=await api("/api/leader/cal"); const evs=(r.ok&&r.events)||[];
   $("evList").innerHTML=evs.length?evs.map(ev=>`<div class="rev"><b style="color:var(--ink)">${esc(ev.title)}</b><span>${esc(ev.event_date)}${ev.event_time?" · "+esc(ev.event_time):""}${ev.place?" · "+esc(ev.place):""}${ev.source==="imported"?" · from your website":""}</span><div class="row"><button class="btn ghost sm" type="button" data-evrm="${ev.id}">Remove</button></div></div>`).join(""):"<p class='where' style='margin:0'>No upcoming events yet.</p>";
 }
 $("evForm").addEventListener("submit",async e=>{
   e.preventDefault(); const v=id=>$(id).value.trim(); const x=bySlug()[v("ev-listing")];
   setStatus("evStatus","","Adding…");
-  const r=await api("/api/leader/event",{category:v("ev-cat"),isPublic:$("ev-public").checked,slug:v("ev-listing"),listing:x?x.n:"",town:x?x.town:"",title:v("ev-title"),date:v("ev-date"),time:v("ev-time"),place:v("ev-place"),link:v("ev-link"),details:v("ev-details")});
+  const r=await api("/api/leader/cal-add",{category:v("ev-cat"),isPublic:$("ev-public").checked,slug:v("ev-listing"),listing:x?x.n:"",town:x?x.town:"",title:v("ev-title"),date:v("ev-date"),time:v("ev-time"),place:v("ev-place"),link:v("ev-link"),details:v("ev-details")});
   if(!r.ok){setStatus("evStatus","err",r.error);return;}
   ["ev-title","ev-date","ev-time","ev-place","ev-link","ev-details"].forEach(id=>$(id).value=""); setStatus("evStatus","ok","Added to the calendar."); loadEv();
 });
-document.addEventListener("click",async e=>{const b=e.target.closest("[data-evrm]"); if(!b) return; b.disabled=true; const r=await api("/api/leader/event/remove",{id:Number(b.dataset.evrm)}); r.ok?loadEv():(b.disabled=false);});
+document.addEventListener("click",async e=>{const b=e.target.closest("[data-evrm]"); if(!b) return; b.disabled=true; const r=await api("/api/leader/cal-remove",{id:Number(b.dataset.evrm)}); r.ok?loadEv():(b.disabled=false);});
 load().then(()=>{ if(me){ loadQs(); loadEv(); } });
 </script>
 </body>

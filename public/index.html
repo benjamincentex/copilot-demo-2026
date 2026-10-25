@@ -813,7 +813,7 @@ $("grid").addEventListener("submit",async e=>{
   if(r.ok){f.reset(); st.className="status ok"; st.textContent="Done. We'll email you when spots open.";}
   else{st.className="status err";st.textContent=r.error;}
 });
-$("grid").addEventListener("click",e=>{const a=e.target.closest("a[data-site]"); if(a) api("/api/click",{slug:a.dataset.site,kind:"website"});});
+$("grid").addEventListener("click",e=>{const a=e.target.closest("a[data-site]"); if(a) api("/api/visit",{slug:a.dataset.site,kind:"website"});});
 function renderRegistration(){
   const items=L.filter(x=>!x.test&&(x.avail.s==="opens"||x.avail.s==="waitlist"));
   $("regList").innerHTML=items.length?`<h3 style="font-size:20px;margin:18px 0 8px">Registration opening soon</h3><div class="stack">${items.map(x=>`<div class="post"><span class="ab ${AV[x.avail.s][1]}" style="align-self:flex-start">${esc(availLabel(x))}</span><b>${esc(x.n)}</b><span class="meta">${esc(townsOf(x).join(" · "))} · ${TYPES[x.type][0]}</span></div>`).join("")}</div>`:"";
@@ -904,7 +904,7 @@ $("postForm").addEventListener("submit",async e=>{
 $("eventForm").addEventListener("submit",async e=>{
   e.preventDefault(); setS("eventStatus","","Sending…");
   const v=id=>$(id).value.trim();
-  const r=await api("/api/events",{category:v("e-cat"),isPublic:$("e-public").checked,title:v("e-title"),date:v("e-date"),time:v("e-time"),town:v("e-town"),place:v("e-place"),host:v("e-host"),link:v("e-link"),details:v("e-details")});
+  const r=await api("/api/cal",{category:v("e-cat"),isPublic:$("e-public").checked,title:v("e-title"),date:v("e-date"),time:v("e-time"),town:v("e-town"),place:v("e-place"),host:v("e-host"),link:v("e-link"),details:v("e-details")});
   if(!r.ok){setS("eventStatus","err",r.error);return;}
   e.target.reset(); setS("eventStatus","ok","Posted."); $("eventForm").hidden=true; loadEvents();
 });
@@ -955,7 +955,7 @@ $("calPrev").onclick=()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getM
 $("calNext").onclick=()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+1,1);calDay=null;renderCalendar();};
 $("calGrid").addEventListener("click",e=>{const b=e.target.closest("[data-day]"); if(!b) return; calDay=calDay===b.dataset.day?null:b.dataset.day; renderCalendar();});
 async function loadEvents(){
-  const r=await api("/api/events"); EVENTS=(r.ok&&Array.isArray(r.events))?r.events:[];
+  const r=await api("/api/cal"); EVENTS=(r.ok&&Array.isArray(r.events))?r.events:[];
   if(!r.ok||!Array.isArray(r.events)){ console.error("Calendar couldn't load events:", r.error||"unexpected response"); renderCalendar(); $("eventList").innerHTML=`<div class="emptynote">The calendar couldn't load right now. Refresh the page to try again.</div>`; return; }
   // Open on the month of the next upcoming event when this month has none.
   const now=new Date(), key=ymd(now), next=EVENTS.find(ev=>ev.event_date>=key);

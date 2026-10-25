@@ -647,6 +647,15 @@ const routes = {
       claimedListings: owners.n, emailEnabled: !!(env.EMAIL && env.EMAIL.send), gaps });
   },
 };
+// Neutral aliases: ad and privacy blockers often block URLs containing "events" or "click".
+Object.assign(routes, {
+  "GET /api/cal": routes["GET /api/events"],
+  "POST /api/cal": routes["POST /api/events"],
+  "GET /api/leader/cal": routes["GET /api/leader/events"],
+  "POST /api/leader/cal-add": routes["POST /api/leader/event"],
+  "POST /api/leader/cal-remove": routes["POST /api/leader/event/remove"],
+  "POST /api/visit": routes["POST /api/click"],
+});
 
 // Daily summary for the owner (runs on the cron in wrangler.jsonc). Skipped when nothing is new.
 async function dailyDigest(env) {
