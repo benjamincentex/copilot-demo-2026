@@ -1042,10 +1042,16 @@ async function ensureRef(env, email) {
   return ref;
 }
 const shareLine = (env, ref) => `Know another homeschool family who'd find this useful? Forward this email, or share your link: ${refUrl(env, ref)}`;
+// Newsletter footer: "Follow us on Facebook · Instagram" once FACEBOOK_URL / INSTAGRAM_URL are set on the Worker.
+function socialLinks(env) {
+  const links = [["Facebook", env.FACEBOOK_URL], ["Instagram", env.INSTAGRAM_URL]].filter((x) => x[1]);
+  return links.length ? "Follow us on " + links.map(([n, u]) => `<a href="${u}" style="color:#2F5A3D;font-weight:bold;">${n}</a>`).join(" · ") + "<br>" : "";
+}
 function personalize(html, env, token, ref) {
   const site = env.SITE_URL || "https://centexhomeschool.org";
   return String(html)
     .split("{{referral_url}}").join(refUrl(env, ref))
+    .split("{{social_links}}").join(socialLinks(env))
     .split("{{unsubscribe_url}}").join(token ? `${site}/api/unsubscribe?t=${token}` : `${site}/newsletter`)
     .split("{{mailing_address}}").join(env.MAILING_ADDRESS || "");
 }

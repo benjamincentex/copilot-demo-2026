@@ -18,6 +18,9 @@
   ],
   "vars": {
     "SITE_URL": "https://centexhomeschool.org",
+    // Social pages shown in the newsletter footer (also set in public/social.js for the website).
+    "FACEBOOK_URL": "",
+    "INSTAGRAM_URL": "",
     // Comma-separated emails allowed into the owner tools. Set this to your own email
     // in the Cloudflare dashboard (Worker > Settings > Variables) or here.
     "ADMIN_EMAIL": "benjamin@centexhomeschool.org",

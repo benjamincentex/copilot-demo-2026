@@ -36,5 +36,5 @@ Draft is written by the 25th of the prior month. Reading time: about 4 minutes.
 ## Rules
 - Original writing only; no copied paragraphs. Facts and dates must come from a source checked that month.
 - No prices for paid plans (paid plans are off for launch).
-- Keep `{{referral_url}}` in the share box and `{{unsubscribe_url}}` and `{{mailing_address}}` in the footer; the site fills them in per subscriber.
+- Keep `{{social_links}}` at the start of the footer (Facebook/Instagram links, blank until set), `{{referral_url}}` in the share box and `{{unsubscribe_url}}` and `{{mailing_address}}` in the footer; the site fills them in per subscriber.
 - Use the HTML layout in `2026-11.html` (inline styles, 600px table) as the template.
