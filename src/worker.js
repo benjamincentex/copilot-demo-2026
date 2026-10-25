@@ -149,6 +149,66 @@ async function profileOf(env, email) {
   return env.DB.prepare("SELECT name, town FROM profiles WHERE email=?").bind(email).first();
 }
 
+
+// ---------- moderation: every post is screened when it's submitted ----------
+// hold = hidden until the owner approves it; flag = goes live, owner reviews it.
+const MOD_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+const STRONG_PROFANITY_RE = /\b(f+u+c+k\w*|sh[i1]t\w*|b[i1]tch\w*|a+ss+hole\w*|bastard\w*|c+u+n+t\w*|d[i1]ck(head)?s?|piss(ed)?\b|slut\w*|wh[o0]re\w*|retard\w*|motherf\w*)/i;
+const ADDRESS_RE = /\b\d{2,6}\s+(?:[A-Z][a-z]+\s){1,3}(?:St|Street|Dr|Drive|Ave|Avenue|Rd|Road|Ln|Lane|Blvd|Ct|Court|Way|Cv|Cove|Trl|Trail|Pkwy|Cir|Circle)\b/;
+const CHILD_NAME_RE = /\b(?:[Mm]y|[Oo]ur)\s+(?:\d+[- ]year[- ]old\s+)?(?:son|daughter|kid|child|boy|girl|kiddo|twins?)\s*,?\s+(?:is\s+)?(?:named\s+|called\s+)?[A-Z][a-z]{2,}/;
+const SOCIAL_RE = /(instagram\.com|tiktok\.com|snapchat|@[a-z0-9_.]{3,}\b)/i;
+const MOD_PROMPT = `You review posts on a community website for Central Texas homeschool families (parents, schools, tutors). Classify the user's post. Answer only with JSON.
+Set each field to true only if it clearly applies:
+- child_sensitive: details that could identify or locate a specific child: a child's full name; a first name together with age, school, town, schedule or photo; where a child will be and when; home address; a child's social media; a child's medical, behavioral or custody details tied to an identifiable child. General ages ("kids 7 and 10") or a first name alone is NOT child_sensitive.
+- inappropriate: profanity, sexual content, slurs, or content unsuitable for a family site.
+- hostility: insults, threats, harassment, or attacks on a person, family, school or group.
+- drama: gossip, accusations, public complaints or call-outs about a named person or group, or an argumentative tone likely to start conflict.
+- spam: unrelated advertising, scams, or links to unrelated products.
+Also give "reason": one short sentence explaining any true field, or "" if none.`;
+const MOD_SCHEMA = { type: "object", properties: { child_sensitive: { type: "boolean" }, inappropriate: { type: "boolean" }, hostility: { type: "boolean" }, drama: { type: "boolean" }, spam: { type: "boolean" }, reason: { type: "string" } }, required: ["child_sensitive", "inappropriate", "hostility", "drama", "spam", "reason"] };
+const MOD_LABELS = { child_sensitive: "Child-sensitive information", inappropriate: "Inappropriate language", hostility: "Hostility", drama: "Drama", spam: "Spam", unscreened: "Couldn't be screened automatically" };
+
+async function screenText(env, text) {
+  const cats = new Set(), reasons = [];
+  if (STRONG_PROFANITY_RE.test(text)) { cats.add("inappropriate"); reasons.push("Contains profanity."); }
+  if (ADDRESS_RE.test(text)) { cats.add("child_sensitive"); reasons.push("Looks like it includes a street address."); }
+  if (CHILD_NAME_RE.test(text)) { cats.add("child_sensitive"); reasons.push("Names a child."); }
+  if (SOCIAL_RE.test(text)) { cats.add("child_sensitive"); reasons.push("Includes a social media handle or link."); }
+  let aiOk = false;
+  if (env.AI && typeof env.AI.run === "function") {
+    try {
+      const out = await env.AI.run(MOD_MODEL, {
+        messages: [{ role: "system", content: MOD_PROMPT }, { role: "user", content: String(text).slice(0, 3000) }],
+        response_format: { type: "json_schema", json_schema: MOD_SCHEMA }, max_tokens: 200, temperature: 0,
+      });
+      let r = out && out.response; if (typeof r === "string") r = JSON.parse(r);
+      if (r && typeof r === "object") {
+        aiOk = true;
+        for (const k of ["child_sensitive", "inappropriate", "hostility", "drama", "spam"]) if (r[k] === true) cats.add(k);
+        if (r.reason && [...cats].length) reasons.push(String(r.reason).slice(0, 300));
+      }
+    } catch (e) { console.error("moderation AI failed", e && e.message); }
+  }
+  if (!aiOk && !cats.size) cats.add("unscreened");
+  const block = ["child_sensitive", "inappropriate", "hostility", "drama", "spam"].some((c) => cats.has(c));
+  return { action: block ? "hold" : cats.size ? "flag" : "ok", categories: [...cats], reason: reasons.join(" ") };
+}
+
+async function recordFlag(env, kind, itemId, res, text, email, name) {
+  if (res.action === "ok") return;
+  try {
+    await env.DB.prepare("INSERT INTO moderation_flags (kind, item_id, action, categories, reason, excerpt, email, name) VALUES (?,?,?,?,?,?,?,?)")
+      .bind(kind, itemId || 0, res.action, res.categories.join(","), res.reason || "", String(text).slice(0, 600), email || "", name || "").run();
+  } catch (e) { console.error("recordFlag failed", e && e.message); }
+}
+// Blocked posts are never published. The poster is asked to rewrite; the attempt is logged for the owner.
+function blockMsg(mod) {
+  const c = new Set(mod.categories);
+  if (c.has("child_sensitive")) return "This can't be posted as written. To protect kids' privacy, please leave out children's names, addresses, schools, schedules and social media, then try again.";
+  if (c.has("spam")) return "This can't be posted. Please keep posts about homeschooling in Central Texas.";
+  return "This can't be posted as written. Please keep it kind, family-friendly and focused on homeschooling, then try again.";
+}
+
 const routes = {
   // ---------- public ----------
   "GET /api/listings": async (req, env) => {
@@ -302,8 +362,11 @@ const routes = {
     if (b.isPublic !== true) return bad("Only events open to the public can go on the calendar.");
     if (link && !/^https?:\/\//i.test(link)) return bad("The link should start with https://");
     const problem = privacyProblem(details + " " + title); if (problem) return bad(problem);
-    await env.DB.prepare("INSERT INTO events (email, name, title, event_date, event_time, town, place, host, link, details, status, slug, source, category) VALUES (?,?,?,?,?,?,?,?,?,?, 'approved', ?, 'leader', ?)")
-      .bind(email, clip(b.listing, 140), title, date, clip(b.time, 30), clip(b.town, 40), clip(b.place, 120), clip(b.listing, 140), link, details, slug, b.category).run();
+    const mod = await screenText(env, title + "\n" + details);
+    if (mod.action === "hold") { await recordFlag(env, "blocked", 0, mod, title + "\n" + details, email, ""); return bad(blockMsg(mod)); }
+    const ins = await env.DB.prepare("INSERT INTO events (email, name, title, event_date, event_time, town, place, host, link, details, status, slug, source, category) VALUES (?,?,?,?,?,?,?,?,?,?, ?, ?, 'leader', ?)")
+      .bind(email, clip(b.listing, 140), title, date, clip(b.time, 30), clip(b.town, 40), clip(b.place, 120), clip(b.listing, 140), link, details, mod.action === "hold" ? "held" : "approved", slug, b.category).run();
+    await recordFlag(env, "event", ins.meta.last_row_id, mod, title + " — " + details, email, clip(b.listing, 140));
     return json({ ok: true });
   },
 
@@ -376,12 +439,15 @@ const routes = {
     const email = await leaderEmail(req, env); if (!email) return bad("Sign in first.", 401);
     const prof = await profileOf(env, email); if (!prof) return bad("Add your display name first.");
     const b = await body(req); const details = clip(b && b.details, 400);
-    if (details.length < 15) return bad("Tell families a little more about what you're looking for.");
+    if (details.length < 15) return bad("Add a little more detail so other families can help or learn from it.");
     const problem = privacyProblem(details); if (problem) return bad(problem);
-    const open = await env.DB.prepare("SELECT COUNT(*) AS n FROM board_posts WHERE email=? AND status IN ('pending','approved') AND expires_at > datetime('now')").bind(email).first();
+    const open = await env.DB.prepare("SELECT COUNT(*) AS n FROM board_posts WHERE email=? AND status IN ('pending','approved','held') AND expires_at > datetime('now')").bind(email).first();
     if (open.n >= 3) return bad("You can have up to 3 active posts. Remove one to add another.");
-    await env.DB.prepare("INSERT INTO board_posts (email, name, town, ages, want, details, status, expires_at) VALUES (?,?,?,?,?,?, 'approved', datetime('now','+60 days'))")
-      .bind(email, prof.name, clip(b.town, 40) || prof.town || "", clip(b.ages, 40), clip(b.want, 60), details).run();
+    const mod = await screenText(env, details);
+    if (mod.action === "hold") { await recordFlag(env, "blocked", 0, mod, details, email, ""); return bad(blockMsg(mod)); }
+    const ins = await env.DB.prepare("INSERT INTO board_posts (email, name, town, ages, want, details, status, expires_at) VALUES (?,?,?,?,?,?, ?, datetime('now','+60 days'))")
+      .bind(email, prof.name, clip(b.town, 40) || prof.town || "", clip(b.ages, 40), clip(b.want, 60), details, mod.action === "hold" ? "held" : "approved").run();
+    await recordFlag(env, "post", ins.meta.last_row_id, mod, details, email, prof.name);
     return json({ ok: true });
   },
 
@@ -399,6 +465,9 @@ const routes = {
     if (message.length < 5) return bad("Write a short message.");
     const post = await env.DB.prepare("SELECT email, details FROM board_posts WHERE id=? AND status='approved'").bind(Number(b.id) || 0).first();
     if (!post) return bad("That post is no longer up.", 404);
+    const mod = await screenText(env, message);
+    if (mod.action === "hold") { await recordFlag(env, "blocked", 0, mod, message, email, ""); return bad(blockMsg(mod)); }
+    await recordFlag(env, "reply", Number(b.id) || 0, mod, message, email, prof.name);
     let sent = false;
     try {
       sent = await sendMail(env, post.email, `${prof.name} replied to your post on CenTex Homeschool Hub`,
@@ -426,8 +495,11 @@ const routes = {
     if (b.isPublic !== true) return bad("Only events open to the public can go on the calendar.");
     if (link && !/^https?:\/\//i.test(link)) return bad("The link should start with https://");
     const problem = privacyProblem(details + " " + title); if (problem) return bad(problem);
-    await env.DB.prepare("INSERT INTO events (email, name, title, event_date, event_time, town, place, host, link, details, status, category) VALUES (?,?,?,?,?,?,?,?,?,?,'approved',?)")
-      .bind(email, prof.name, title, date, clip(b.time, 30), clip(b.town, 40), clip(b.place, 120), clip(b.host, 100), link, details, b.category).run();
+    const mod = await screenText(env, title + "\n" + details);
+    if (mod.action === "hold") { await recordFlag(env, "blocked", 0, mod, title + "\n" + details, email, ""); return bad(blockMsg(mod)); }
+    const ins = await env.DB.prepare("INSERT INTO events (email, name, title, event_date, event_time, town, place, host, link, details, status, category) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)")
+      .bind(email, prof.name, title, date, clip(b.time, 30), clip(b.town, 40), clip(b.place, 120), clip(b.host, 100), link, details, mod.action === "hold" ? "held" : "approved", b.category).run();
+    await recordFlag(env, "event", ins.meta.last_row_id, mod, title + " — " + details, email, prof.name);
     return json({ ok: true });
   },
 
@@ -460,8 +532,11 @@ const routes = {
     if (!slug) return bad("Missing listing.");
     if (question.length < 8) return bad("Write your question in a sentence or two.");
     const problem = privacyProblem(question); if (problem) return bad(problem);
-    await env.DB.prepare("INSERT INTO questions (slug, listing, email, name, question) VALUES (?,?,?,?,?)")
-      .bind(slug, clip(b.listing, 140), email, prof.name, question).run();
+    const mod = await screenText(env, question);
+    if (mod.action === "hold") { await recordFlag(env, "blocked", 0, mod, question, email, ""); return bad(blockMsg(mod)); }
+    const ins = await env.DB.prepare("INSERT INTO questions (slug, listing, email, name, question, status) VALUES (?,?,?,?,?,?)")
+      .bind(slug, clip(b.listing, 140), email, prof.name, question, mod.action === "hold" ? "held" : "open").run();
+    await recordFlag(env, "question", ins.meta.last_row_id, mod, question, email, prof.name);
     const { results: owners } = await env.DB.prepare("SELECT email FROM listing_owners WHERE slug=?").bind(slug).all();
     for (const o of owners) {
       try { await sendMail(env, o.email, `New question about ${clip(b.listing, 140)}`,
@@ -482,8 +557,11 @@ const routes = {
     const fromSchool = !!owner;
     const prof = fromSchool ? null : await profileOf(env, email);
     if (!fromSchool && !prof) return bad("Add your display name first.");
-    await env.DB.prepare("INSERT INTO question_answers (question_id, email, name, answer, from_school) VALUES (?,?,?,?,?)")
-      .bind(id, email, fromSchool ? q.listing : prof.name, answer, fromSchool ? 1 : 0).run();
+    const mod = await screenText(env, answer);
+    if (mod.action === "hold") { await recordFlag(env, "blocked", 0, mod, answer, email, ""); return bad(blockMsg(mod)); }
+    const ins = await env.DB.prepare("INSERT INTO question_answers (question_id, email, name, answer, from_school, status) VALUES (?,?,?,?,?,?)")
+      .bind(id, email, fromSchool ? q.listing : prof.name, answer, fromSchool ? 1 : 0, mod.action === "hold" ? "held" : "live").run();
+    await recordFlag(env, "answer", ins.meta.last_row_id, mod, answer, email, fromSchool ? q.listing : prof.name);
     if (fromSchool) await env.DB.prepare("UPDATE questions SET status='answered', answered_at=COALESCE(answered_at, datetime('now')) WHERE id=?").bind(id).run();
     const site = env.SITE_URL || "https://centexhomeschool.org";
     if (q.email !== email) {
@@ -556,6 +634,37 @@ const routes = {
     return json({ ok: true });
   },
 
+  // TEMPORARY: moderation self-test, removed after launch testing.
+  "POST /api/mod-selftest": async (req, env) => {
+    if (req.headers.get("x-test-token") !== "3647ee402672bd4d4c32992bc34c833e") return bad("Not found.", 404);
+    const b = await body(req) || {}; const texts = Array.isArray(b.texts) ? b.texts.slice(0, 10) : [];
+    const out = []; for (const t of texts) out.push({ text: String(t).slice(0, 60), ...(await screenText(env, String(t))) });
+    return json({ results: out, ai: !!env.AI });
+  },
+
+  "GET /api/admin/flags": async (req, env) => {
+    const { results } = await env.DB.prepare("SELECT id, kind, item_id, action, categories, reason, excerpt, email, name, status, created_at FROM moderation_flags ORDER BY status='open' DESC, id DESC LIMIT 100").all();
+    return json({ flags: results.map((f) => ({ ...f, labels: String(f.categories || "").split(",").filter(Boolean).map((c) => MOD_LABELS[c] || c) })) });
+  },
+
+  "POST /api/admin/flags/resolve": async (req, env) => {
+    const b = await body(req) || {}; const id = Number(b.id) || 0;
+    const f = await env.DB.prepare("SELECT kind, item_id FROM moderation_flags WHERE id=?").bind(id).first();
+    if (!f) return bad("Not found.", 404);
+    const approve = b.action === "approve";
+    const map = {
+      post: ["board_posts", "approved", "removed"], event: ["events", "approved", "removed"], question: ["questions", "open", "hidden"],
+      answer: ["question_answers", "live", "removed"], job: ["jobs", "live", "removed"],
+    }[f.kind];
+    if (map && f.item_id) {
+      const [table, ok, gone] = map;
+      if (approve) await env.DB.prepare(`UPDATE ${table} SET status=? WHERE id=? AND status='held'`).bind(ok, f.item_id).run();
+      else await env.DB.prepare(`UPDATE ${table} SET status=? WHERE id=?`).bind(gone, f.item_id).run();
+    }
+    await env.DB.prepare("UPDATE moderation_flags SET status=?, resolved_at=datetime('now') WHERE id=?").bind(approve ? "approved" : "removed", id).run();
+    return json({ ok: true });
+  },
+
   "GET /api/admin/moderation": async (req, env) => {
     const [{ results: posts }, { results: evs }, { results: qs }, { results: answers }] = await Promise.all([
       env.DB.prepare("SELECT id, name, email, town, ages, want, details, created_at FROM board_posts WHERE status='approved' AND expires_at > datetime('now') ORDER BY id DESC LIMIT 50").all(),
@@ -604,11 +713,14 @@ const routes = {
       featured = owned.some((r) => { try { return ["featured", "partner", "enhanced"].includes(JSON.parse(r.data).plan); } catch { return false; } });
     }
     if (!paidOn(env)) featured = true; // paid plans off: every job post is free and goes live right away
-    const open = await env.DB.prepare("SELECT COUNT(*) AS n FROM jobs WHERE email=? AND status IN ('live','awaiting_payment') AND (expires_at IS NULL OR expires_at > datetime('now'))").bind(email).first();
+    const open = await env.DB.prepare("SELECT COUNT(*) AS n FROM jobs WHERE email=? AND status IN ('live','awaiting_payment','held') AND (expires_at IS NULL OR expires_at > datetime('now'))").bind(email).first();
     if (open.n >= 5) return bad("You have 5 active posts. Remove one to add another.");
+    const mod = await screenText(env, title + "\n" + details);
+    if (mod.action === "hold") { await recordFlag(env, "blocked", 0, mod, title + "\n" + details, email, ""); return bad(blockMsg(mod)); }
     const r = await env.DB.prepare(
       `INSERT INTO jobs (email, name, kind, title, org, town, pay, schedule, details, apply_link, status, expires_at) VALUES (?,?,?,?,?,?,?,?,?,?,?, ${kind === "hiring" && !featured ? "NULL" : kind === "hiring" ? "datetime('now','+30 days')" : "datetime('now','+60 days')"})`
-    ).bind(email, prof.name, kind, title, clip(b.org, 100), clip(b.town, 40), clip(b.pay, 60), clip(b.schedule, 80), details, kind === "hiring" ? link : "", kind === "hiring" && !featured ? "awaiting_payment" : "live").run();
+    ).bind(email, prof.name, kind, title, clip(b.org, 100), clip(b.town, 40), clip(b.pay, 60), clip(b.schedule, 80), details, kind === "hiring" ? link : "", mod.action === "hold" ? "held" : kind === "hiring" && !featured ? "awaiting_payment" : "live").run();
+    await recordFlag(env, "job", r.meta.last_row_id, mod, title + " — " + details, email, prof.name);
     if (featured) return json({ ok: true, id: r.meta.last_row_id, live: true });
     if (kind === "hiring") await notifyOwner(env, `Job post awaiting payment: ${title}`,
       `${clip(b.org, 100)} posted "${title}" (${clip(b.town, 40)}).\nPoster: ${prof.name} <${email}>\nMark it paid on your owner page once the $39 payment comes through.`);
@@ -629,6 +741,9 @@ const routes = {
     if (message.length < 10) return bad("Write a short message.");
     const job = await env.DB.prepare("SELECT email, kind, title FROM jobs WHERE id=? AND status='live'").bind(Number(b.id) || 0).first();
     if (!job) return bad("That post is no longer up.", 404);
+    const mod = await screenText(env, message);
+    if (mod.action === "hold") { await recordFlag(env, "blocked", 0, mod, message, email, ""); return bad(blockMsg(mod)); }
+    await recordFlag(env, "reply", Number(b.id) || 0, mod, message, email, prof.name);
     let sent = false;
     try {
       sent = await sendMail(env, job.email, `${prof.name} responded to "${job.title}" on CenTex Homeschool Hub`,
@@ -668,6 +783,8 @@ const routes = {
     if (d.length < 20) return bad("Add a short description (up to 75 characters).");
     const site = clip(b.site, 300); if (site && !/^https?:\/\//i.test(site)) return bad("The website should start with https://");
     const problem = privacyProblem(d + " " + n); if (problem) return bad(problem);
+    const mod = await screenText(env, n + "\n" + d + "\n" + subjects);
+    if (mod.action === "hold") { await recordFlag(env, "tutor listing", 0, mod, n + " — " + d, email, n); return bad(blockMsg(mod)); }
     const mine = await env.DB.prepare("SELECT COUNT(*) AS n FROM user_listings WHERE email=? AND status='live'").bind(email).first();
     if (mine.n >= 3) return bad("You can create up to 3 listings.");
     const base = n.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "tutor";
@@ -680,6 +797,7 @@ const routes = {
       env.DB.prepare("INSERT OR REPLACE INTO listing_owners (slug, email, name, role, approved_at) VALUES (?,?,?,?,?)").bind(slug, email, n, "tutor", new Date().toISOString()),
       env.DB.prepare("INSERT INTO listing_overrides (slug, data, updated_at, updated_by) VALUES (?,?,?,?) ON CONFLICT(slug) DO NOTHING").bind(slug, JSON.stringify({ claimed: true }), new Date().toISOString(), email),
     ]);
+    await recordFlag(env, "tutor listing", 0, mod, n + " — " + d, email, n);
     return json({ ok: true, slug });
   },
 

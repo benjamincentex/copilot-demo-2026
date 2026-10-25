@@ -393,7 +393,7 @@ html{scroll-behavior:smooth}
     <div class="explore">
       <a href="/directory"><b>Directory</b><span>Co-ops, classes, tutors and microschools by town, ages and approach</span></a>
       <a href="/calendar"><b>Calendar</b><span>Open houses, application deadlines and public homeschool events</span></a>
-      <a href="/community"><b>Community</b><span>Post what your family is looking for and meet families nearby</span></a>
+      <a href="/community"><b>Community</b><span>Find what your family is looking for, share insights and meet families nearby</span></a>
       <a href="/resources"><b>Resources</b><span>Getting started, Texas homeschool law, TEFA funding and FAQ</span></a>
       <a href="/jobs"><b>Jobs/Tutors</b><span>Hiring a teacher, or a tutor for hire</span></a>
     </div>
@@ -482,7 +482,7 @@ html{scroll-behavior:smooth}
     <div class="intro">
       <span class="label">Community</span>
       <h2>Connect with local homeschool families</h2>
-      <p>Post what your family is looking for and meet other homeschool families nearby. You can also ask any group a question right on its listing. Accounts are for parents and group leaders. Be kind, keep it about homeschooling, and keep kids' details private. We remove posts that don't follow these rules.</p>
+      <p>Find what your family is looking for, share tips and insights from your homeschool journey, and meet other families nearby. You can also ask any group a question right on its listing. Accounts are for parents and group leaders. Be kind, keep it about homeschooling, and keep kids' details private. We remove posts that don't follow these rules.</p>
     </div>
     <div id="acctBlock">
     <div class="acctbar" id="acctBar"></div>
@@ -511,14 +511,14 @@ html{scroll-behavior:smooth}
 
     <div>
       <div>
-        <div class="colhead"><h3>Looking for</h3><button class="linkbtn" type="button" id="newPostBtn">Post what you're looking for</button></div>
+        <div class="colhead"><h3>Share &amp; find</h3><button class="linkbtn" type="button" id="newPostBtn">Share a post</button></div>
         <form class="box2" id="postForm" novalidate hidden>
           <div class="row2">
-            <div class="field"><label for="b-want">Looking for</label><select id="b-want"><option>A co-op</option><option>A support group</option><option>Classes or tutoring</option><option>A microschool or hybrid</option><option>Other families to meet</option><option>Something else</option></select></div>
+            <div class="field"><label for="b-want">What's this about?</label><select id="b-want"><optgroup label="Looking for"><option>Looking for a co-op</option><option>Looking for a support group</option><option>Looking for classes or tutoring</option><option>Looking for a microschool or hybrid</option><option>Looking for families to meet</option></optgroup><optgroup label="Sharing"><option>A tip or insight</option><option>A group or resource we love</option><option>A question for other parents</option></optgroup><option>Something else</option></select></div>
             <div class="field"><label for="b-ages">Kids' ages</label><input id="b-ages" maxlength="40" placeholder="e.g. 7 and 10"></div>
           </div>
           <div class="field"><label for="b-town">Area</label><input id="b-town" maxlength="40" placeholder="e.g. Leander / Cedar Park"></div>
-          <div class="field"><label for="b-details">Details</label><textarea id="b-details" maxlength="400" placeholder="e.g. Secular co-op that meets Fridays, open to a first-year homeschooler"></textarea></div>
+          <div class="field"><label for="b-details">Details</label><textarea id="b-details" maxlength="400" placeholder="e.g. Looking for a secular Friday co-op for a first-year homeschooler, or: Our library's Tuesday STEM hour has been a great fit for our 8-year-old"></textarea></div>
           <div class="formfoot"><button class="btn" type="submit" style="margin-top:0">Post</button><span class="status" id="postStatus" role="status"></span></div>
           <p class="where" style="margin:0;font-size:13px">Posts stay up for 60 days. Others reply through the site, so your email stays private.</p>
         </form>
@@ -1078,11 +1078,11 @@ $("eventForm").addEventListener("submit",async e=>{
 async function loadBoard(){
   const r=await api("/api/board"); const posts=(r.ok&&r.posts)||[], mine=(r.ok&&r.mine)||[];
   $("boardList").innerHTML=
-    (posts.length?posts.map(p=>`<div class="post"><b>${esc(p.want||"Looking for")}</b><span class="meta">${[p.town,p.ages?"Ages "+p.ages:""].filter(Boolean).map(esc).join(" · ")}</span><p>${esc(p.details)}</p>
+    (posts.length?posts.map(p=>`<div class="post"><b>${esc(p.want||"Post")}</b><span class="meta">${[p.town,p.ages?"Ages "+p.ages:""].filter(Boolean).map(esc).join(" · ")}</span><p>${esc(p.details)}</p>
       <span class="meta">${esc(p.name||"A parent")} · ${new Date(p.created_at+"Z").toLocaleDateString("en-US",{month:"short",day:"numeric"})}</span>
       ${p.mine?`<button class="linkbtn" type="button" data-remove="${p.id}" style="align-self:flex-start">Remove my post</button>`:`<button class="linkbtn" type="button" data-reply="${p.id}" style="align-self:flex-start">Reply</button>
       <form class="ask" data-post="${p.id}" hidden novalidate><textarea maxlength="800" placeholder="Introduce yourself. We'll send your message and email address to this parent."></textarea><div class="nrow"><button class="btn sm" type="submit" style="margin-top:0">Send reply</button></div><span class="status" role="status"></span></form>`}</div>`).join("")
-    :`<div class="emptynote">No posts yet. Be the first to share what your family is looking for.</div>`);
+    :`<div class="emptynote">No posts yet. Be the first to share what your family is looking for, or pass along a tip or insight from your homeschool journey.</div>`);
 }
 let EVENTS=[], calMonth=null, calDay=null;
 const ymd=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");

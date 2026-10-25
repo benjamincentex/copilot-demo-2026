@@ -27,6 +27,8 @@
   // Daily owner summary at 8:00 a.m. Central (13:00 UTC; 7 a.m. during daylight saving time).
   // Email: works once centexhomeschool.org is onboarded in Cloudflare > Email Service > Email Sending.
   "send_email": [{ "name": "EMAIL" }],
+  // Workers AI screens every post for child-sensitive info, inappropriate language, hostility and drama.
+  "ai": { "binding": "AI" },
   "triggers": { "crons": ["0 13 * * *", "*/10 * * * *"] },
   "observability": { "enabled": true }
 }

@@ -240,6 +240,7 @@ html{scroll-behavior:smooth}
   <div id="tools" hidden>
     <div class="box"><h2>At a glance</h2><div class="stats4" id="stats"></div><p class="where" id="emailLine" style="margin:0"></p></div>
     <div class="box"><h2>Listing claims to review</h2><div id="claims" class="where">No claims waiting.</div></div>
+    <div class="box" id="flags"><h2>Blocked posts</h2><p class="where" style="margin:0">Every post is screened automatically. Anything with child-sensitive details, inappropriate language, hostility, drama or spam is never published; the poster is asked to rewrite it. Nothing here needs action. It's a log for your peace of mind.</p><div id="flagList" class="where">Nothing blocked yet.</div></div>
     <div class="box" id="newsletter"><h2>Monthly newsletter</h2><p class="where" style="margin:0">Each month's draft appears here. Preview it, send yourself a test, then approve it to email every subscriber. Each copy has its own unsubscribe link.</p><p class="where" id="nlInfo" style="margin:0"></p><div id="nlList" class="where"></div><span class="status" id="nlStatus" role="status"></span></div>
     <div class="box"><h2>Live "Looking for" posts</h2><p class="where" style="margin:0">Posts go up right away. Remove anything that breaks the rules.</p><div id="mPosts" class="where">No posts yet.</div></div>
     <div class="box"><h2>Paid plans</h2><p class="where" style="margin:0">After a vendor pays in Stripe, set their plan here. Featured adds the banner, photos, Register button and free job posts.</p>
@@ -288,8 +289,12 @@ document.addEventListener("click",async e=>{
   if(s){ if(!confirm(`Send this newsletter to ${s.dataset.n} subscriber${s.dataset.n==="1"?"":"s"} now? This can't be undone.`)) return; s.disabled=true; st.textContent="Sending…"; const x=await api("/api/admin/newsletter/approve",{id:Number(s.dataset.nlsend)}); st.className="status "+(x.ok?"ok":"err"); st.textContent=x.ok?`Approved. ${x.sentNow} of ${x.total} sent so far; the rest go out automatically within minutes.`:x.error; if(!x.ok) s.disabled=false; loadNewsletters(); }
   if(d){ d.disabled=true; await api("/api/admin/newsletter/delete",{id:Number(d.dataset.nldel)}); loadNewsletters(); }
 });
+async function loadFlags(){
+  const r=await api("/api/admin/flags"); if(!r.ok) return;
+  $("flagList").innerHTML=r.flags.length?r.flags.slice(0,30).map(f=>`<div class="rev"><b style="color:var(--ink)">${f.action==="hold"?"Blocked":"Posted (couldn't be screened)"} · ${esc(f.labels.join(", "))}</b><span>${esc(f.excerpt)}</span><span>${esc(f.email)} · ${esc(f.created_at)} UTC${f.reason?` · ${esc(f.reason)}`:""}</span></div>`).join(""):"Nothing blocked yet.";
+}
 async function load(){
-  loadNewsletters();
+  loadNewsletters(); loadFlags();
   const me=await api("/api/admin/me");
   if(!(me.ok&&me.admin)){$("denied").hidden=false;return;}
   $("tools").hidden=false;

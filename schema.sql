@@ -30,6 +30,8 @@ CREATE INDEX IF NOT EXISTS idx_qa_question ON question_answers(question_id);
 -- Monthly newsletter: owner approves a draft, then every subscriber gets a copy
 CREATE TABLE IF NOT EXISTS newsletters (id INTEGER PRIMARY KEY AUTOINCREMENT, subject TEXT NOT NULL, html TEXT NOT NULL, status TEXT DEFAULT 'draft', notified INTEGER DEFAULT 0, total INTEGER DEFAULT 0, sent INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')), approved_at TEXT, sent_at TEXT);
 CREATE TABLE IF NOT EXISTS newsletter_sends (id INTEGER PRIMARY KEY AUTOINCREMENT, newsletter_id INTEGER NOT NULL, email TEXT NOT NULL, status TEXT DEFAULT 'queued', sent_at TEXT, UNIQUE(newsletter_id, email));
+-- Moderation: every post is screened; held items stay hidden until the owner approves them
+CREATE TABLE IF NOT EXISTS moderation_flags (id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL, item_id INTEGER, action TEXT NOT NULL, categories TEXT, reason TEXT, excerpt TEXT, email TEXT, name TEXT, status TEXT DEFAULT 'open', created_at TEXT DEFAULT (datetime('now')), resolved_at TEXT);
 -- Calendar sources: community (parents), leader (verified group), imported (from a group's public website)
 ALTER TABLE events ADD COLUMN slug TEXT;
 ALTER TABLE events ADD COLUMN source TEXT DEFAULT 'community';
