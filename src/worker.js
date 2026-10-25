@@ -245,17 +245,20 @@ const routes = {
     if (existing) {
       // Already on the list: re-subscribe if they had left, otherwise nothing to do.
       if (existing.unsubscribed_at) await env.DB.prepare("UPDATE subscribers SET unsubscribed_at=NULL WHERE email=?").bind(email).run();
-      return json({ ok: true, already: !existing.unsubscribed_at });
+      return json({ ok: true, already: !existing.unsubscribed_at, ref: await ensureRef(env, email) });
     }
-    const token = crypto.randomUUID().replace(/-/g, "");
-    await env.DB.prepare("INSERT INTO subscribers (email, source, answers, token) VALUES (?,?,?,?)")
-      .bind(email, clip(b.source, 40) || "quiz", JSON.stringify(b.answers || {}).slice(0, 1000), token).run();
+    const token = crypto.randomUUID().replace(/-/g, ""), ref = newRef();
+    // Credit the friend who shared their link (ignored if the code is unknown).
+    const by = clip(b.ref, 16).replace(/[^a-f0-9]/gi, "").toLowerCase();
+    const referrer = by ? await env.DB.prepare("SELECT ref FROM subscribers WHERE ref=? LIMIT 1").bind(by).first() : null;
+    await env.DB.prepare("INSERT INTO subscribers (email, source, answers, token, ref, referred_by) VALUES (?,?,?,?,?,?)")
+      .bind(email, clip(b.source, 40) || "quiz", JSON.stringify(b.answers || {}).slice(0, 1000), token, ref, referrer ? referrer.ref : null).run();
     const site = env.SITE_URL || "https://centexhomeschool.org";
     await sendMail(env, email, "Welcome to CenTex Homeschool Hub",
       `Hi there,\n\nThanks for signing up for the CenTex Homeschool Hub newsletter. Once a month you'll get registration dates coming up, groups with open spots, new listings near you and public homeschool events around Central Texas.\n\n` +
       `Your free Texas Homeschool Starter Checklist: ${site}/checklist.html\n\nWhile you wait for the first issue:\n- Find co-ops and classes near you: ${site}/directory\n- Homeschool-friendly activities: ${site}/activities\n- Take the 5-question quiz to find your fit: ${site}/#fit\n- See open houses and deadlines: ${site}/calendar\n\n` +
-      `Thanks,\nBenjamin\nCenTex Homeschool Hub\n\nDon't want these emails? Unsubscribe: ${site}/api/unsubscribe?t=${token}`);
-    return json({ ok: true });
+      `${shareLine(env, ref)}\n\nThanks,\nBenjamin\nCenTex Homeschool Hub\n\nDon't want these emails? Unsubscribe: ${site}/api/unsubscribe?t=${token}`);
+    return json({ ok: true, ref });
   },
 
   "GET /api/unsubscribe": async (req, env) => {
@@ -280,7 +283,7 @@ const routes = {
     if (!ev) return bad("That event isn't on the calendar anymore.", 404);
     await env.DB.batch([
       env.DB.prepare("INSERT OR IGNORE INTO event_reminders (event_id, email) VALUES (?,?)").bind(id, email),
-      env.DB.prepare("INSERT INTO subscribers (email, source, token) SELECT ?,?,? WHERE NOT EXISTS (SELECT 1 FROM subscribers WHERE email=?)").bind(email, "reminder", crypto.randomUUID().replace(/-/g, ""), email),
+      env.DB.prepare("INSERT INTO subscribers (email, source, token, ref) SELECT ?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM subscribers WHERE email=?)").bind(email, "reminder", crypto.randomUUID().replace(/-/g, ""), newRef(), email),
     ]);
     return json({ ok: true });
   },
@@ -293,7 +296,7 @@ const routes = {
     await env.DB.batch([
       env.DB.prepare("INSERT OR IGNORE INTO alerts (email, listing_slug, listing, town, status_at_signup) VALUES (?,?,?,?,?)")
         .bind(email, slug, clip(b.listing, 140), clip(b.town, 60), clip(b.status, 20)),
-      env.DB.prepare("INSERT INTO subscribers (email, source, listing, token) SELECT ?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM subscribers WHERE email=?)").bind(email, "alert", clip(b.listing, 140), crypto.randomUUID().replace(/-/g, ""), email),
+      env.DB.prepare("INSERT INTO subscribers (email, source, listing, token, ref) SELECT ?,?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM subscribers WHERE email=?)").bind(email, "alert", clip(b.listing, 140), crypto.randomUUID().replace(/-/g, ""), newRef(), email),
     ]);
     return json({ ok: true });
   },
@@ -708,6 +711,13 @@ const routes = {
     return json({ days, listings: await listingActivity(env, `-${days} days`, "+1 day") });
   },
 
+  "GET /api/admin/referrals": async (req, env) => {
+    const { results } = await env.DB.prepare(
+      "SELECT r.email, r.ref, COUNT(DISTINCT s.email) AS n, MAX(s.created_at) AS last FROM subscribers s JOIN subscribers r ON r.ref=s.referred_by WHERE s.referred_by IS NOT NULL GROUP BY r.email, r.ref ORDER BY n DESC, last DESC LIMIT 25").all();
+    const tot = await env.DB.prepare("SELECT COUNT(DISTINCT email) AS n FROM subscribers WHERE referred_by IS NOT NULL").first();
+    return json({ referrers: results, total: tot.n });
+  },
+
   "GET /api/admin/flags": async (req, env) => {
     const { results } = await env.DB.prepare("SELECT id, kind, item_id, action, categories, reason, excerpt, email, name, status, created_at FROM moderation_flags ORDER BY status='open' DESC, id DESC LIMIT 100").all();
     return json({ flags: results.map((f) => ({ ...f, labels: String(f.categories || "").split(",").filter(Boolean).map((c) => MOD_LABELS[c] || c) })) });
@@ -1000,12 +1010,12 @@ async function monthlyReports(env) {
 // Event reminders: runs with the 8 a.m. daily job and emails anyone who asked about tomorrow's events.
 async function sendEventReminders(env) {
   const { results } = await env.DB.prepare(
-    "SELECT r.id, r.email, e.title, e.event_date, e.event_time, e.place, e.town, e.link, s.token FROM event_reminders r JOIN events e ON e.id=r.event_id LEFT JOIN subscribers s ON s.email=r.email AND s.unsubscribed_at IS NULL WHERE r.sent=0 AND e.status='approved' AND e.event_date = date('now','-5 hours','+1 day') LIMIT 300").all();
+    "SELECT r.id, r.email, e.title, e.event_date, e.event_time, e.place, e.town, e.link, s.token, s.ref FROM event_reminders r JOIN events e ON e.id=r.event_id LEFT JOIN subscribers s ON s.email=r.email AND s.unsubscribed_at IS NULL WHERE r.sent=0 AND e.status='approved' AND e.event_date = date('now','-5 hours','+1 day') LIMIT 300").all();
   const site = env.SITE_URL || "https://centexhomeschool.org";
   for (const r of results) {
     const when = new Date(r.event_date + "T12:00:00Z").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" });
     const ok = await sendMail(env, r.email, `Reminder: ${r.title} is tomorrow`,
-      `Just a reminder: ${r.title} is tomorrow, ${when}${r.event_time ? " at " + r.event_time : ""}${r.place || r.town ? ", " + [r.place, r.town].filter(Boolean).join(", ") : ""}.\n\n${r.link ? "Details and registration: " + r.link + "\n\n" : ""}Please confirm details with the host before you go.\n\nMore homeschool events: ${site}/calendar\n\nCenTex Homeschool Hub${r.token ? "\nUnsubscribe from all emails: " + site + "/api/unsubscribe?t=" + r.token : ""}`);
+      `Just a reminder: ${r.title} is tomorrow, ${when}${r.event_time ? " at " + r.event_time : ""}${r.place || r.town ? ", " + [r.place, r.town].filter(Boolean).join(", ") : ""}.\n\n${r.link ? "Details and registration: " + r.link + "\n\n" : ""}Please confirm details with the host before you go.\n\nMore homeschool events: ${site}/calendar\n\n${shareLine(env, r.ref)}\n\nCenTex Homeschool Hub${r.token ? "\nUnsubscribe from all emails: " + site + "/api/unsubscribe?t=" + r.token : ""}`);
     await env.DB.prepare("UPDATE event_reminders SET sent=? WHERE id=?").bind(ok ? 1 : 2, r.id).run();
   }
 }
@@ -1021,9 +1031,21 @@ function htmlToText(html) {
     .replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&#39;/g, "'").replace(/&quot;/g, '"')
     .replace(/[ \t]+/g, " ").replace(/\n\s*\n\s*\n+/g, "\n\n").trim();
 }
-function personalize(html, env, token) {
+const newRef = () => crypto.randomUUID().replace(/-/g, "").slice(0, 8);
+const refUrl = (env, ref) => `${env.SITE_URL || "https://centexhomeschool.org"}/${ref ? "?ref=" + ref : ""}`;
+// Make sure a subscriber has a share code (older rows were created before referrals existed).
+async function ensureRef(env, email) {
+  const row = await env.DB.prepare("SELECT ref FROM subscribers WHERE email=? AND ref IS NOT NULL ORDER BY id LIMIT 1").bind(email).first();
+  if (row) return row.ref;
+  const ref = newRef();
+  await env.DB.prepare("UPDATE subscribers SET ref=? WHERE email=? AND ref IS NULL").bind(ref, email).run();
+  return ref;
+}
+const shareLine = (env, ref) => `Know another homeschool family who'd find this useful? Forward this email, or share your link: ${refUrl(env, ref)}`;
+function personalize(html, env, token, ref) {
   const site = env.SITE_URL || "https://centexhomeschool.org";
   return String(html)
+    .split("{{referral_url}}").join(refUrl(env, ref))
     .split("{{unsubscribe_url}}").join(token ? `${site}/api/unsubscribe?t=${token}` : `${site}/newsletter`)
     .split("{{mailing_address}}").join(env.MAILING_ADDRESS || "");
 }
@@ -1039,11 +1061,11 @@ async function processNewsletters(env, limit = NL_BATCH) {
   const nl = await env.DB.prepare("SELECT id, subject, html FROM newsletters WHERE status='sending' ORDER BY id LIMIT 1").first();
   if (!nl) return 0;
   const { results: batch } = await env.DB.prepare(
-    "SELECT s.id, s.email, sub.token FROM newsletter_sends s LEFT JOIN subscribers sub ON sub.email=s.email AND sub.unsubscribed_at IS NULL WHERE s.newsletter_id=? AND s.status='queued' ORDER BY s.id LIMIT ?").bind(nl.id, limit).all();
+    "SELECT s.id, s.email, sub.token, sub.ref FROM newsletter_sends s LEFT JOIN subscribers sub ON sub.email=s.email AND sub.unsubscribed_at IS NULL WHERE s.newsletter_id=? AND s.status='queued' ORDER BY s.id LIMIT ?").bind(nl.id, limit).all();
   let sent = 0;
   for (const r of batch) {
     if (!r.token) { await env.DB.prepare("UPDATE newsletter_sends SET status='skipped' WHERE id=?").bind(r.id).run(); continue; } // unsubscribed meanwhile
-    const html = personalize(nl.html, env, r.token);
+    const html = personalize(nl.html, env, r.token, r.ref || await ensureRef(env, r.email));
     const ok = await sendMail(env, r.email, nl.subject, htmlToText(html), html);
     await env.DB.prepare("UPDATE newsletter_sends SET status=?, sent_at=datetime('now') WHERE id=?").bind(ok ? "sent" : "failed", r.id).run();
     if (ok) sent++;

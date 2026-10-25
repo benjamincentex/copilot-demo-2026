@@ -43,3 +43,8 @@ ALTER TABLE events ADD COLUMN confirm INTEGER DEFAULT 0;
 ALTER TABLE events ADD COLUMN category TEXT;
 ALTER TABLE claims ADD COLUMN type TEXT;
 ALTER TABLE subscribers ADD COLUMN token TEXT;
+
+-- Referrals: each subscriber's share code, and who shared the link a new subscriber came from
+ALTER TABLE subscribers ADD COLUMN ref TEXT;
+ALTER TABLE subscribers ADD COLUMN referred_by TEXT;
+CREATE INDEX IF NOT EXISTS idx_subscribers_ref ON subscribers(ref);

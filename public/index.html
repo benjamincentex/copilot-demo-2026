@@ -183,13 +183,17 @@ form.ask textarea{font:inherit;font-size:14px;padding:8px 10px;border:1px solid 
 .day i.imported{background:var(--bonnet-soft)}
 .day i.leader{background:var(--sun-soft)}
 .day i.more{background:transparent;color:var(--muted)}
+.day i.wk{background:transparent;color:var(--oak);font-weight:600}
+.wkcard{border-left:3px solid var(--oak)}
 .calside{min-width:0;display:flex;flex-direction:column}
 .boardgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
 @media (max-width:780px){
   .calwrap{grid-template-columns:1fr}
   .day{min-height:44px;align-items:center}
   .day i{display:none}
-  .day.has::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--bonnet);margin-top:3px}
+  .day.has::after,.day.wk::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--bonnet);margin-top:3px}
+  .day.wk:not(.has)::after{background:var(--oak)}
+  .day.has.wk::after{transform:translateX(-6px);box-shadow:12px 0 0 var(--oak)}
   nav.links{flex-wrap:wrap;width:100%;gap:8px 16px}
   nav.links a{white-space:nowrap}
 }
@@ -995,7 +999,7 @@ $("quiz").addEventListener("submit",async e=>{
   if(!/^\S+@\S+\.\S+$/.test(email)){st.className="status err";st.textContent="Enter a valid email address to sign up.";$("n-email").focus();return;}
   st.textContent="Signing you up…";
   const r=await api("/api/subscribe",{email,source:"quiz",answers:ans});
-  if(r.ok){e.target.reset(); st.className="status ok"; st.textContent=r.already?"You're already on the list. Your next newsletter arrives at the start of the month.":"You're in. Check your inbox for a welcome email. The newsletter arrives at the start of each month.";}
+  if(r.ok){e.target.reset(); st.className="status ok"; st.innerHTML=esc(r.already?"You're already on the list. Your next newsletter arrives at the start of the month.":"You're in. Check your inbox for a welcome email. The newsletter arrives at the start of each month.")+shareBtn(r.ref);}
   else{st.className="status err";st.textContent=r.error;}
 });
 
@@ -1151,7 +1155,7 @@ document.addEventListener("submit",async e=>{
   const r=await api("/api/subscribe",{email,source:f.dataset.src});
   if(!r.ok){st.className="status err";st.textContent=r.error;return;}
   f.querySelector("input").value=""; st.className="status ok";
-  st.innerHTML=f.dataset.src==="checklist"?`You're in! <a href="/checklist.html" target="_blank" rel="noopener">Open your checklist now</a>. We'll email you a copy too.`:(r.already?"You're already on the list. Thanks!":"You're in! Watch your inbox for a welcome email.");
+  st.innerHTML=f.dataset.src==="checklist"?`You're in! <a href="/checklist.html" target="_blank" rel="noopener">Open your checklist now</a>. We'll email you a copy too.${shareBtn(r.ref)}`:esc(r.already?"You're already on the list. Thanks!":"You're in! Watch your inbox for a welcome email.")+shareBtn(r.ref);
 });
 api("/api/stats").then(r=>{ if(r.ok&&r.subscribers){ SUBCOUNT=r.subscribers; renderBars(); } });
 // "Remind me" on calendar events
@@ -1208,9 +1212,21 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-calf]"); i
   document.querySelectorAll("[data-calf]").forEach(x=>x.setAttribute("aria-selected",x===b)); renderCalendar(); renderWeekly();});
 // Weekly homeschool activities: recurring daytime/homeschool sessions from Activities listings (no invented dates)
 const DAYNAME={Mon:"Monday",Tue:"Tuesday",Wed:"Wednesday",Thu:"Thursday",Fri:"Friday"};
+const DOWK=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const actTownOk=x=>!calTowns.length||townsOf(x).some(t=>calTowns.includes(t));
+const weeklyActs=()=>(calFilter==="schools"||calFilter==="public")?[]:L.filter(x=>!x.test&&x.type==="activity"&&(x.daytime||x.homeschool)&&x.days&&x.days.length&&actTownOk(x));
+const flexActs=()=>(calFilter==="schools"||calFilter==="public")?[]:L.filter(x=>!x.test&&x.type==="activity"&&(x.daytime||x.homeschool)&&!(x.days&&x.days.length)&&actTownOk(x));
+const weeklyOn=(d,acts)=>{const k=DOWK[d.getDay()]; return acts.filter(x=>x.days.includes(k));};
+function wkCard(x,d){
+  const dd=d?fmtDate(ymd(d)):null;
+  return `<div class="event wkcard">${dd?`<div class="datebox"><span>${dd.m}</span><b>${dd.d}</b></div>`:""}<div style="display:flex;flex-direction:column;gap:4px;min-width:0"><span class="tag" style="align-self:flex-start">Weekly homeschool activity</span><b>${x.site?`<a href="${esc(x.site)}" target="_blank" rel="noopener">${esc(x.n)}</a>`:esc(x.n)}</b>
+    <span class="meta">${[dd?dd.w:"",townsOf(x).join(", "),x.sched||""].filter(Boolean).map(esc).join(" · ")}</span>${x.d?`<p>${esc(x.d)}</p>`:""}<span class="meta">Recurring. Confirm times and sign-up with the provider.</span></div></div>`;
+}
+function flexNote(){ const xs=flexActs(); if(!xs.length) return "";
+  return `<div class="post wkcard"><b>Daytime homeschool classes, most weekdays</b><span class="meta">Ask each provider for current days and times:</span>${xs.map(x=>`<span class="meta">${x.site?`<a href="${esc(x.site)}" target="_blank" rel="noopener">${esc(x.n)}</a>`:esc(x.n)} · ${esc(townsOf(x).join(", "))}</span>`).join("")}</div>`; }
 function renderWeekly(){
   const box=$("weeklyActs"); if(!box) return;
-  if(calFilter==="schools"||calFilter==="public"){ box.innerHTML=""; return; }
+  if(calFilter==="schools"||calFilter==="public"||calFilter==="activity"||calDay){ box.innerHTML=""; return; }
   const acts=L.filter(x=>!x.test&&x.type==="activity"&&(x.daytime||x.homeschool)&&x.days&&x.days.length&&(!calTowns.length||townsOf(x).some(t=>calTowns.includes(t))));
   const rows=Object.keys(DAYNAME).map(d=>[d,acts.filter(x=>x.days.includes(d))]).filter(r=>r[1].length);
   box.innerHTML=rows.length?`<h3 style="font-size:20px;margin:18px 0 8px">Weekly homeschool activities</h3><p class="where" style="margin:0 0 8px">Recurring daytime sessions. Confirm times and sign-up with each provider.</p><div class="stack">${rows.map(([d,xs])=>`<div class="post"><b>${DAYNAME[d]}</b>${xs.map(x=>`<span class="meta">${x.site?`<a href="${esc(x.site)}" target="_blank" rel="noopener">${esc(x.n)}</a>`:esc(x.n)} · ${esc(townsOf(x).join(", "))}${x.sched?` · ${esc(x.sched)}`:""}</span>`).join("")}</div>`).join("")}</div><p class="where" style="margin:8px 0 0"><a href="/activities">See all homeschool-friendly activities</a></p>`:"";
@@ -1226,25 +1242,33 @@ function renderCalendar(){
   const today=new Date(); if(!calMonth) calMonth=new Date(today.getFullYear(),today.getMonth(),1);
   $("calTitle").textContent=calMonth.toLocaleString("en-US",{month:"long",year:"numeric"});
   const first=new Date(calMonth), start=new Date(first); start.setDate(1-first.getDay());
+  const WK=weeklyActs();
   const byDay={}; shownEvents().forEach(ev=>(byDay[ev.event_date]=byDay[ev.event_date]||[]).push(ev));
   let cells=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d=>`<div class="dow">${d}</div>`).join("");
   for(let k=0;k<42;k++){
     const d=new Date(start); d.setDate(start.getDate()+k); const key=ymd(d), evs=byDay[key]||[];
     const inMonth=d.getMonth()===calMonth.getMonth();
     if(k>=35&&!inMonth&&d.getDay()===0) break;
-    cells+=`<button type="button" class="day${inMonth?"":" out"}${key===ymd(today)?" today":""}${evs.length?" has":""}${key===calDay?" sel":""}" data-day="${key}" aria-label="${d.toDateString()}${evs.length?", "+evs.length+" event"+(evs.length>1?"s":""):""}"><span>${d.getDate()}</span>${evs.slice(0,2).map(ev=>`<i class="${ev.source}">${esc(ev.title)}</i>`).join("")}${evs.length>2?`<i class="more">+${evs.length-2} more</i>`:""}</button>`;
+    const wk=key>=ymd(today)?weeklyOn(d,WK):[];
+    cells+=`<button type="button" class="day${inMonth?"":" out"}${key===ymd(today)?" today":""}${evs.length?" has":""}${wk.length?" wk":""}${key===calDay?" sel":""}" data-day="${key}" aria-label="${d.toDateString()}${evs.length?", "+evs.length+" event"+(evs.length>1?"s":""):""}${wk.length?", "+wk.length+" weekly activities":""}"><span>${d.getDate()}</span>${evs.slice(0,2).map(ev=>`<i class="${ev.source}">${esc(ev.title)}</i>`).join("")}${evs.length>2?`<i class="more">+${evs.length-2} more</i>`:""}${wk.length?`<i class="wk">${wk.length} weekly activit${wk.length>1?"ies":"y"}</i>`:""}</button>`;
   }
   $("calGrid").innerHTML=cells;
   const todayKey=ymd(today);
   const list=calDay?(byDay[calDay]||[]):shownEvents().filter(ev=>ev.event_date>=todayKey).slice(0,8);
+  let extra="";
+  if(calDay){ const dd=new Date(calDay+"T12:00:00"), wd=dd.getDay();
+    if(calDay>=todayKey){ extra=weeklyOn(dd,WK).map(x=>wkCard(x,dd)).join(""); if(wd>0&&wd<6) extra+=flexNote(); } }
+  else if(calFilter==="activity"){ // next 7 days of recurring sessions
+    for(let i=0;i<7;i++){ const dd=new Date(today); dd.setDate(today.getDate()+i); extra+=weeklyOn(dd,WK).map(x=>wkCard(x,dd)).join(""); }
+    extra+=flexNote(); }
   $("calListTitle").textContent=calDay?new Date(calDay+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}):"Coming up";
-  $("eventList").innerHTML=list.length?list.map(eventCard).join("")+(calDay?`<button class="linkbtn" type="button" id="calClear" style="align-self:flex-start">Show all upcoming</button>`:"")
+  $("eventList").innerHTML=(list.length||extra)?list.map(eventCard).join("")+extra+(calDay?`<button class="linkbtn" type="button" id="calClear" style="align-self:flex-start">Show all upcoming</button>`:"")
     :`<div class="emptynote">${calDay?"Nothing on this day.":calFilter==="all"?"No upcoming events yet.":"No upcoming events of this type yet."} Hosting an open house, a homeschool class or a public homeschool event? Add it here.</div>`;
-  const c=$("calClear"); if(c) c.onclick=()=>{calDay=null;renderCalendar();};
+  const c=$("calClear"); if(c) c.onclick=()=>{calDay=null;renderCalendar();renderWeekly();};
 }
 $("calPrev").onclick=()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()-1,1);calDay=null;renderCalendar();};
 $("calNext").onclick=()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+1,1);calDay=null;renderCalendar();};
-$("calGrid").addEventListener("click",e=>{const b=e.target.closest("[data-day]"); if(!b) return; calDay=calDay===b.dataset.day?null:b.dataset.day; renderCalendar();});
+$("calGrid").addEventListener("click",e=>{const b=e.target.closest("[data-day]"); if(!b) return; calDay=calDay===b.dataset.day?null:b.dataset.day; renderCalendar(); renderWeekly();});
 async function loadEvents(){
   const r=await api("/api/cal"); EVENTS=(r.ok&&Array.isArray(r.events))?r.events:[];
   if(!r.ok||!Array.isArray(r.events)){ console.error("Calendar couldn't load events:", r.error||"unexpected response"); renderCalendar(); $("eventList").innerHTML=`<div class="emptynote">The calendar couldn't load right now. Refresh the page to try again.</div>`; return; }
@@ -1366,7 +1390,18 @@ initPages(); render(); renderQuiz(); renderRegistration(); loadOverrides(); load
 
 
 // Talks to the site's own server (src/worker.js). Returns {ok, ...} or {ok:false, error}.
+// Referrals: remember a friend's share code from ?ref=, and send it with signups.
+const REF=(()=>{ try{ const p=new URLSearchParams(location.search), r=(p.get("ref")||"").replace(/[^a-f0-9]/gi,"").slice(0,16);
+  if(r){ localStorage.setItem("chh_ref",r); p.delete("ref"); history.replaceState(null,"",location.pathname+(p.toString()?"?"+p:"")+location.hash); }
+  return localStorage.getItem("chh_ref")||""; }catch(e){ return ""; } })();
+const SITE="https://centexhomeschool.org";
+const shareBtn=ref=>ref?` <button class="linkbtn" type="button" data-share="${SITE}/?ref=${esc(ref)}" style="font-size:inherit">Share with a homeschool friend</button>`:"";
+document.addEventListener("click",async e=>{const b=e.target.closest("[data-share]"); if(!b) return;
+  const url=b.dataset.share, text="A free directory of Central Texas homeschool co-ops, classes and homeschool-friendly activities, plus a monthly newsletter. Thought you'd like it:";
+  try{ if(navigator.share){ await navigator.share({title:"CenTex Homeschool Hub",text,url}); return; } }catch(err){ if(err&&err.name==="AbortError") return; }
+  try{ await navigator.clipboard.writeText(url); b.textContent="Link copied. Paste it in a text or group chat!"; }catch(err){ b.outerHTML=`<span class="where">Share this link: ${esc(url)}</span>`; } });
 async function api(path,data){
+  if(path==="/api/subscribe"&&data&&REF&&!data.ref) data={...data,ref:REF};
   try{
     const res=await fetch(path,data===undefined?{headers:{accept:"application/json"}}:{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(data)});
     const out=await res.json().catch(()=>({}));
@@ -1380,7 +1415,7 @@ $("mainNewsForm").addEventListener("submit",async e=>{
   if(!/^\S+@\S+\.\S+$/.test(email)){st.className="status err";st.textContent="Enter a valid email address to sign up.";$("nl-email").focus();return;}
   st.textContent="Signing you up…";
   const r=await api("/api/subscribe",{email,source:"newsletter",answers:{town:$("nl-town").value}});
-  if(r.ok){e.target.reset(); st.className="status ok"; st.textContent=r.already?"You're already on the list. Your next newsletter arrives at the start of the month.":"You're in. Check your inbox for a welcome email. The newsletter arrives at the start of each month.";}
+  if(r.ok){e.target.reset(); st.className="status ok"; st.innerHTML=esc(r.already?"You're already on the list. Your next newsletter arrives at the start of the month.":"You're in. Check your inbox for a welcome email. The newsletter arrives at the start of each month.")+shareBtn(r.ref);}
   else{st.className="status err";st.textContent=r.error;}
 });
 $("form").addEventListener("submit",async e=>{

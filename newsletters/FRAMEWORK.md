@@ -27,11 +27,14 @@ Draft is written by the 25th of the prior month. Reading time: about 4 minutes.
    after the draft is saved: `UPDATE spotlights SET status='used', used_at=datetime('now') WHERE id=<id>`. Up to 2 per issue.
 8. **Groups to know** — 2–3 listings from the directory, rotating towns (always include north: Liberty Hill,
    Leander, Cedar Park, Georgetown). One line each, from the listing. Link /directory.
-9. **For schools & teachers** — a short note inviting groups to claim their free listing (/leaders.html).
-10. **Sign-off** — Benjamin, plus "hit reply and tell me about a group we're missing."
+9. **Share with a friend** — a short dashed box: "Know a family thinking about homeschooling? Forward this email,
+   or send them your personal link" with `{{referral_url}}` as the link (filled in per subscriber; signups through it
+   are credited to them).
+10. **For schools & teachers** — a short note inviting groups to claim their free listing (/leaders.html).
+11. **Sign-off** — Benjamin, plus "hit reply and tell me about a group we're missing."
 
 ## Rules
 - Original writing only; no copied paragraphs. Facts and dates must come from a source checked that month.
 - No prices for paid plans (paid plans are off for launch).
-- Keep `{{unsubscribe_url}}` and `{{mailing_address}}` in the footer; the site fills them in per subscriber.
+- Keep `{{referral_url}}` in the share box and `{{unsubscribe_url}}` and `{{mailing_address}}` in the footer; the site fills them in per subscriber.
 - Use the HTML layout in `2026-11.html` (inline styles, 600px table) as the template.
