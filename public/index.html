@@ -954,8 +954,8 @@ $("calPrev").onclick=()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getM
 $("calNext").onclick=()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+1,1);calDay=null;renderCalendar();};
 $("calGrid").addEventListener("click",e=>{const b=e.target.closest("[data-day]"); if(!b) return; calDay=calDay===b.dataset.day?null:b.dataset.day; renderCalendar();});
 async function loadEvents(){
-  const r=await api("/api/events"); EVENTS=(r.ok&&r.events)||[];
-  if(!r.ok) console.error("Calendar couldn't load events:", r.error);
+  const r=await api("/api/events"); EVENTS=(r.ok&&Array.isArray(r.events))?r.events:[];
+  if(!r.ok||!Array.isArray(r.events)){ console.error("Calendar couldn't load events:", r.error||"unexpected response"); renderCalendar(); $("eventList").innerHTML=`<div class="emptynote">The calendar couldn't load right now. Refresh the page to try again.</div>`; return; }
   // Open on the month of the next upcoming event when this month has none.
   const now=new Date(), key=ymd(now), next=EVENTS.find(ev=>ev.event_date>=key);
   const thisMonth=key.slice(0,7);
