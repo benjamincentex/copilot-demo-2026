@@ -634,14 +634,6 @@ const routes = {
     return json({ ok: true });
   },
 
-  // TEMPORARY: moderation self-test, removed after launch testing.
-  "POST /api/mod-selftest": async (req, env) => {
-    if (req.headers.get("x-test-token") !== "3647ee402672bd4d4c32992bc34c833e") return bad("Not found.", 404);
-    const b = await body(req) || {}; const texts = Array.isArray(b.texts) ? b.texts.slice(0, 10) : [];
-    const out = []; for (const t of texts) out.push({ text: String(t).slice(0, 60), ...(await screenText(env, String(t))) });
-    return json({ results: out, ai: !!env.AI });
-  },
-
   "GET /api/admin/flags": async (req, env) => {
     const { results } = await env.DB.prepare("SELECT id, kind, item_id, action, categories, reason, excerpt, email, name, status, created_at FROM moderation_flags ORDER BY status='open' DESC, id DESC LIMIT 100").all();
     return json({ flags: results.map((f) => ({ ...f, labels: String(f.categories || "").split(",").filter(Boolean).map((c) => MOD_LABELS[c] || c) })) });
