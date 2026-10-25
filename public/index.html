@@ -455,7 +455,7 @@ html{scroll-behavior:smooth}
         <option>STEM</option><option>Arts</option><option>Gifted / 2e</option><option>Littles welcome</option>
       </select>
     </div>
-    <div class="chips"><button class="toggle" type="button" id="openNow" aria-pressed="false">Open now</button><div class="chips" id="townChips" role="group" aria-label="Filter by town" style="margin-top:0"></div></div>
+    <div class="chips"><button class="toggle" type="button" id="openNow" aria-pressed="false">Open now</button><div class="chips" id="townChips" role="group" aria-label="Filter by town (pick one or more)" style="margin-top:0"></div></div>
   </div>
 </div>
 
@@ -485,6 +485,7 @@ html{scroll-behavior:smooth}
       <button type="button" role="tab" data-calf="activity" aria-selected="false">Activities</button>
       <button type="button" role="tab" data-calf="public" aria-selected="false">Public homeschool events</button>
     </div>
+    <div class="chips" id="calTownChips" role="group" aria-label="Filter events by town (pick one or more)" style="margin:0 0 16px"></div>
     <div class="calwrap">
       <div class="cal">
         <div class="calhead"><button class="linkbtn" type="button" id="calPrev" aria-label="Previous month">‹ Prev</button><h3 id="calTitle"></h3><button class="linkbtn" type="button" id="calNext" aria-label="Next month">Next ›</button></div>
@@ -851,7 +852,7 @@ const TOWNS=["All","Liberty Hill","Leander","Cedar Park","Round Rock","Pflugervi
 L.forEach(x=>{ if(!x.avail) x.avail={s:"unknown"}; });
 const AV={open:["Open spots","a-open"],waitlist:["Waitlist","a-wait"],full:["Full","a-full"],opens:["Registration opens","a-opens"],unknown:["Availability: ask the group","a-unk"]};
 function availLabel(x){ const a=x.avail; return a.s==="opens"&&a.when?`Registration opens ${a.when}`:AV[a.s][0]; }
-const state={q:"",type:"",approach:"",town:"All",open:false,section:"learn"};
+const state={q:"",type:"",approach:"",towns:[],open:false,section:"learn"};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
@@ -862,7 +863,7 @@ function matches(x){
   if(state.open && x.avail.s!=="open") return false;
   if(state.type && x.type!==state.type) return false;
   if(state.approach && !x.tags.includes(state.approach)) return false;
-  if(state.town!=="All" && !townsOf(x).includes(state.town)) return false;
+  if(state.towns.length && !townsOf(x).some(t=>state.towns.includes(t))) return false;
   if(state.q){const hay=[x.n,x.town,x.d,x.sched||"",x.tags.join(" "),TYPES[x.type][0]].join(" ").toLowerCase();
     if(!state.q.toLowerCase().split(/\s+/).every(w=>hay.includes(w))) return false;}
   return true;
@@ -903,7 +904,7 @@ let showAll=false;
 function render(){
   const res=L.filter(matches);
   if(state.section==="activity") res.sort((a,b)=>((b.daytime?2:b.homeschool?1:0)-(a.daytime?2:a.homeschool?1:0))); // daytime classes first
-  const filtering=state.q||state.type||state.approach||state.town!=="All"||state.open;
+  const filtering=state.q||state.type||state.approach||state.towns.length||state.open;
   const shown=(filtering||showAll)?res:res.slice(0,12);
   $("grid").innerHTML=shown.map(card).join("");
   $("showAll").hidden=shown.length>=res.length;
@@ -920,7 +921,7 @@ function render(){
   $("tabLearn").setAttribute("aria-selected",state.section!=="activity"); $("tabAct").setAttribute("aria-selected",state.section==="activity");
   $("typeSel").hidden=state.section==="activity"; $("approachSel").hidden=state.section==="activity"; $("actSel").hidden=state.section!=="activity";
   $("dirIntro").textContent=state.section==="activity"?"Sports, gymnastics, swim, martial arts, music and more with daytime or homeschool-friendly classes. Always confirm current class times with the provider.":"Co-ops, support groups, classes, tutors and microschools from Liberty Hill to South Austin. Filter by town, type and approach.";
-  document.querySelectorAll("#townChips .chip").forEach(c=>c.setAttribute("aria-pressed",c.dataset.town===state.town));
+  document.querySelectorAll("#townChips .chip").forEach(c=>c.setAttribute("aria-pressed",c.dataset.town==="All"?!state.towns.length:state.towns.includes(c.dataset.town)));
 }
 // ---- Find your fit quiz ----
 const QS=[
@@ -985,7 +986,7 @@ $("quiz").addEventListener("click",e=>{
   if(e.target.id==="qBack"){qi=Math.max(0,qi-1); renderQuiz(); return;}
   if(e.target.id==="qRetake"){qi=0; ans={}; renderQuiz(); return;}
   const see=e.target.closest("[data-see]");
-  if(see){Object.assign(state,{q:see.dataset.see,type:"",approach:"",town:"All",open:false});$("q").value=see.dataset.see;$("typeSel").value="";$("approachSel").value="";render();go("/directory",true);const c=document.querySelector("#grid .card"); if(c){c.scrollIntoView({behavior:"smooth",block:"center"}); c.classList.add("flash"); setTimeout(()=>c.classList.remove("flash"),2200);}}
+  if(see){Object.assign(state,{q:see.dataset.see,type:"",approach:"",towns:[],open:false});$("q").value=see.dataset.see;$("typeSel").value="";$("approachSel").value="";render();go("/directory",true);const c=document.querySelector("#grid .card"); if(c){c.scrollIntoView({behavior:"smooth",block:"center"}); c.classList.add("flash"); setTimeout(()=>c.classList.remove("flash"),2200);}}
 });
 $("quiz").addEventListener("submit",async e=>{
   if(e.target.id!=="newsForm") return;
@@ -999,7 +1000,9 @@ $("quiz").addEventListener("submit",async e=>{
 });
 
 $("townChips").innerHTML=TOWNS.map(t=>`<button class="chip" type="button" data-town="${esc(t)}">${esc(t)}</button>`).join("");
-$("townChips").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;state.town=b.dataset.town;render();});
+// Towns: pick one or more; "All" clears the selection.
+const toggleTown=(list,t)=>t==="All"?[]:list.includes(t)?list.filter(x=>x!==t):list.concat(t);
+$("townChips").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;state.towns=toggleTown(state.towns,b.dataset.town);render();});
 $("q").addEventListener("input",e=>{state.q=e.target.value.trim();render();});
 $("typeSel").addEventListener("change",e=>{state.type=e.target.value;render();});
 $("approachSel").addEventListener("change",e=>{state.approach=e.target.value;render();});
@@ -1009,7 +1012,7 @@ $("tabLearn").addEventListener("click",()=>setSection("learn"));
 (()=>{ const tags=[...new Set(L.filter(x=>x.type==="activity").flatMap(x=>x.tags))].sort(); $("actSel").innerHTML='<option value="">All activities</option>'+tags.map(t=>`<option>${esc(t)}</option>`).join(""); })();
 $("actSel").addEventListener("change",e=>{state.approach=e.target.value;render();});
 $("tabAct").addEventListener("click",()=>setSection("activity"));
-$("clearBtn").addEventListener("click",()=>{Object.assign(state,{q:"",type:"",approach:"",town:"All",open:false});$("q").value="";$("typeSel").value="";$("approachSel").value="";$("actSel").value="";render();});
+$("clearBtn").addEventListener("click",()=>{Object.assign(state,{q:"",type:"",approach:"",towns:[],open:false});$("q").value="";$("typeSel").value="";$("approachSel").value="";$("actSel").value="";render();});
 
 function goForm(kind,name){
   $("f-kind").value=kind; if(name) $("f-name").value=name;
@@ -1194,9 +1197,13 @@ function sourceLine(ev){
   return ev.host?`Hosted by ${esc(ev.host)}`:"Posted by a parent";
 }
 const CATS={"openhouse":"Open house or info session","deadline":"Application or registration deadline","public":"Public homeschool event","activity":"Homeschool activity","other":"Other public event"};
-let calFilter="all";
+let calFilter="all", calTowns=[];
+const evTownOk=ev=>!calTowns.length||calTowns.some(t=>String(ev.town||"").toLowerCase().includes(t.toLowerCase()));
 const CALF={all:null,schools:["openhouse","deadline"],activity:["activity"],public:["public","other"]};
-const shownEvents=()=>CALF[calFilter]?EVENTS.filter(ev=>CALF[calFilter].includes(ev.category)):EVENTS;
+const shownEvents=()=>EVENTS.filter(ev=>(!CALF[calFilter]||CALF[calFilter].includes(ev.category))&&evTownOk(ev));
+function renderCalTowns(){ const el=$("calTownChips"); if(!el) return;
+  el.innerHTML=TOWNS.map(t=>`<button class="chip" type="button" data-caltown="${esc(t)}" aria-pressed="${t==="All"?!calTowns.length:calTowns.includes(t)}">${esc(t)}</button>`).join(""); }
+document.addEventListener("click",e=>{const b=e.target.closest("[data-caltown]"); if(!b) return; calTowns=toggleTown(calTowns,b.dataset.caltown); calDay=null; renderCalTowns(); renderCalendar(); renderWeekly();});
 document.addEventListener("click",e=>{const b=e.target.closest("[data-calf]"); if(!b) return; calFilter=b.dataset.calf; calDay=null;
   document.querySelectorAll("[data-calf]").forEach(x=>x.setAttribute("aria-selected",x===b)); renderCalendar(); renderWeekly();});
 // Weekly homeschool activities: recurring daytime/homeschool sessions from Activities listings (no invented dates)
@@ -1204,7 +1211,7 @@ const DAYNAME={Mon:"Monday",Tue:"Tuesday",Wed:"Wednesday",Thu:"Thursday",Fri:"Fr
 function renderWeekly(){
   const box=$("weeklyActs"); if(!box) return;
   if(calFilter==="schools"||calFilter==="public"){ box.innerHTML=""; return; }
-  const acts=L.filter(x=>!x.test&&x.type==="activity"&&(x.daytime||x.homeschool)&&x.days&&x.days.length);
+  const acts=L.filter(x=>!x.test&&x.type==="activity"&&(x.daytime||x.homeschool)&&x.days&&x.days.length&&(!calTowns.length||townsOf(x).some(t=>calTowns.includes(t))));
   const rows=Object.keys(DAYNAME).map(d=>[d,acts.filter(x=>x.days.includes(d))]).filter(r=>r[1].length);
   box.innerHTML=rows.length?`<h3 style="font-size:20px;margin:18px 0 8px">Weekly homeschool activities</h3><p class="where" style="margin:0 0 8px">Recurring daytime sessions. Confirm times and sign-up with each provider.</p><div class="stack">${rows.map(([d,xs])=>`<div class="post"><b>${DAYNAME[d]}</b>${xs.map(x=>`<span class="meta">${x.site?`<a href="${esc(x.site)}" target="_blank" rel="noopener">${esc(x.n)}</a>`:esc(x.n)} · ${esc(townsOf(x).join(", "))}${x.sched?` · ${esc(x.sched)}`:""}</span>`).join("")}</div>`).join("")}</div><p class="where" style="margin:8px 0 0"><a href="/activities">See all homeschool-friendly activities</a></p>`:"";
 }
@@ -1245,7 +1252,7 @@ async function loadEvents(){
   const now=new Date(), key=ymd(now), next=EVENTS.find(ev=>ev.event_date>=key);
   const thisMonth=key.slice(0,7);
   if(next && !EVENTS.some(ev=>ev.event_date.slice(0,7)===thisMonth && ev.event_date>=key)){ const [y,m]=next.event_date.split("-").map(Number); calMonth=new Date(y,m-1,1); }
-  renderCalendar(); renderWeekly();
+  renderCalTowns(); renderCalendar(); renderWeekly();
 }
 document.addEventListener("click",async e=>{
   const ask=e.target.closest("[data-ask]")||e.target.closest("[data-answer]"), rep=e.target.closest("[data-reply]"), rm=e.target.closest("[data-remove]");
