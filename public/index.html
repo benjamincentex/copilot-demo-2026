@@ -217,6 +217,10 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .t-class{background:var(--sun-soft);color:var(--ink)}
 .t-tutor{background:var(--bonnet-soft);color:var(--ink)}
 .t-micro{background:var(--line);color:var(--ink)}
+.t-act{background:var(--sun-soft);color:var(--ink);border:1px solid var(--sun)}
+.dirtabs{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 0}
+.dirtabs button{font:inherit;font-size:15px;font-weight:600;padding:9px 16px;border-radius:999px;border:1px solid var(--oak);background:var(--surface);color:var(--oak);cursor:pointer}
+.dirtabs button[aria-selected="true"]{background:var(--oak);color:var(--bg)}
 .where{font-size:14px;color:var(--muted)}
 .card p{margin:0;font-size:15px}
 .facts{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:14px;margin:0}
@@ -392,6 +396,7 @@ html{scroll-behavior:smooth}
     <div class="intro"><span class="label">Explore</span><h2>Everything in one place</h2></div>
     <div class="explore">
       <a href="/directory"><b>Directory</b><span>Co-ops, classes, tutors and microschools by town, ages and approach</span></a>
+      <a href="/activities"><b>Activities</b><span>Homeschool-friendly sports, gymnastics, swim, martial arts and music</span></a>
       <a href="/calendar"><b>Calendar</b><span>Open houses, application deadlines and public homeschool events</span></a>
       <a href="/community"><b>Community</b><span>Find what your family is looking for, share insights and meet families nearby</span></a>
       <a href="/resources"><b>Resources</b><span>Getting started, Texas homeschool law, TEFA funding and FAQ</span></a>
@@ -403,7 +408,11 @@ html{scroll-behavior:smooth}
 <div class="wrap pagehead" data-view="directory">
   <span class="label">Directory</span>
   <h1>Central Texas homeschool directory</h1>
-  <p>Co-ops, support groups, classes, tutors and microschools from Liberty Hill to South Austin. Filter by town, type and approach.</p>
+  <p id="dirIntro">Co-ops, support groups, classes, tutors and microschools from Liberty Hill to South Austin. Filter by town, type and approach.</p>
+  <div class="dirtabs" role="tablist" aria-label="Directory sections">
+    <button type="button" role="tab" id="tabLearn" aria-selected="true">Schools, co-ops &amp; classes</button>
+    <button type="button" role="tab" id="tabAct" aria-selected="false">Homeschool-friendly activities</button>
+  </div>
 </div>
 <div class="dirwrap" data-view="directory">
 <div class="finder" id="directory">
@@ -768,7 +777,7 @@ const PAID_PLANS = false;
 // Listings live in /listings.js so the leader page shares them.
 
 // ---- Pages: each area has its own address (/directory, /calendar, ...) served by this one file ----
-const VIEWS={"/":"home","/directory":"directory","/calendar":"calendar","/community":"community","/resources":"resources","/jobs":"jobs","/newsletter":"newsletter"};
+const VIEWS={"/":"home","/directory":"directory","/activities":"directory","/calendar":"calendar","/community":"community","/resources":"resources","/jobs":"jobs","/newsletter":"newsletter"};
 const TITLES={home:"CenTex Homeschool Hub",directory:"Directory",calendar:"Calendar",community:"Community",resources:"Resources",jobs:"Jobs/Tutors",newsletter:"Newsletter"};
 // Old one-page links like /#calendar keep working.
 const LEGACY={directory:"/directory",calendar:"/calendar",register:"/calendar",community:"/community",jobs:"/jobs",resources:"/resources",tefa:"/resources#tefa",start:"/resources#start",law:"/resources#law",faq:"/resources#faq",reading:"/resources#reading",newsletter:"/newsletter",submit:"/directory#submit"};
@@ -781,6 +790,7 @@ function placeAcct(scroll){
 }
 function showView(noScroll){
   curView=viewOf(location.pathname);
+  if(curView==="directory"){ const sec=location.pathname.replace(/\/+$/,"")==="/activities"?"activity":"learn"; if(state.section!==sec){ state.section=sec; render(); } }
   document.querySelectorAll("[data-view]").forEach(el=>{ el.hidden=!el.dataset.view.split(" ").includes(curView); });
   document.querySelectorAll("nav.links a").forEach(a=>{ if(viewOf(new URL(a.href).pathname)===curView&&curView!=="home") a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
   document.title=curView==="home"?"CenTex Homeschool Hub":TITLES[curView]+" · CenTex Homeschool Hub";
@@ -804,20 +814,21 @@ document.addEventListener("click",e=>{
 window.addEventListener("popstate",()=>showView());
 function initPages(){ const h=location.hash.slice(1); if(viewOf(location.pathname)==="home"&&LEGACY[h]) history.replaceState(null,"",LEGACY[h]); showView(); }
 
-const TYPES={coop:["Co-op","t-coop"],group:["Support group","t-group"],class:["Class","t-class"],micro:["Microschool / hybrid","t-micro"],tutor:["Tutor","t-tutor"]};
+const TYPES={coop:["Co-op","t-coop"],group:["Support group","t-group"],class:["Class","t-class"],micro:["Microschool / hybrid","t-micro"],tutor:["Tutor","t-tutor"],activity:["Activity","t-act"]};
 const TOWNS=["All","Liberty Hill","Leander","Cedar Park","Round Rock","Pflugerville","Georgetown","Austin","Bastrop area"];
 // Availability per listing: s = open | waitlist | full | opens | unknown; "opens" also takes when:"March 2027".
 // Everything starts unknown until a group leader confirms it.
 L.forEach(x=>{ if(!x.avail) x.avail={s:"unknown"}; });
 const AV={open:["Open spots","a-open"],waitlist:["Waitlist","a-wait"],full:["Full","a-full"],opens:["Registration opens","a-opens"],unknown:["Availability: ask the group","a-unk"]};
 function availLabel(x){ const a=x.avail; return a.s==="opens"&&a.when?`Registration opens ${a.when}`:AV[a.s][0]; }
-const state={q:"",type:"",approach:"",town:"All",open:false};
+const state={q:"",type:"",approach:"",town:"All",open:false,section:"learn"};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
 function townsOf(x){return [x.town].concat(x.also||[])}
 function matches(x){
   if(x.test) return false;
+  if((state.section==="activity")!==(x.type==="activity")) return false;
   if(state.open && x.avail.s!=="open") return false;
   if(state.type && x.type!==state.type) return false;
   if(state.approach && !x.tags.includes(state.approach)) return false;
@@ -870,7 +881,12 @@ function render(){
     ?'No groups have confirmed open spots yet. As leaders claim their listings and post availability, they\'ll show up here. Turn off "Open now" to see everyone, and use "Notify me" on any group you like.'
     :'No listings match yet. Try another town, or <a href="#submit">add the school you know about</a>.';
   $("openNow").setAttribute("aria-pressed",state.open);
-  $("count").textContent=`${res.length} of ${L.filter(x=>!x.test).length} listings`;
+  const inSection=L.filter(x=>!x.test&&((state.section==="activity")===(x.type==="activity"))).length;
+  $("count").textContent=`${res.length} of ${inSection} ${state.section==="activity"?"activities":"listings"}`;
+  $("showAll").textContent=`Show all ${res.length} ${state.section==="activity"?"activities":"listings"}`;
+  $("tabLearn").setAttribute("aria-selected",state.section!=="activity"); $("tabAct").setAttribute("aria-selected",state.section==="activity");
+  $("typeSel").hidden=state.section==="activity"; $("approachSel").hidden=state.section==="activity";
+  $("dirIntro").textContent=state.section==="activity"?"Sports, gymnastics, swim, martial arts, music and more with daytime or homeschool-friendly classes. Always confirm current class times with the provider.":"Co-ops, support groups, classes, tutors and microschools from Liberty Hill to South Austin. Filter by town, type and approach.";
   document.querySelectorAll("#townChips .chip").forEach(c=>c.setAttribute("aria-pressed",c.dataset.town===state.town));
 }
 // ---- Find your fit quiz ----
@@ -892,6 +908,7 @@ function gradeRange(x){
   const lo=m[1]==="Pre-K"?-1:m[1]==="K"?0:+m[1]; return [lo,+m[2]];
 }
 function scoreOf(x){
+  if(x.type==="activity") return null;
   let s=0, why=[];
   const towns=TOWNMAP[ans.town];
   if(towns){ if(townsOf(x).some(t=>towns.includes(t))){s+=4;why.push("Near you");} else s-=2; }
@@ -954,6 +971,9 @@ $("q").addEventListener("input",e=>{state.q=e.target.value.trim();render();});
 $("typeSel").addEventListener("change",e=>{state.type=e.target.value;render();});
 $("approachSel").addEventListener("change",e=>{state.approach=e.target.value;render();});
 $("openNow").addEventListener("click",()=>{state.open=!state.open;render();});
+const setSection=sec=>{ state.section=sec; state.type=""; state.approach=""; $("typeSel").value=""; $("approachSel").value=""; showAll=false; render(); if(curView==="directory"){ const want=sec==="activity"?"/activities":"/directory"; if(location.pathname!==want) history.replaceState(null,"",want); } };
+$("tabLearn").addEventListener("click",()=>setSection("learn"));
+$("tabAct").addEventListener("click",()=>setSection("activity"));
 $("clearBtn").addEventListener("click",()=>{Object.assign(state,{q:"",type:"",approach:"",town:"All",open:false});$("q").value="";$("typeSel").value="";$("approachSel").value="";render();});
 
 function goForm(kind,name){

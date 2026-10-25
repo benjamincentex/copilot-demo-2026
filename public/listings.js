@@ -58,7 +58,14 @@ var L=[
  {n:"The Number Lab",site:"https://www.thenumberlab.com/",town:"Austin",type:"class",tags:["STEM"],ages:"Elementary–middle school",days:[],d:"Math-focused microschool building deep understanding and mental math."},
  {n:"Natureversity Homeschool Programs",site:"https://natureversity.org/weekly-homeschool-programs/",town:"Austin",type:"class",tags:["Nature-based"],ages:"5–12",days:[],sched:"Weekly",d:"Outdoor skills program: shelters, archery, tracking and nature games."},
  {n:"Austin Rhetoric Club",site:"https://www.austinrhetoricclub.org/",town:"Austin",type:"class",tags:["Christian"],days:[],d:"Parent-sponsored, student-run Christian homeschool speech and debate club."},
- {n:"WonderLab",site:"http://www.wonderlablearning.com",town:"Austin",type:"class",tags:["STEM"],ages:"Grades 3–12",days:[],sched:"Weekly 2-hour sessions, 10-week seasons",d:"Learner-driven project teams of 6–8 peers, supported by guides."}
+ {n:"WonderLab",site:"http://www.wonderlablearning.com",town:"Austin",type:"class",tags:["STEM"],ages:"Grades 3–12",days:[],sched:"Weekly 2-hour sessions, 10-week seasons",d:"Learner-driven project teams of 6–8 peers, supported by guides."},
+ {n:"Tumble Tech",site:"https://www.tumble-tech.com/",town:"Cedar Park",also:["Austin"],type:"activity",tags:["Gymnastics"],days:[],d:"Gymnastics and tumbling with homeschool-friendly daytime classes."},
+ {n:"British Swim School",site:"https://britishswimschool.com/",town:"Round Rock",also:["Georgetown"],type:"activity",tags:["Swim"],ages:"3 months and up",days:[],sched:"Daytime classes for homeschoolers",d:"Year-round swim lessons in heated indoor pools, with school-day classes."},
+ {n:"Swim For All: Homeschool Swim",site:"https://www.swim-for-all.com/",town:"Georgetown",also:["Round Rock"],type:"activity",tags:["Swim"],days:[],d:"Homeschool swim class for fitness and stroke technique, two skill levels."},
+ {n:"AMP Brazilian Jiu-Jitsu",site:"https://ampbjj.com",town:"Austin",type:"activity",tags:["Martial arts"],days:[],sched:"Daytime homeschool program",d:"Brazilian Jiu-Jitsu homeschool program: self-defense and character."},
+ {n:"Austin Kula Karate",site:"https://www.kulakarate.com/",town:"Austin",type:"activity",tags:["Martial arts"],ages:"4–13",days:[],d:"Kids' mix of karate, taekwondo and tai chi. Ask about homeschool times."},
+ {n:"Peak Performance Training Center",site:"https://cedarparkafterschool.com/",town:"Cedar Park",type:"activity",tags:["Martial arts","Sports"],days:[],d:"Martial arts, sports training, open gym and arts classes."},
+ {n:"Austin Youth Orchestra",town:"Austin",type:"activity",tags:["Music"],days:[],d:"Orchestral training for young musicians, with regular performances."}
 ];
 // Demo listing for testing the claim flow; hidden from the public directory.
 L.push({n:"Bluebonnet Test Academy",town:"Leander",type:"coop",tags:["Classical"],ages:"K–8",days:[],test:true,d:"Demo listing for testing the claim and update flow. Not shown to families."});
