@@ -274,7 +274,7 @@ const routes = {
     await env.DB.batch([
       env.DB.prepare("INSERT OR IGNORE INTO alerts (email, listing_slug, listing, town, status_at_signup) VALUES (?,?,?,?,?)")
         .bind(email, slug, clip(b.listing, 140), clip(b.town, 60), clip(b.status, 20)),
-      env.DB.prepare("INSERT INTO subscribers (email, source, listing) VALUES (?,?,?)").bind(email, "alert", clip(b.listing, 140)),
+      env.DB.prepare("INSERT INTO subscribers (email, source, listing, token) SELECT ?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM subscribers WHERE email=?)").bind(email, "alert", clip(b.listing, 140), crypto.randomUUID().replace(/-/g, ""), email),
     ]);
     return json({ ok: true });
   },
