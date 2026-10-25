@@ -23,6 +23,8 @@
     "ADMIN_EMAIL": ""
   },
   // Daily owner summary at 8:00 a.m. Central (13:00 UTC; 7 a.m. during daylight saving time).
+  // Email: works once centexhomeschool.org is onboarded in Cloudflare > Email Service > Email Sending.
+  "send_email": [{ "name": "EMAIL" }],
   "triggers": { "crons": ["0 13 * * *"] },
   "observability": { "enabled": true }
 }

@@ -59,13 +59,19 @@ async function sendMail(env, to, subject, text) {
   // Local testing only: with EMAIL_DEBUG=1 and no email binding, print the email to the dev console.
   if (env.EMAIL_DEBUG === "1" && !env.EMAIL) { console.log(`[email to ${to}] ${subject}\n${text}`); return true; }
   if (!env.EMAIL || typeof env.EMAIL.send !== "function") return false;
-  await env.EMAIL.send({
-    to,
-    from: { email: env.MAIL_FROM || "hello@centexhomeschool.org", name: "CenTex Homeschool Hub" },
-    subject,
-    text,
-  });
-  return true;
+  try {
+    await env.EMAIL.send({
+      to,
+      from: { email: env.MAIL_FROM || "hello@centexhomeschool.org", name: "CenTex Homeschool Hub" },
+      subject,
+      text,
+    });
+    return true;
+  } catch (e) {
+    // Usually means the domain isn't onboarded to Cloudflare Email Sending yet.
+    console.error("Email send failed:", e && e.message);
+    return false;
+  }
 }
 
 // Emails the site owner (first address in ADMIN_EMAIL). Never throws.
