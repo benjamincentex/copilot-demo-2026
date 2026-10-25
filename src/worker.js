@@ -125,6 +125,7 @@ const paidOn = (env) => env.PAID_PLANS === "1";
 
 // Free listings get a 75-character description; Featured listings get up to 2,000.
 const DESC_FREE = 75, DESC_FEATURED = 2000;
+const SPOTLIGHT_MONTHS = 6; // Featured perk: a newsletter spotlight twice a year
 const FREE_EVENT_LIMIT = 2; // upcoming calendar events per free listing (Featured: unlimited)
 function cleanFields(f, dMax = DESC_FREE) {
   f = f || {};
@@ -288,7 +289,10 @@ const routes = {
 
   "POST /api/click": async (req, env) => {
     const b = await body(req); if (!b) return json({ ok: true });
-    await env.DB.prepare("INSERT INTO clicks (listing_slug, kind) VALUES (?,?)").bind(clip(b.slug, 120), clip(b.kind, 20)).run();
+    const kind = ["website", "view", "register"].includes(b.kind) ? b.kind : "other";
+    const slugs = Array.isArray(b.slugs) ? b.slugs.slice(0, 80) : [b.slug];
+    const stmts = slugs.map((x) => clip(x, 120)).filter(Boolean).map((x) => env.DB.prepare("INSERT INTO clicks (listing_slug, kind) VALUES (?,?)").bind(x, kind));
+    if (stmts.length) await env.DB.batch(stmts);
     return json({ ok: true });
   },
 
@@ -644,6 +648,47 @@ const routes = {
     return json({ ok: true });
   },
 
+  // ---------- Featured perk: newsletter spotlight (photo + their own words), twice a year ----------
+  "GET /api/leader/spotlight": async (req, env) => {
+    const email = await leaderEmail(req, env); if (!email) return bad("Sign in first.", 401);
+    const slug = clip(new URL(req.url).searchParams.get("slug"), 120);
+    const owned = await env.DB.prepare("SELECT 1 FROM listing_owners WHERE slug=? AND email=?").bind(slug, email).first();
+    if (!owned) return bad("Not your listing.", 403);
+    const last = await env.DB.prepare("SELECT id, text, status, created_at, used_at FROM spotlights WHERE slug=? AND status IN ('pending','used') ORDER BY id DESC LIMIT 1").bind(slug).first();
+    let next = null;
+    if (last) { const d = new Date(last.created_at.replace(" ", "T") + "Z"); d.setMonth(d.getMonth() + SPOTLIGHT_MONTHS); if (d > new Date()) next = d.toISOString().slice(0, 10); }
+    return json({ last: last ? { ...last, photo: `/api/photo/spotlight/${last.id}` } : null, nextAvailable: next });
+  },
+
+  "POST /api/leader/spotlight": async (req, env) => {
+    const email = await leaderEmail(req, env); if (!email) return bad("Sign in first.", 401);
+    const b = await body(req) || {}; const slug = clip(b.slug, 120), text = clip(b.text, 500), photo = String(b.photo || "");
+    const owned = await env.DB.prepare("SELECT 1 FROM listing_owners WHERE slug=? AND email=?").bind(slug, email).first();
+    if (!owned) return bad("You can only submit a spotlight for a listing you manage.", 403);
+    const ov = await env.DB.prepare("SELECT data FROM listing_overrides WHERE slug=?").bind(slug).first();
+    const plan = ov ? (JSON.parse(ov.data).plan || "") : "";
+    if (!["featured", "partner", "enhanced"].includes(plan)) return bad("Newsletter spotlights are part of the Featured listing.", 403);
+    const recent = await env.DB.prepare(`SELECT COUNT(*) AS n FROM spotlights WHERE slug=? AND status IN ('pending','used') AND created_at > datetime('now','-${SPOTLIGHT_MONTHS} months')`).bind(slug).first();
+    if (recent.n) return bad("You've already used this spotlight in the last 6 months. Featured listings get one twice a year.");
+    if (text.length < 40) return bad("Tell families a little more, at least a couple of sentences.");
+    const m = photo.match(/^data:(image\/(?:jpeg|png));base64,([A-Za-z0-9+/=]+)$/);
+    if (!m) return bad("Add a photo (JPG or PNG).");
+    if (m[2].length > 1600000) return bad("That photo is too large. Try a smaller one.");
+    const problem = privacyProblem(text); if (problem) return bad(problem);
+    const mod = await screenText(env, text);
+    if (mod.action === "hold") { await recordFlag(env, "blocked", 0, mod, text, email, ""); return bad(blockMsg(mod)); }
+    await env.DB.prepare("INSERT INTO spotlights (slug, listing, email, text, photo_type, photo) VALUES (?,?,?,?,?,?)")
+      .bind(slug, clip(b.listing, 140), email, text, m[1], m[2]).run();
+    await notifyOwner(env, `Newsletter spotlight submitted: ${clip(b.listing, 140)}`,
+      `${clip(b.listing, 140)} submitted their twice-a-year newsletter spotlight. It will be included in the next newsletter draft.\n\n"${text}"`);
+    return json({ ok: true });
+  },
+
+  "GET /api/admin/activity": async (req, env) => {
+    const days = Math.min(365, Math.max(1, Number(new URL(req.url).searchParams.get("days")) || 30));
+    return json({ days, listings: await listingActivity(env, `-${days} days`, "+1 day") });
+  },
+
   "GET /api/admin/flags": async (req, env) => {
     const { results } = await env.DB.prepare("SELECT id, kind, item_id, action, categories, reason, excerpt, email, name, status, created_at FROM moderation_flags ORDER BY status='open' DESC, id DESC LIMIT 100").all();
     return json({ flags: results.map((f) => ({ ...f, labels: String(f.categories || "").split(",").filter(Boolean).map((c) => MOD_LABELS[c] || c) })) });
@@ -854,7 +899,7 @@ const routes = {
         `Hi ${c.name || "there"},\n\nYour claim for ${c.listing} is approved. Sign in at ${env.SITE_URL || "https://centexhomeschool.org"}/leaders.html with this email address to update your details and availability anytime.\n\n` +
         `A few things that help families find you:\n- Mark your availability (open spots, waitlist or full)\n- Add your next open house or application deadline to the community calendar\n- Answer families' questions on your listing\n\n` +
         `When you mark open spots or post a registration date, families waiting on your group get an email right away.\n\n` +
-        (paid && paidOn(env) ? `P.S. Want families to enroll in one click? A Featured listing ($39/month) adds a highlighted banner, photos, a "Register" button straight to your registration page, an unlimited description (free listings get 75 characters), a quarterly newsletter shout-out, free job posts and a monthly report on how your listing is doing. Details: ${env.SITE_URL || "https://centexhomeschool.org"}/leaders.html#plans\n\n` : "") +
+        (paid && paidOn(env) ? `P.S. Want families to enroll in one click? A Featured listing ($39/month) adds a highlighted banner, photos, a "Register" button straight to your registration page, an unlimited description (free listings get 75 characters), a newsletter spotlight twice a year, free job posts and a quarterly report on how your listing is performing. Details: ${env.SITE_URL || "https://centexhomeschool.org"}/leaders.html#plans\n\n` : "") +
         `Thanks,\nBenjamin\nCenTex Homeschool Hub`);
     } catch (e) { console.error("approval email failed", e.code, e.message); }
     return json({ ok: true });
@@ -892,6 +937,46 @@ Object.assign(routes, {
   "POST /api/leader/cal-remove": routes["POST /api/leader/event/remove"],
   "POST /api/visit": routes["POST /api/click"],
 });
+
+// ---------- listing activity: views, website clicks, "Notify me" signups, questions ----------
+async function listingActivity(env, from, to) {
+  const range = `created_at >= datetime('now','${from}') AND created_at < datetime('now','${to}')`;
+  const q = (sql) => env.DB.prepare(sql).all().then((r) => r.results);
+  const [clicks, alerts, qs] = await Promise.all([
+    q(`SELECT listing_slug AS slug, kind, COUNT(*) AS n FROM clicks WHERE ${range} GROUP BY listing_slug, kind`),
+    q(`SELECT listing_slug AS slug, COUNT(*) AS n FROM alerts WHERE ${range} GROUP BY listing_slug`),
+    q(`SELECT slug, COUNT(*) AS n FROM questions WHERE ${range} AND status IN ('open','answered') GROUP BY slug`),
+  ]);
+  const by = {};
+  const row = (sl) => (by[sl] = by[sl] || { slug: sl, views: 0, website: 0, register: 0, alerts: 0, questions: 0 });
+  for (const c of clicks) { const r = row(c.slug), k = c.kind === "view" ? "views" : c.kind; if (k in r && k !== "slug") r[k] += c.n; }
+  for (const a of alerts) row(a.slug).alerts += a.n;
+  for (const x of qs) row(x.slug).questions += x.n;
+  return Object.values(by).sort((a, b) => b.views - a.views || b.website - a.website);
+}
+
+// Featured perk: quarterly (Jan 1, Apr 1, Jul 1, Oct 1), email each Featured listing a report on the previous 3 months.
+async function monthlyReports(env) {
+  const today = new Date(); if (today.getUTCDate() !== 1 || today.getUTCMonth() % 3 !== 0) return;
+  const { results } = await env.DB.prepare("SELECT o.slug, o.data, w.email FROM listing_overrides o JOIN listing_owners w ON w.slug=o.slug").all();
+  const featured = results.filter((r) => { try { return ["featured", "partner", "enhanced"].includes(JSON.parse(r.data).plan); } catch { return false; } });
+  if (!featured.length) return;
+  const stats = Object.fromEntries((await listingActivity(env, "start of month', '-3 months", "start of month")).map((r) => [r.slug, r]));
+  const waiting = Object.fromEntries((await env.DB.prepare("SELECT listing_slug AS slug, COUNT(DISTINCT email) AS n FROM alerts GROUP BY listing_slug").all()).results.map((r) => [r.slug, r.n]));
+  const fmt = (d) => d.toLocaleString("en-US", { month: "long", timeZone: "UTC" });
+  const end = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 0)), start = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 3, 1));
+  const month = `${fmt(start)}–${fmt(end)} ${end.getUTCFullYear()}`;
+  const site = env.SITE_URL || "https://centexhomeschool.org";
+  for (const f of featured) {
+    const s = stats[f.slug] || { views: 0, website: 0, register: 0, alerts: 0, questions: 0 };
+    let name = f.slug; try { name = JSON.parse(f.data).n || name; } catch {}
+    await sendMail(env, f.email, `Your quarterly CenTex Homeschool Hub report: ${month}`,
+      `Here's how your listing did from ${month}:\n\n` +
+      `- Times families saw your listing: ${s.views}\n- Clicks to your website: ${s.website}\n- Clicks on your Register button: ${s.register}\n` +
+      `- New families tapping "Notify me": ${s.alerts}\n- Families waiting on you now: ${waiting[f.slug] || 0}\n- Questions asked on your listing: ${s.questions}\n\n` +
+      `Tip: listings with current availability and an upcoming open house get the most attention. Update yours anytime: ${site}/leaders.html\n\nThanks for being a Featured listing,\nBenjamin\nCenTex Homeschool Hub`);
+  }
+}
 
 // Daily summary for the owner (runs on the cron in wrangler.jsonc). Skipped when nothing is new.
 // ---------- monthly newsletter: drafted, approved by the owner, then sent to every subscriber ----------
@@ -961,13 +1046,20 @@ async function dailyDigest(env) {
 
 export default {
   async scheduled(event, env, ctx) {
-    if (event.cron === "0 13 * * *") ctx.waitUntil(dailyDigest(env));
+    if (event.cron === "0 13 * * *") { ctx.waitUntil(dailyDigest(env)); ctx.waitUntil(monthlyReports(env)); }
     ctx.waitUntil(processNewsletters(env, 200));
   },
 
   async fetch(request, env) {
     const url = new URL(request.url);
     if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
+    const pm = request.method === "GET" && url.pathname.match(/^\/api\/photo\/spotlight\/(\d+)$/);
+    if (pm) {
+      const row = await env.DB.prepare("SELECT photo_type, photo FROM spotlights WHERE id=? AND status!='removed'").bind(Number(pm[1])).first();
+      if (!row) return new Response("Not found", { status: 404 });
+      const bytes = Uint8Array.from(atob(row.photo), (c) => c.charCodeAt(0));
+      return new Response(bytes, { headers: { "content-type": row.photo_type, "cache-control": "public, max-age=86400" } });
+    }
     const handler = routes[`${request.method} ${url.pathname}`];
     if (!handler) return bad("Not found.", 404);
     if (url.pathname.startsWith("/api/admin/") && url.pathname !== "/api/admin/me" && !adminEmail(request, env)) {

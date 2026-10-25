@@ -32,6 +32,8 @@ CREATE TABLE IF NOT EXISTS newsletters (id INTEGER PRIMARY KEY AUTOINCREMENT, su
 CREATE TABLE IF NOT EXISTS newsletter_sends (id INTEGER PRIMARY KEY AUTOINCREMENT, newsletter_id INTEGER NOT NULL, email TEXT NOT NULL, status TEXT DEFAULT 'queued', sent_at TEXT, UNIQUE(newsletter_id, email));
 -- Moderation: every post is screened; held items stay hidden until the owner approves them
 CREATE TABLE IF NOT EXISTS moderation_flags (id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL, item_id INTEGER, action TEXT NOT NULL, categories TEXT, reason TEXT, excerpt TEXT, email TEXT, name TEXT, status TEXT DEFAULT 'open', created_at TEXT DEFAULT (datetime('now')), resolved_at TEXT);
+-- Featured perk: newsletter spotlight twice a year (their photo + their words)
+CREATE TABLE IF NOT EXISTS spotlights (id INTEGER PRIMARY KEY AUTOINCREMENT, slug TEXT NOT NULL, listing TEXT, email TEXT, text TEXT NOT NULL, photo_type TEXT, photo TEXT, status TEXT DEFAULT 'pending', newsletter_id INTEGER, created_at TEXT DEFAULT (datetime('now')), used_at TEXT);
 -- Calendar sources: community (parents), leader (verified group), imported (from a group's public website)
 ALTER TABLE events ADD COLUMN slug TEXT;
 ALTER TABLE events ADD COLUMN source TEXT DEFAULT 'community';

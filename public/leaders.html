@@ -354,9 +354,9 @@ html{scroll-behavior:smooth}
           <li>Unlimited description, with a "Read more" link (free listings get 75 characters)</li>
           <li>Unlimited events on the community calendar (free listings get 2 upcoming events at a time)</li>
           <li>A "Register" button that goes straight to your registration page</li>
-          <li>A shout-out in the monthly family newsletter once a quarter</li>
+          <li>A spotlight in the monthly family newsletter twice a year, with your photo and your own words</li>
           <li>Free job postings for teachers and tutors</li>
-          <li>A monthly report on how your listing is doing</li>
+          <li>A quarterly report on how your listing is performing</li>
         </ul>
         <a class="btn" data-plan="featured" href="/directory#submit">Get a Featured listing</a>
       </div>
@@ -427,8 +427,40 @@ function editor(x){
     ${(()=>{const feat=["featured","partner","enhanced"].includes(c.plan);const mx=feat?2000:75;return `<div class="field"><label>Description</label><textarea name="d" maxlength="${mx}" data-count>${esc(feat?(c.d||""):(c.d||"").slice(0,75))}</textarea><span class="where" style="font-size:13px"><span data-left></span> ${feat?"characters left. Featured listings show a Read more link for longer descriptions.":(PAID_PLANS?"characters left. Free listings get 75 characters; <a href=\"#plans\">Featured listings</a> get unlimited, with a Read more link.":"characters left.")}</span></div>`;})()}
     <label style="display:flex;gap:8px;align-items:center;font-size:15px"><input type="checkbox" name="littles"${(typeof c.littles==="boolean"?c.littles:(x.tags||[]).includes("Littles welcome"))?" checked":""}> Little ones are welcome (younger siblings can come, or we offer care or classes for babies and toddlers)</label>
     <div class="formfoot"><button class="btn" type="submit" style="margin-top:0">Save and publish</button><span class="status" role="status"></span></div>
+  </form>${["featured","partner","enhanced"].includes(c.plan)?spotlightBox(x):""}`;
+}
+function spotlightBox(x){
+  const id=sid(x);
+  setTimeout(()=>loadSpot(id),0);
+  return `<form class="box spot" data-spot="${esc(id)}" novalidate>
+    <h2 style="font-size:20px">Newsletter spotlight</h2>
+    <p class="where" style="margin:0">Featured listings are spotlighted in the monthly family newsletter twice a year. Send a photo and tell families, in your own words, what you'd like us to share.</p>
+    <p class="where" data-spotstatus style="margin:0"></p>
+    <div data-spotform>
+      <div class="field"><label>What should we tell families?</label><textarea name="text" maxlength="500" data-count placeholder="e.g. We're opening two new middle school classes in January and hosting an open house on Jan 10. Families love our Friday nature studies."></textarea><span class="where" style="font-size:13px"><span data-left></span> characters left. Please don't include children's names.</span></div>
+      <div class="field"><label>Photo (JPG or PNG)</label><input type="file" name="photo" accept="image/jpeg,image/png"><span class="where" style="font-size:13px">Your space, a class in action or your logo. Only share photos where you have permission from every family shown.</span></div>
+      <div class="formfoot"><button class="btn" type="submit" style="margin-top:0">Submit spotlight</button><span class="status" role="status"></span></div>
+    </div>
   </form>`;
 }
+async function loadSpot(id){
+  const f=document.querySelector(`form[data-spot="${id}"]`); if(!f) return;
+  const r=await api("/api/leader/spotlight?slug="+encodeURIComponent(id)); if(!r.ok) return;
+  const st=f.querySelector("[data-spotstatus]"), form=f.querySelector("[data-spotform]");
+  if(r.last&&r.last.status==="pending"){ st.innerHTML=`<b>Submitted.</b> Your spotlight will be in an upcoming issue.`; form.hidden=true; }
+  else if(r.nextAvailable){ st.innerHTML=`Your last spotlight ran recently. Your next one is available on <b>${esc(r.nextAvailable)}</b>.`; form.hidden=true; }
+}
+function shrinkPhoto(file){ return new Promise((res,rej)=>{ const img=new Image(); img.onload=()=>{ const max=1200, sc=Math.min(1,max/Math.max(img.width,img.height)); const c=document.createElement("canvas"); c.width=Math.round(img.width*sc); c.height=Math.round(img.height*sc); c.getContext("2d").drawImage(img,0,0,c.width,c.height); res(c.toDataURL("image/jpeg",0.82)); URL.revokeObjectURL(img.src); }; img.onerror=()=>rej(new Error("That file isn't a photo we can read.")); img.src=URL.createObjectURL(file); }); }
+document.addEventListener("submit",async e=>{
+  const f=e.target; if(!f.dataset||!f.dataset.spot) return; e.preventDefault();
+  const st=f.querySelector(".status"); st.className="status"; st.textContent="Sending…";
+  const file=f.elements["photo"].files[0]; if(!file){st.className="status err";st.textContent="Add a photo.";return;}
+  let photo; try{ photo=await shrinkPhoto(file); }catch(err){ st.className="status err"; st.textContent=err.message; return; }
+  const x=bySlug()[f.dataset.spot];
+  const r=await api("/api/leader/spotlight",{slug:f.dataset.spot,listing:x?x.n:"",text:f.elements["text"].value.trim(),photo});
+  if(!r.ok){st.className="status err";st.textContent=r.error;return;}
+  st.className="status ok"; st.textContent="Thanks! Your spotlight will be in an upcoming newsletter."; loadSpot(f.dataset.spot);
+});
 $("myListings").addEventListener("submit",async e=>{
   const f=e.target; if(!f.dataset.slug) return; e.preventDefault();
   const x=bySlug()[f.dataset.slug], st=f.querySelector(".status"); st.className="status"; st.textContent="Publishing…";

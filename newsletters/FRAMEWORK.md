@@ -20,10 +20,15 @@ Draft is written by the 25th of the prior month. Reading time: about 4 minutes.
    break), back-to-school and planning the new year (Jul–Aug), spring registration season (Jan–Mar),
    end-of-year wrap-up and portfolios (May), summer break ideas and camps (Jun), Texas history and
    independence (Mar), testing/evaluation season if families choose it. Ideas families can use that month.
-7. **Groups to know** — 2–3 listings from the directory, rotating towns (always include north: Liberty Hill,
+7. **Featured spotlight** (only when one is waiting) — Featured listings get a spotlight twice a year with their
+   own photo and words. Check D1: `SELECT id, listing, text FROM spotlights WHERE status='pending' ORDER BY id`.
+   Use their text lightly edited for length (keep their meaning), with the photo from
+   `https://centexhomeschool.org/api/photo/spotlight/<id>` (img width 100%, max 552px, alt = listing name). Mark it used
+   after the draft is saved: `UPDATE spotlights SET status='used', used_at=datetime('now') WHERE id=<id>`. Up to 2 per issue.
+8. **Groups to know** — 2–3 listings from the directory, rotating towns (always include north: Liberty Hill,
    Leander, Cedar Park, Georgetown). One line each, from the listing. Link /directory.
-8. **For schools & teachers** — a short note inviting groups to claim their free listing (/leaders.html).
-9. **Sign-off** — Benjamin, plus "hit reply and tell me about a group we're missing."
+9. **For schools & teachers** — a short note inviting groups to claim their free listing (/leaders.html).
+10. **Sign-off** — Benjamin, plus "hit reply and tell me about a group we're missing."
 
 ## Rules
 - Original writing only; no copied paragraphs. Facts and dates must come from a source checked that month.

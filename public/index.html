@@ -840,7 +840,7 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-more]"); i
 function card(x){
   const [tl,tc]=TYPES[x.type];
   const tut=x.type==="tutor"; const facts=[["Ages",x.ages],[tut?"Format":"Meets",x.sched],[tut?"Rate":"Cost",x.cost],["For members",x.members]].filter(f=>f[1]);
-  return `<article class="card${isFeat(x)?" partner":""}">${isFeat(x)?`<span class="ribbon">Featured</span>`:""}
+  return `<article class="card${isFeat(x)?" partner":""}" data-slug="${esc(sid(x))}">${isFeat(x)?`<span class="ribbon">Featured</span>`:""}
     <div class="head"><h3>${esc(x.n)}</h3><span class="type ${tc}">${tl}</span></div>
     <div class="where">${esc(townsOf(x).join(" · "))}</div>
     ${descHtml(x)}
@@ -976,6 +976,14 @@ $("grid").addEventListener("submit",async e=>{
   else{st.className="status err";st.textContent=r.error;}
 });
 $("grid").addEventListener("click",e=>{const a=e.target.closest("a[data-site]"); if(a) api("/api/visit",{slug:a.dataset.site,kind:"website"});});
+// Count a "view" when a listing card is at least half on screen for a second (once per listing per visit).
+const SEEN=new Set(), SEEN_Q=[]; let seenTimer=null;
+const flushSeen=()=>{ if(!SEEN_Q.length) return; const slugs=SEEN_Q.splice(0); api("/api/visit",{slugs,kind:"view"}); };
+const viewObs=("IntersectionObserver" in window)?new IntersectionObserver(es=>es.forEach(en=>{ const el=en.target, s=el.dataset.slug;
+  if(en.isIntersecting){ el._vt=setTimeout(()=>{ if(!SEEN.has(s)){ SEEN.add(s); SEEN_Q.push(s); clearTimeout(seenTimer); seenTimer=setTimeout(flushSeen,3000); } },1000); }
+  else clearTimeout(el._vt); }),{threshold:0.5}):null;
+new MutationObserver(()=>{ if(viewObs) document.querySelectorAll("#grid .card[data-slug]:not([data-obs])").forEach(c=>{c.dataset.obs="1"; viewObs.observe(c);}); }).observe($("grid"),{childList:true});
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden") flushSeen(); });
 function renderRegistration(){
   const items=L.filter(x=>!x.test&&(x.avail.s==="opens"||x.avail.s==="waitlist"));
   $("regList").innerHTML=items.length?`<h3 style="font-size:20px;margin:18px 0 8px">Registration opening soon</h3><div class="stack">${items.map(x=>`<div class="post"><span class="ab ${AV[x.avail.s][1]}" style="align-self:flex-start">${esc(availLabel(x))}</span><b>${esc(x.n)}</b><span class="meta">${esc(townsOf(x).join(" · "))} · ${TYPES[x.type][0]}</span></div>`).join("")}</div>`:"";
