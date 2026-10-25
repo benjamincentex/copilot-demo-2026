@@ -27,6 +27,9 @@ CREATE TABLE IF NOT EXISTS user_listings (slug TEXT PRIMARY KEY, email TEXT NOT 
 CREATE TABLE IF NOT EXISTS question_answers (id INTEGER PRIMARY KEY AUTOINCREMENT, question_id INTEGER NOT NULL, email TEXT NOT NULL, name TEXT, answer TEXT NOT NULL, from_school INTEGER DEFAULT 0, status TEXT DEFAULT 'live', created_at TEXT DEFAULT (datetime('now')));
 CREATE INDEX IF NOT EXISTS idx_qa_question ON question_answers(question_id);
 
+-- Monthly newsletter: owner approves a draft, then every subscriber gets a copy
+CREATE TABLE IF NOT EXISTS newsletters (id INTEGER PRIMARY KEY AUTOINCREMENT, subject TEXT NOT NULL, html TEXT NOT NULL, status TEXT DEFAULT 'draft', notified INTEGER DEFAULT 0, total INTEGER DEFAULT 0, sent INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')), approved_at TEXT, sent_at TEXT);
+CREATE TABLE IF NOT EXISTS newsletter_sends (id INTEGER PRIMARY KEY AUTOINCREMENT, newsletter_id INTEGER NOT NULL, email TEXT NOT NULL, status TEXT DEFAULT 'queued', sent_at TEXT, UNIQUE(newsletter_id, email));
 -- Calendar sources: community (parents), leader (verified group), imported (from a group's public website)
 ALTER TABLE events ADD COLUMN slug TEXT;
 ALTER TABLE events ADD COLUMN source TEXT DEFAULT 'community';

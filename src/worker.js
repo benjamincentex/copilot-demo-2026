@@ -55,7 +55,7 @@ async function leaderEmail(request, env) {
 
 // Sends through Cloudflare Email Service when the EMAIL binding is configured.
 // Returns true if sent, false if email sending isn't set up yet.
-async function sendMail(env, to, subject, text) {
+async function sendMail(env, to, subject, text, html) {
   // Local testing only: with EMAIL_DEBUG=1 and no email binding, print the email to the dev console.
   if (env.EMAIL_DEBUG === "1" && !env.EMAIL) { console.log(`[email to ${to}] ${subject}\n${text}`); return true; }
   if (!env.EMAIL || typeof env.EMAIL.send !== "function") return false;
@@ -65,6 +65,7 @@ async function sendMail(env, to, subject, text) {
       from: { email: env.MAIL_FROM || "hello@centexhomeschool.org", name: "CenTex Homeschool Hub" },
       subject,
       text,
+      ...(html ? { html } : {}),
     });
     return true;
   } catch (e) {
@@ -512,6 +513,49 @@ const routes = {
   },
 
   // ---------- owner moderation ----------
+  "GET /api/admin/newsletters": async (req, env) => {
+    const { results } = await env.DB.prepare("SELECT id, subject, status, created_at, approved_at, sent_at, total, sent FROM newsletters WHERE status!='deleted' ORDER BY id DESC LIMIT 24").all();
+    const subs = await env.DB.prepare("SELECT COUNT(DISTINCT email) AS n FROM subscribers WHERE unsubscribed_at IS NULL").first();
+    return json({ newsletters: results, subscribers: subs.n, mailingAddress: !!env.MAILING_ADDRESS, emailOn: !!env.EMAIL });
+  },
+
+  "GET /api/admin/newsletter/preview": async (req, env) => {
+    const id = Number(new URL(req.url).searchParams.get("id")) || 0;
+    const nl = await env.DB.prepare("SELECT html FROM newsletters WHERE id=?").bind(id).first();
+    if (!nl) return bad("Not found.", 404);
+    return new Response(personalize(nl.html, env, ""), { headers: { "content-type": "text/html; charset=utf-8" } });
+  },
+
+  "POST /api/admin/newsletter/test": async (req, env) => {
+    const b = await body(req) || {}; const id = Number(b.id) || 0;
+    const nl = await env.DB.prepare("SELECT subject, html FROM newsletters WHERE id=?").bind(id).first();
+    if (!nl) return bad("Not found.", 404);
+    const to = (env.ADMIN_EMAIL || "").split(",")[0].trim(); if (!to) return bad("Set ADMIN_EMAIL first.");
+    const html = personalize(nl.html, env, "");
+    const ok = await sendMail(env, to, `[Test] ${nl.subject}`, htmlToText(html), html);
+    if (!ok) return bad("Email sending isn't switched on yet, so the test couldn't be sent.", 503);
+    return json({ ok: true, to });
+  },
+
+  "POST /api/admin/newsletter/approve": async (req, env) => {
+    const b = await body(req) || {}; const id = Number(b.id) || 0;
+    if (!env.EMAIL) return bad("Email sending isn't switched on yet.", 503);
+    if (!env.MAILING_ADDRESS) return bad("Add your mailing address (MAILING_ADDRESS) first. Newsletters must include one by law.");
+    const nl = await env.DB.prepare("SELECT id FROM newsletters WHERE id=? AND status='draft'").bind(id).first();
+    if (!nl) return bad("Only drafts can be approved.");
+    await env.DB.prepare("INSERT OR IGNORE INTO newsletter_sends (newsletter_id, email) SELECT ?, email FROM subscribers WHERE unsubscribed_at IS NULL GROUP BY email").bind(id).run();
+    const t = await env.DB.prepare("SELECT COUNT(*) AS n FROM newsletter_sends WHERE newsletter_id=?").bind(id).first();
+    await env.DB.prepare("UPDATE newsletters SET status='sending', approved_at=datetime('now'), total=? WHERE id=?").bind(t.n, id).run();
+    const sent = await processNewsletters(env, NL_BATCH);
+    return json({ ok: true, total: t.n, sentNow: sent });
+  },
+
+  "POST /api/admin/newsletter/delete": async (req, env) => {
+    const b = await body(req) || {};
+    await env.DB.prepare("UPDATE newsletters SET status='deleted' WHERE id=? AND status='draft'").bind(Number(b.id) || 0).run();
+    return json({ ok: true });
+  },
+
   "GET /api/admin/moderation": async (req, env) => {
     const [{ results: posts }, { results: evs }, { results: qs }, { results: answers }] = await Promise.all([
       env.DB.prepare("SELECT id, name, email, town, ages, want, details, created_at FROM board_posts WHERE status='approved' AND expires_at > datetime('now') ORDER BY id DESC LIMIT 50").all(),
@@ -730,6 +774,49 @@ Object.assign(routes, {
 });
 
 // Daily summary for the owner (runs on the cron in wrangler.jsonc). Skipped when nothing is new.
+// ---------- monthly newsletter: drafted, approved by the owner, then sent to every subscriber ----------
+const NL_BATCH = 40;
+function htmlToText(html) {
+  return String(html || "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "").replace(/<div style="display:none[\s\S]*?<\/div>/i, "")
+    .replace(/<a [^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi, "$2 ($1)")
+    .replace(/<(br|\/p|\/h[1-6]|\/li|\/tr)[^>]*>/gi, "\n").replace(/<li[^>]*>/gi, "- ")
+    .replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&#39;/g, "'").replace(/&quot;/g, '"')
+    .replace(/[ \t]+/g, " ").replace(/\n\s*\n\s*\n+/g, "\n\n").trim();
+}
+function personalize(html, env, token) {
+  const site = env.SITE_URL || "https://centexhomeschool.org";
+  return String(html)
+    .split("{{unsubscribe_url}}").join(token ? `${site}/api/unsubscribe?t=${token}` : `${site}/newsletter`)
+    .split("{{mailing_address}}").join(env.MAILING_ADDRESS || "");
+}
+async function processNewsletters(env, limit = NL_BATCH) {
+  // Tell the owner about new drafts waiting for approval.
+  const { results: fresh } = await env.DB.prepare("SELECT id, subject FROM newsletters WHERE status='draft' AND notified=0").all();
+  for (const d of fresh) {
+    await notifyOwner(env, `Newsletter ready for your approval: ${d.subject}`,
+      `A newsletter draft is ready.\n\nPreview it, send yourself a test, then approve it to send to every subscriber:\n${env.SITE_URL || "https://centexhomeschool.org"}/admin.html#newsletter`);
+    await env.DB.prepare("UPDATE newsletters SET notified=1 WHERE id=?").bind(d.id).run();
+  }
+  // Send queued copies for approved newsletters.
+  const nl = await env.DB.prepare("SELECT id, subject, html FROM newsletters WHERE status='sending' ORDER BY id LIMIT 1").first();
+  if (!nl) return 0;
+  const { results: batch } = await env.DB.prepare(
+    "SELECT s.id, s.email, sub.token FROM newsletter_sends s LEFT JOIN subscribers sub ON sub.email=s.email AND sub.unsubscribed_at IS NULL WHERE s.newsletter_id=? AND s.status='queued' ORDER BY s.id LIMIT ?").bind(nl.id, limit).all();
+  let sent = 0;
+  for (const r of batch) {
+    if (!r.token) { await env.DB.prepare("UPDATE newsletter_sends SET status='skipped' WHERE id=?").bind(r.id).run(); continue; } // unsubscribed meanwhile
+    const html = personalize(nl.html, env, r.token);
+    const ok = await sendMail(env, r.email, nl.subject, htmlToText(html), html);
+    await env.DB.prepare("UPDATE newsletter_sends SET status=?, sent_at=datetime('now') WHERE id=?").bind(ok ? "sent" : "failed", r.id).run();
+    if (ok) sent++;
+  }
+  const left = await env.DB.prepare("SELECT COUNT(*) AS n FROM newsletter_sends WHERE newsletter_id=? AND status='queued'").bind(nl.id).first();
+  await env.DB.prepare("UPDATE newsletters SET sent=(SELECT COUNT(*) FROM newsletter_sends WHERE newsletter_id=? AND status='sent'), status=CASE WHEN ?=0 THEN 'sent' ELSE status END, sent_at=CASE WHEN ?=0 THEN datetime('now') ELSE sent_at END WHERE id=?")
+    .bind(nl.id, left.n, left.n, nl.id).run();
+  return sent;
+}
+
 async function dailyDigest(env) {
   const since = "datetime('now','-1 day')";
   const q = (sql) => env.DB.prepare(sql).all().then((r) => r.results);
@@ -754,7 +841,8 @@ async function dailyDigest(env) {
 
 export default {
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(dailyDigest(env));
+    if (event.cron === "0 13 * * *") ctx.waitUntil(dailyDigest(env));
+    ctx.waitUntil(processNewsletters(env, 200));
   },
 
   async fetch(request, env) {

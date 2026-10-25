@@ -20,11 +20,13 @@
     "SITE_URL": "https://centexhomeschool.org",
     // Comma-separated emails allowed into the owner tools. Set this to your own email
     // in the Cloudflare dashboard (Worker > Settings > Variables) or here.
-    "ADMIN_EMAIL": "benjamin@centexhomeschool.org"
+    "ADMIN_EMAIL": "benjamin@centexhomeschool.org",
+    // Printed in every newsletter footer (required by law). A P.O. box works.
+    "MAILING_ADDRESS": ""
   },
   // Daily owner summary at 8:00 a.m. Central (13:00 UTC; 7 a.m. during daylight saving time).
   // Email: works once centexhomeschool.org is onboarded in Cloudflare > Email Service > Email Sending.
   "send_email": [{ "name": "EMAIL" }],
-  "triggers": { "crons": ["0 13 * * *"] },
+  "triggers": { "crons": ["0 13 * * *", "*/10 * * * *"] },
   "observability": { "enabled": true }
 }
