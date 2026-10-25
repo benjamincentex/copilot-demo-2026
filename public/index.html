@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<meta name="description" content="Find Central Texas homeschool co-ops, support groups, classes and microschools by town, approach and ages. Free for families and groups.">
+<meta name="description" content="Homeschool begins here. Central Texas homeschool schools, co-ops, classes, tutors and homeschool-friendly activities from Liberty Hill to South Austin. Always free for families.">
 <title>CenTex Homeschool Hub</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -190,7 +190,7 @@ form.ask textarea{font:inherit;font-size:14px;padding:8px 10px;border:1px solid 
   .day{min-height:44px;align-items:center}
   .day i{display:none}
   .day.has::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--bonnet);margin-top:3px}
-  nav.links{flex-wrap:nowrap;overflow-x:auto;width:100%;gap:16px;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+  nav.links{flex-wrap:wrap;width:100%;gap:8px 16px}
   nav.links a{white-space:nowrap}
 }
 /* search + filters */
@@ -217,6 +217,9 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .t-class{background:var(--sun-soft);color:var(--ink)}
 .t-tutor{background:var(--bonnet-soft);color:var(--ink)}
 .t-micro{background:var(--line);color:var(--ink)}
+.quoteband{margin:28px auto 4px;max-width:760px;text-align:center;padding:0 8px}
+.quoteband blockquote{margin:0;font-family:var(--display);font-size:clamp(22px,3vw,30px);line-height:1.35;color:var(--oak)}
+.quoteband figcaption{margin-top:10px;font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
 .t-act{background:var(--sun-soft);color:var(--ink);border:1px solid var(--sun)}
 .dirtabs{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 0}
 .dirtabs button{font:inherit;font-size:15px;font-weight:600;padding:9px 16px;border-radius:999px;border:1px solid var(--oak);background:var(--surface);color:var(--oak);cursor:pointer}
@@ -334,16 +337,17 @@ html{scroll-behavior:smooth}
 <div class="hero" data-view="home">
   <div>
     <span class="label">The free guide to homeschooling in Central Texas</span>
-    <h1>Find your homeschool <em>people</em>, from Liberty Hill to South Austin.</h1>
-    <p>Co-ops, classes, tutors and microschools from Liberty Hill and Leander to South Austin, plus events, registration deadlines and TEFA help, all in one place. Always free for families.</p>
+    <h1>Homeschool <em>begins</em> here.</h1>
+    <p>One place for Central Texas homeschool families: schools, co-ops, classes and tutors, plus homeschool-friendly activities like music, swim, sports and martial arts, from Liberty Hill to South Austin. Always free for families.</p>
     <div class="heroacts">
-      <a class="btn" href="/directory" style="margin-top:0">Browse the directory</a>
+      <a class="btn" href="/directory" style="margin-top:0">Find schools &amp; co-ops</a>
+      <a class="btn ghost" href="/activities" style="margin-top:0">Find activities</a>
       <a class="btn ghost" href="#fit" style="margin-top:0">New to homeschooling? Take the quiz</a>
-      <a class="btn ghost" href="/calendar" style="margin-top:0">See what's happening</a>
     </div>
   </div>
   <div class="stats" aria-label="Directory at a glance">
-    <div class="stat"><b id="statListings">0</b><span>listings</span></div>
+    <div class="stat"><b id="statListings">0</b><span>schools, co-ops &amp; classes</span></div>
+    <div class="stat"><b id="statActivities">0</b><span>activities</span></div>
     <div class="stat"><b id="statTowns">0</b><span>towns</span></div>
     <div class="stat"><b>$2,000</b><span>TEFA per homeschooler</span></div>
   </div>
@@ -383,6 +387,10 @@ html{scroll-behavior:smooth}
     </g>
     <g id="gathering"></g>
   </svg>
+</figure>
+<figure class="quoteband" data-view="home">
+  <blockquote>“It is the supreme art of the teacher to awaken joy in creative expression and knowledge.”</blockquote>
+  <figcaption>Albert Einstein</figcaption>
 </figure>
   <section id="fit" data-view="home" style="padding-block:24px 8px">
     <div class="intro">
@@ -1027,7 +1035,7 @@ document.querySelectorAll("[data-plan]").forEach(b=>b.addEventListener("click",(
 }));
 document.querySelectorAll("[data-kind]").forEach(a=>a.addEventListener("click",e=>{e.preventDefault();goForm(a.dataset.kind);}));
 
-$("statListings").textContent=L.filter(x=>!x.test).length;
+$("statListings").textContent=L.filter(x=>!x.test&&x.type!=="activity").length; $("statActivities").textContent=L.filter(x=>!x.test&&x.type==="activity").length;
 $("statTowns").textContent=new Set(L.filter(x=>!x.test).flatMap(townsOf)).size;
 
 $("showAll").onclick=()=>{showAll=true;render();};
@@ -1038,7 +1046,7 @@ const slug=n=>n.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").sl
 async function loadOverrides(){
   const r=await api("/api/listings"); if(!r.ok||!r.overrides) return;
   (r.custom||[]).forEach(c=>{ if(!L.some(x=>x.slug===c.slug)) L.push({...c,avail:{s:"unknown"}}); });
-  $("statListings").textContent=L.filter(x=>!x.test).length;
+  $("statListings").textContent=L.filter(x=>!x.test&&x.type!=="activity").length; $("statActivities").textContent=L.filter(x=>!x.test&&x.type==="activity").length;
   $("statTowns").textContent=new Set(L.filter(x=>!x.test).flatMap(townsOf)).size;
   Object.entries(r.overrides).forEach(([id,o])=>{const x=L.find(v=>sid(v)===id); if(!x) return;
     ["d","ages","sched","cost","site","members"].forEach(k=>{if(o[k]) x[k]=o[k];});
