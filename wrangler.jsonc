@@ -22,7 +22,7 @@
     // in the Cloudflare dashboard (Worker > Settings > Variables) or here.
     "ADMIN_EMAIL": "benjamin@centexhomeschool.org",
     // Printed in every newsletter footer (required by law). A P.O. box works.
-    "MAILING_ADDRESS": ""
+    "MAILING_ADDRESS": "3202 Saint Genevieve Dr, Leander, TX 78641"
   },
   // Daily owner summary at 8:00 a.m. Central (13:00 UTC; 7 a.m. during daylight saving time).
   // Email: works once centexhomeschool.org is onboarded in Cloudflare > Email Service > Email Sending.
