@@ -113,10 +113,12 @@ async function publishListing(env, slug, listing, town, fields, updatedBy) {
   return alerted;
 }
 
-function cleanFields(f) {
+// Free listings get a 75-character description; Featured listings get up to 2,000.
+const DESC_FREE = 75, DESC_FEATURED = 2000;
+function cleanFields(f, dMax = DESC_FREE) {
   f = f || {};
   const fields = {};
-  for (const [k, n] of [["d", 600], ["ages", 40], ["sched", 80], ["cost", 80], ["site", 300], ["members", 120]]) { const v = clip(f[k], n); if (v) fields[k] = v; }
+  for (const [k, n] of [["d", dMax], ["ages", 40], ["sched", 80], ["cost", 80], ["site", 300], ["members", 120]]) { const v = clip(f[k], n); if (v) fields[k] = v; }
   if (fields.site && !/^https?:\/\//i.test(fields.site)) delete fields.site;
   if (typeof f.littles === "boolean") fields.littles = f.littles;
   const a = f.avail || {};
@@ -306,7 +308,10 @@ const routes = {
     const b = await body(req); const slug = clip(b && b.slug, 120);
     const owned = await env.DB.prepare("SELECT 1 FROM listing_owners WHERE slug=? AND email=?").bind(slug, email).first();
     if (!owned) return bad("You can only update listings you've claimed. If you've asked to claim this one, we'll email you once it's approved.", 403);
-    const alerted = await publishListing(env, slug, clip(b.listing, 140), clip(b.town, 60), cleanFields(b.fields), email);
+    const ovRow = await env.DB.prepare("SELECT data FROM listing_overrides WHERE slug=?").bind(slug).first();
+    const plan = ovRow ? (JSON.parse(ovRow.data).plan || "") : "";
+    const dMax = ["featured", "partner", "enhanced"].includes(plan) ? DESC_FEATURED : DESC_FREE;
+    const alerted = await publishListing(env, slug, clip(b.listing, 140), clip(b.town, 60), cleanFields(b.fields, dMax), email);
     return json({ ok: true, alerted });
   },
 
@@ -545,11 +550,11 @@ const routes = {
   "POST /api/leader/create-listing": async (req, env) => {
     const email = await leaderEmail(req, env); if (!email) return bad("Sign in first.", 401);
     const b = await body(req) || {};
-    const n = clip(b.name, 80), town = clip(b.town, 40), d = clip(b.description, 600), subjects = clip(b.subjects, 120);
+    const n = clip(b.name, 80), town = clip(b.town, 40), d = clip(b.description, DESC_FREE), subjects = clip(b.subjects, 120);
     if (!n) return bad("Add your name or business name.");
     if (!town) return bad("Add the town you're based in.");
     if (!subjects) return bad("List the subjects you teach.");
-    if (d.length < 30) return bad("Add a description of at least a couple of sentences.");
+    if (d.length < 20) return bad("Add a short description (up to 75 characters).");
     const site = clip(b.site, 300); if (site && !/^https?:\/\//i.test(site)) return bad("The website should start with https://");
     const problem = privacyProblem(d + " " + n); if (problem) return bad(problem);
     const mine = await env.DB.prepare("SELECT COUNT(*) AS n FROM user_listings WHERE email=? AND status='live'").bind(email).first();
@@ -618,7 +623,7 @@ const routes = {
         `Hi ${c.name || "there"},\n\nYour claim for ${c.listing} is approved. Sign in at ${env.SITE_URL || "https://centexhomeschool.org"}/leaders.html with this email address to update your details and availability anytime.\n\n` +
         `A few things that help families find you:\n- Mark your availability (open spots, waitlist or full)\n- Add your next open house or application deadline to the community calendar\n- Answer families' questions on your listing\n\n` +
         `When you mark open spots or post a registration date, families waiting on your group get an email right away.\n\n` +
-        (paid ? `P.S. Want families to enroll in one click? A Featured listing ($39/month) adds a highlighted banner, photos, a "Register" button straight to your registration page, a longer description, a quarterly newsletter shout-out, free job posts and a monthly report on how your listing is doing. Details: ${env.SITE_URL || "https://centexhomeschool.org"}/leaders.html#plans\n\n` : "") +
+        (paid ? `P.S. Want families to enroll in one click? A Featured listing ($39/month) adds a highlighted banner, photos, a "Register" button straight to your registration page, an unlimited description (free listings get 75 characters), a quarterly newsletter shout-out, free job posts and a monthly report on how your listing is doing. Details: ${env.SITE_URL || "https://centexhomeschool.org"}/leaders.html#plans\n\n` : "") +
         `Thanks,\nBenjamin\nCenTex Homeschool Hub`);
     } catch (e) { console.error("approval email failed", e.code, e.message); }
     return json({ ok: true });

@@ -821,13 +821,23 @@ function matches(x){
   return true;
 }
 const isFeat=x=>["featured","partner","enhanced"].includes(x.plan);
+// Descriptions: free listings show 75 characters; Featured listings show 75 with "Read more".
+const DESC_MAX=75;
+function shortText(t){ t=String(t||""); if(t.length<=DESC_MAX) return t; const cut=t.slice(0,DESC_MAX-1); const sp=cut.lastIndexOf(" "); return (sp>40?cut.slice(0,sp):cut).replace(/[\s,.;:–-]+$/,"")+"…"; }
+function descHtml(x){
+  const t=String(x.d||""); if(!t) return "";
+  if(t.length<=DESC_MAX) return `<p>${esc(t)}</p>`;
+  if(isFeat(x)) return `<p class="desc"><span class="dshort">${esc(shortText(t))}</span><span class="dfull" hidden>${esc(t)}</span> <button type="button" class="linkbtn" data-more>Read more</button></p>`;
+  return `<p>${esc(shortText(t))}</p>`;
+}
+document.addEventListener("click",e=>{const b=e.target.closest("[data-more]"); if(!b) return; const p=b.closest(".desc"); const open=p.querySelector(".dfull").hidden; p.querySelector(".dfull").hidden=!open; p.querySelector(".dshort").hidden=open; b.textContent=open?"Show less":"Read more";});
 function card(x){
   const [tl,tc]=TYPES[x.type];
   const tut=x.type==="tutor"; const facts=[["Ages",x.ages],[tut?"Format":"Meets",x.sched],[tut?"Rate":"Cost",x.cost],["For members",x.members]].filter(f=>f[1]);
   return `<article class="card${isFeat(x)?" partner":""}">${isFeat(x)?`<span class="ribbon">Featured</span>`:""}
     <div class="head"><h3>${esc(x.n)}</h3><span class="type ${tc}">${tl}</span></div>
     <div class="where">${esc(townsOf(x).join(" · "))}</div>
-    <p>${esc(x.d)}</p>
+    ${descHtml(x)}
     ${facts.length?`<dl class="facts">${facts.map(f=>`<dt>${f[0]}</dt><dd>${esc(f[1])}</dd>`).join("")}</dl>`:""}
     ${x.tags.length?`<div class="tags">${x.tags.map(t=>`<span class="tag${t==="Littles welcome"?" littles":""}"${t==="Littles welcome"?' title="Little ones are welcome, and some groups offer care or classes for babies and toddlers. Ask the group for details."':""}>${esc(t)}</span>`).join("")}</div>`:""}
     <div class="avail"><span class="ab ${AV[x.avail.s][1]}">${esc(availLabel(x))}</span>${x.avail.s!=="open"?`<button class="linkbtn" type="button" data-notify="${esc(x.n)}">Notify me when spots open</button>`:""}</div>
@@ -904,7 +914,7 @@ function renderQuiz(){
   recordDemand(res);
   box.innerHTML=`<div class="qprog"><span class="label">Your matches</span><button type="button" class="linkbtn" id="qRetake">Start over</button></div>
     <h3>${res.length?`Your top ${res.length} ${res.length===1?"match":"matches"}`:"No close matches yet"}</h3>
-    ${res.length?`<div class="matches">${res.map((r,i)=>`<div class="match"><div class="rank">${i+1}</div><div><h4>${esc(r.x.n)}</h4><p>${esc(townsOf(r.x).join(" · "))} · ${esc(r.x.d)}</p><div class="why">${r.why.map(w=>`<span class="tag">${esc(w)}</span>`).join("")}</div></div><button type="button" class="linkbtn" data-see="${esc(r.x.n)}">See listing</button></div>`).join("")}</div>`
+    ${res.length?`<div class="matches">${res.map((r,i)=>`<div class="match"><div class="rank">${i+1}</div><div><h4>${esc(r.x.n)}</h4><p>${esc(townsOf(r.x).join(" · "))} · ${esc(shortText(r.x.d))}</p><div class="why">${r.why.map(w=>`<span class="tag">${esc(w)}</span>`).join("")}</div></div><button type="button" class="linkbtn" data-see="${esc(r.x.n)}">See listing</button></div>`).join("")}</div>`
       :`<p class="where" style="margin-bottom:18px">We're still adding groups in your area. Get the monthly newsletter and we'll tell you when one that fits is listed.</p>`}
     <form class="news" id="newsForm" novalidate>
       <h4>Get new matches once a month</h4>

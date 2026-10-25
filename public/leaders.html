@@ -305,7 +305,7 @@ html{scroll-behavior:smooth}
           <div class="field"><label for="t-format">Format</label><select id="t-format"><option>In person</option><option>Online</option><option>In person or online</option></select></div>
         </div>
         <div class="field" style="margin-top:12px"><label for="t-site">Website (optional)</label><input id="t-site" type="url" maxlength="300" placeholder="https://"></div>
-        <div class="field" style="margin-top:12px"><label for="t-desc">About you</label><textarea id="t-desc" maxlength="600" placeholder="Your background, teaching style and what families can expect"></textarea></div>
+        <div class="field" style="margin-top:12px"><label for="t-desc">About you</label><textarea id="t-desc" maxlength="75" data-count placeholder="e.g. Certified math teacher, grades 6–12, small groups or one-on-one"></textarea><span class="where" style="font-size:13px"><span data-left></span> characters left. Featured listings get unlimited.</span></div>
         <div class="formfoot" style="margin-top:12px"><button class="btn" type="submit" style="margin-top:0">Publish my listing</button><span class="status" id="tutorStatus" role="status"></span></div>
         <p class="where" style="margin:8px 0 0;font-size:13px">Please don't include your phone number or home address. Families contact you through your website or by asking a question on your listing.</p>
       </form>
@@ -337,7 +337,7 @@ html{scroll-behavior:smooth}
         <span class="label">Basic listing</span>
         <div class="price">Free</div>
         <ul>
-          <li>Description, ages, meeting days, cost and website</li>
+          <li>Short description (75 characters), ages, meeting days, cost and website</li>
           <li>Availability status and opening alerts to waiting families</li>
           <li>Answer families' questions on your listing</li>
           <li>Post events to the community calendar</li>
@@ -351,7 +351,7 @@ html{scroll-behavior:smooth}
           <li>Everything in Basic</li>
           <li>A highlighted "Featured" banner around your listing</li>
           <li>Photos of your classes and space</li>
-          <li>A longer description of your school</li>
+          <li>Unlimited description, with a "Read more" link (free listings get 75 characters)</li>
           <li>A "Register" button that goes straight to your registration page</li>
           <li>A shout-out in the monthly family newsletter once a quarter</li>
           <li>Free job postings for teachers and tutors</li>
@@ -420,7 +420,7 @@ function editor(x){
       <div class="field"><label>Website or Facebook page</label><input name="site" type="url" maxlength="300" value="${esc(c.site||"")}"></div>
       <div class="field" style="grid-column:1/-1"><label>Members-only activities (optional, no dates or places)</label><input name="members" maxlength="120" placeholder="e.g. Weekly park days, monthly field trips, spring play" value="${esc(c.members||"")}"></div>
     </div>
-    <div class="field"><label>Description</label><textarea name="d" maxlength="600">${esc(c.d||"")}</textarea></div>
+    ${(()=>{const feat=["featured","partner","enhanced"].includes(c.plan);const mx=feat?2000:75;return `<div class="field"><label>Description</label><textarea name="d" maxlength="${mx}" data-count>${esc(feat?(c.d||""):(c.d||"").slice(0,75))}</textarea><span class="where" style="font-size:13px"><span data-left></span> ${feat?"characters left. Featured listings show a Read more link for longer descriptions.":"characters left. Free listings get 75 characters; <a href=\"#plans\">Featured listings</a> get unlimited, with a Read more link."}</span></div>`;})()}
     <label style="display:flex;gap:8px;align-items:center;font-size:15px"><input type="checkbox" name="littles"${(typeof c.littles==="boolean"?c.littles:(x.tags||[]).includes("Littles welcome"))?" checked":""}> Little ones are welcome (younger siblings can come, or we offer care or classes for babies and toddlers)</label>
     <div class="formfoot"><button class="btn" type="submit" style="margin-top:0">Save and publish</button><span class="status" role="status"></span></div>
   </form>`;
@@ -491,6 +491,13 @@ $("evForm").addEventListener("submit",async e=>{
 });
 document.addEventListener("click",async e=>{const b=e.target.closest("[data-evrm]"); if(!b) return; b.disabled=true; const r=await api("/api/leader/cal-remove",{id:Number(b.dataset.evrm)}); r.ok?loadEv():(b.disabled=false);});
 load().then(()=>{ if(me){ loadQs(); loadEv(); } });
+</script>
+<script>
+// Live character counters for description boxes
+function updCount(t){const l=t.parentElement.querySelector("[data-left]"); if(l) l.textContent=Math.max(0,t.maxLength-t.value.length);}
+document.addEventListener("input",e=>{if(e.target.matches("textarea[data-count]")) updCount(e.target);});
+new MutationObserver(()=>document.querySelectorAll("textarea[data-count]").forEach(updCount)).observe(document.body,{childList:true,subtree:true});
+document.querySelectorAll("textarea[data-count]").forEach(updCount);
 </script>
 </body>
 </html>
