@@ -421,7 +421,7 @@ function editor(x){
       <div class="field" style="grid-column:1/-1"><label>Members-only activities (optional, no dates or places)</label><input name="members" maxlength="120" placeholder="e.g. Weekly park days, monthly field trips, spring play" value="${esc(c.members||"")}"></div>
     </div>
     <div class="field"><label>Description</label><textarea name="d" maxlength="600">${esc(c.d||"")}</textarea></div>
-    <label style="display:flex;gap:8px;align-items:center;font-size:15px"><input type="checkbox" name="littles"${(typeof c.littles==="boolean"?c.littles:(x.tags||[]).includes("Daycare provided"))?" checked":""}> We provide daycare or classes for babies and toddlers during co-op</label>
+    <label style="display:flex;gap:8px;align-items:center;font-size:15px"><input type="checkbox" name="littles"${(typeof c.littles==="boolean"?c.littles:(x.tags||[]).includes("Littles welcome"))?" checked":""}> Little ones are welcome (younger siblings can come, or we offer care or classes for babies and toddlers)</label>
     <div class="formfoot"><button class="btn" type="submit" style="margin-top:0">Save and publish</button><span class="status" role="status"></span></div>
   </form>`;
 }

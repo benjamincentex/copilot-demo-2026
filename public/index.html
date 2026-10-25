@@ -377,7 +377,7 @@ html{scroll-behavior:smooth}
         <option value="">Any approach</option>
         <option>Christian</option><option>Catholic</option><option>Secular</option>
         <option>Classical</option><option>Charlotte Mason</option><option>Nature-based</option>
-        <option>STEM</option><option>Arts</option><option>Gifted / 2e</option><option>Daycare provided</option>
+        <option>STEM</option><option>Arts</option><option>Gifted / 2e</option><option>Littles welcome</option>
       </select>
     </div>
     <div class="chips"><button class="toggle" type="button" id="openNow" aria-pressed="false">Open now</button><div class="chips" id="townChips" role="group" aria-label="Filter by town" style="margin-top:0"></div></div>
@@ -682,7 +682,7 @@ function card(x){
     <div class="where">${esc(townsOf(x).join(" · "))}</div>
     <p>${esc(x.d)}</p>
     ${facts.length?`<dl class="facts">${facts.map(f=>`<dt>${f[0]}</dt><dd>${esc(f[1])}</dd>`).join("")}</dl>`:""}
-    ${x.tags.length?`<div class="tags">${x.tags.map(t=>`<span class="tag${t==="Daycare provided"?" littles":""}"${t==="Daycare provided"?' title="Provides care or classes for babies and toddlers during co-op. Ask the group whether parents need to stay on site."':""}>${esc(t)}</span>`).join("")}</div>`:""}
+    ${x.tags.length?`<div class="tags">${x.tags.map(t=>`<span class="tag${t==="Littles welcome"?" littles":""}"${t==="Littles welcome"?' title="Little ones are welcome, and some groups offer care or classes for babies and toddlers. Ask the group for details."':""}>${esc(t)}</span>`).join("")}</div>`:""}
     <div class="avail"><span class="ab ${AV[x.avail.s][1]}">${esc(availLabel(x))}</span>${x.avail.s!=="open"?`<button class="linkbtn" type="button" data-notify="${esc(x.n)}">Notify me when spots open</button>`:""}</div>
     <form class="notify" data-for="${esc(x.n)}" hidden novalidate>
       <p>We'll email you when ${esc(x.n)} has openings or opens registration, plus the monthly newsletter with new matches near you.</p>
@@ -735,7 +735,7 @@ function scoreOf(x){
   const g=GRADE[ans.age], r=gradeRange(x);
   if(g&&r){ if(r[1]<g[0]||r[0]>g[1]) return null; s+=1; why.push("Right ages"); }
   const t=x.tags;
-  if(ans.age==="Little ones"&&t.includes("Daycare provided")){s+=2;why.push("Daycare provided");}
+  if(ans.age==="Little ones"&&t.includes("Littles welcome")){s+=2;why.push("Littles welcome");}
   if(ans.faith==="Secular"){ if(t.includes("Christian")||t.includes("Catholic")) return null; if(t.includes("Secular")){s+=3;why.push("Secular");} }
   else if(ans.faith==="Christian"){ if(t.includes("Secular")) return null; if(t.includes("Christian")){s+=3;why.push("Christian");} else if(t.includes("Catholic")) s+=1; }
   else if(ans.faith==="Catholic"){ if(t.includes("Secular")) return null; if(t.includes("Catholic")){s+=4;why.push("Catholic");} else if(t.includes("Christian")) s+=1; }
@@ -848,7 +848,7 @@ async function loadOverrides(){
     ["d","ages","sched","cost","site","members"].forEach(k=>{if(o[k]) x[k]=o[k];});
     if(o.avail&&AV[o.avail.s]) x.avail={s:o.avail.s,when:o.avail.when||""};
     if(o.claimed) x.claimed=true; if(o.plan) x.plan=o.plan;
-    if(typeof o.littles==="boolean"){ x.tags=x.tags.filter(t=>t!=="Daycare provided"); if(o.littles) x.tags.push("Daycare provided"); }});
+    if(typeof o.littles==="boolean"){ x.tags=x.tags.filter(t=>t!=="Littles welcome"); if(o.littles) x.tags.push("Littles welcome"); }});
   render(); renderRegistration();
 }
 
