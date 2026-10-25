@@ -188,6 +188,9 @@ form.ask textarea{font:inherit;font-size:14px;padding:8px 10px;border:1px solid 
 .day i.more{background:transparent;color:var(--muted)}
 .day i.wk{background:transparent;color:var(--oak);font-weight:600}
 .wkcard{border-left:3px solid var(--oak)}
+.calkey{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center;font-size:13px;color:var(--muted);margin:10px 0 0}
+.calkey span{display:inline-flex;align-items:center;gap:6px}
+.calkey i{width:9px;height:9px;border-radius:50%;display:inline-block}
 .calside{min-width:0;display:flex;flex-direction:column}
 .boardgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
 @media (max-width:780px){
@@ -497,6 +500,7 @@ html{scroll-behavior:smooth}
       <div class="cal">
         <div class="calhead"><button class="linkbtn" type="button" id="calPrev" aria-label="Previous month">‹ Prev</button><h3 id="calTitle"></h3><button class="linkbtn" type="button" id="calNext" aria-label="Next month">Next ›</button></div>
         <div class="calgrid" id="calGrid" role="grid"></div>
+        <p class="calkey"><span><i style="background:var(--bonnet)"></i>Events &amp; deadlines</span><span><i style="background:var(--oak)"></i>Weekly homeschool activities</span> · Tap a day to see what's on</p>
       </div>
       <div class="calside">
         <div class="colhead"><h3 id="calListTitle">Coming up</h3><button class="linkbtn" type="button" id="newEventBtn">Add an event</button></div>
@@ -1231,7 +1235,7 @@ function flexNote(){ const xs=flexActs(); if(!xs.length) return "";
   return `<div class="post wkcard"><b>Daytime homeschool classes, most weekdays</b><span class="meta">Ask each provider for current days and times:</span>${xs.map(x=>`<span class="meta">${x.site?`<a href="${esc(x.site)}" target="_blank" rel="noopener">${esc(x.n)}</a>`:esc(x.n)} · ${esc(townsOf(x).join(", "))}</span>`).join("")}</div>`; }
 function renderWeekly(){
   const box=$("weeklyActs"); if(!box) return;
-  if(calFilter==="schools"||calFilter==="public"||calFilter==="activity"||calDay){ box.innerHTML=""; return; }
+  box.innerHTML=""; return; // recurring sessions now appear in "Coming up" and on each day
   const acts=L.filter(x=>!x.test&&x.type==="activity"&&(x.daytime||x.homeschool)&&x.days&&x.days.length&&(!calTowns.length||townsOf(x).some(t=>calTowns.includes(t))));
   const rows=Object.keys(DAYNAME).map(d=>[d,acts.filter(x=>x.days.includes(d))]).filter(r=>r[1].length);
   box.innerHTML=rows.length?`<h3 style="font-size:20px;margin:18px 0 8px">Weekly homeschool activities</h3><p class="where" style="margin:0 0 8px">Recurring daytime sessions. Confirm times and sign-up with each provider.</p><div class="stack">${rows.map(([d,xs])=>`<div class="post"><b>${DAYNAME[d]}</b>${xs.map(x=>`<span class="meta">${x.site?`<a href="${esc(x.site)}" target="_blank" rel="noopener">${esc(x.n)}</a>`:esc(x.n)} · ${esc(townsOf(x).join(", "))}${x.sched?` · ${esc(x.sched)}`:""}</span>`).join("")}</div>`).join("")}</div><p class="where" style="margin:8px 0 0"><a href="/activities">See all homeschool-friendly activities</a></p>`:"";
@@ -1259,13 +1263,15 @@ function renderCalendar(){
   }
   $("calGrid").innerHTML=cells;
   const todayKey=ymd(today);
-  const list=calDay?(byDay[calDay]||[]):shownEvents().filter(ev=>ev.event_date>=todayKey).slice(0,8);
+  let list=calDay?(byDay[calDay]||[]):shownEvents().filter(ev=>ev.event_date>=todayKey).slice(0,8);
   let extra="";
   if(calDay){ const dd=new Date(calDay+"T12:00:00"), wd=dd.getDay();
     if(calDay>=todayKey){ extra=weeklyOn(dd,WK).map(x=>wkCard(x,dd)).join(""); if(wd>0&&wd<6) extra+=flexNote(); } }
-  else if(calFilter==="activity"){ // next 7 days of recurring sessions
-    for(let i=0;i<7;i++){ const dd=new Date(today); dd.setDate(today.getDate()+i); extra+=weeklyOn(dd,WK).map(x=>wkCard(x,dd)).join(""); }
-    extra+=flexNote(); }
+  else if(WK.length||flexActs().length){ // mix the next 7 days of recurring activity sessions into "Coming up", by date
+    const items=list.map(ev=>({k:ev.event_date,h:eventCard(ev)}));
+    for(let i=0;i<7;i++){ const dd=new Date(today); dd.setDate(today.getDate()+i); weeklyOn(dd,WK).forEach(x=>items.push({k:ymd(dd),h:wkCard(x,dd)})); }
+    items.sort((a,b)=>a.k<b.k?-1:a.k>b.k?1:0); list=[];
+    extra=items.map(x=>x.h).join("")+flexNote(); }
   $("calListTitle").textContent=calDay?new Date(calDay+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}):"Coming up";
   $("eventList").innerHTML=(list.length||extra)?list.map(eventCard).join("")+extra+(calDay?`<button class="linkbtn" type="button" id="calClear" style="align-self:flex-start">Show all upcoming</button>`:"")
     :`<div class="emptynote">${calDay?"Nothing on this day.":calFilter==="all"?"No upcoming events yet.":"No upcoming events of this type yet."} Hosting an open house, a homeschool class or a public homeschool event? Add it here.</div>`;
@@ -1280,7 +1286,7 @@ async function loadEvents(){
   // Open on the month of the next upcoming event when this month has none.
   const now=new Date(), key=ymd(now), next=EVENTS.find(ev=>ev.event_date>=key);
   const thisMonth=key.slice(0,7);
-  if(next && !EVENTS.some(ev=>ev.event_date.slice(0,7)===thisMonth && ev.event_date>=key)){ const [y,m]=next.event_date.split("-").map(Number); calMonth=new Date(y,m-1,1); }
+  if(next && !weeklyActs().length && !EVENTS.some(ev=>ev.event_date.slice(0,7)===thisMonth && ev.event_date>=key)){ const [y,m]=next.event_date.split("-").map(Number); calMonth=new Date(y,m-1,1); }
   renderCalTowns(); renderCalendar(); renderWeekly();
 }
 document.addEventListener("click",async e=>{
