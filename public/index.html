@@ -429,6 +429,7 @@ html{scroll-behavior:smooth}
         <option value="micro">Microschools &amp; hybrids</option>
         <option value="tutor">Tutors</option>
       </select>
+      <select id="actSel" aria-label="Activity type" hidden><option value="">All activities</option></select>
       <select id="approachSel" aria-label="Approach">
         <option value="">Any approach</option>
         <option>Christian</option><option>Catholic</option><option>Secular</option>
@@ -854,6 +855,7 @@ function card(x){
   return `<article class="card${isFeat(x)?" partner":""}" data-slug="${esc(sid(x))}">${isFeat(x)?`<span class="ribbon">Featured</span>`:""}
     <div class="head"><h3>${esc(x.n)}</h3><span class="type ${tc}">${tl}</span></div>
     <div class="where">${esc(townsOf(x).join(" · "))}</div>
+    ${x.daytime?`<span class="ab a-open" style="align-self:flex-start">Daytime classes</span>`:""}
     ${descHtml(x)}
     ${facts.length?`<dl class="facts">${facts.map(f=>`<dt>${f[0]}</dt><dd>${esc(f[1])}</dd>`).join("")}</dl>`:""}
     ${x.tags.length?`<div class="tags">${x.tags.map(t=>`<span class="tag${t==="Littles welcome"?" littles":""}"${t==="Littles welcome"?' title="Little ones are welcome, and some groups offer care or classes for babies and toddlers. Ask the group for details."':""}>${esc(t)}</span>`).join("")}</div>`:""}
@@ -871,6 +873,7 @@ function card(x){
 let showAll=false;
 function render(){
   const res=L.filter(matches);
+  if(state.section==="activity") res.sort((a,b)=>(b.daytime?1:0)-(a.daytime?1:0)); // daytime classes first
   const filtering=state.q||state.type||state.approach||state.town!=="All"||state.open;
   const shown=(filtering||showAll)?res:res.slice(0,12);
   $("grid").innerHTML=shown.map(card).join("");
@@ -885,7 +888,7 @@ function render(){
   $("count").textContent=`${res.length} of ${inSection} ${state.section==="activity"?"activities":"listings"}`;
   $("showAll").textContent=`Show all ${res.length} ${state.section==="activity"?"activities":"listings"}`;
   $("tabLearn").setAttribute("aria-selected",state.section!=="activity"); $("tabAct").setAttribute("aria-selected",state.section==="activity");
-  $("typeSel").hidden=state.section==="activity"; $("approachSel").hidden=state.section==="activity";
+  $("typeSel").hidden=state.section==="activity"; $("approachSel").hidden=state.section==="activity"; $("actSel").hidden=state.section!=="activity";
   $("dirIntro").textContent=state.section==="activity"?"Sports, gymnastics, swim, martial arts, music and more with daytime or homeschool-friendly classes. Always confirm current class times with the provider.":"Co-ops, support groups, classes, tutors and microschools from Liberty Hill to South Austin. Filter by town, type and approach.";
   document.querySelectorAll("#townChips .chip").forEach(c=>c.setAttribute("aria-pressed",c.dataset.town===state.town));
 }
@@ -971,10 +974,12 @@ $("q").addEventListener("input",e=>{state.q=e.target.value.trim();render();});
 $("typeSel").addEventListener("change",e=>{state.type=e.target.value;render();});
 $("approachSel").addEventListener("change",e=>{state.approach=e.target.value;render();});
 $("openNow").addEventListener("click",()=>{state.open=!state.open;render();});
-const setSection=sec=>{ state.section=sec; state.type=""; state.approach=""; $("typeSel").value=""; $("approachSel").value=""; showAll=false; render(); if(curView==="directory"){ const want=sec==="activity"?"/activities":"/directory"; if(location.pathname!==want) history.replaceState(null,"",want); } };
+const setSection=sec=>{ state.section=sec; state.type=""; state.approach=""; $("typeSel").value=""; $("approachSel").value=""; $("actSel").value=""; showAll=false; render(); if(curView==="directory"){ const want=sec==="activity"?"/activities":"/directory"; if(location.pathname!==want) history.replaceState(null,"",want); } };
 $("tabLearn").addEventListener("click",()=>setSection("learn"));
+(()=>{ const tags=[...new Set(L.filter(x=>x.type==="activity").flatMap(x=>x.tags))].sort(); $("actSel").innerHTML='<option value="">All activities</option>'+tags.map(t=>`<option>${esc(t)}</option>`).join(""); })();
+$("actSel").addEventListener("change",e=>{state.approach=e.target.value;render();});
 $("tabAct").addEventListener("click",()=>setSection("activity"));
-$("clearBtn").addEventListener("click",()=>{Object.assign(state,{q:"",type:"",approach:"",town:"All",open:false});$("q").value="";$("typeSel").value="";$("approachSel").value="";render();});
+$("clearBtn").addEventListener("click",()=>{Object.assign(state,{q:"",type:"",approach:"",town:"All",open:false});$("q").value="";$("typeSel").value="";$("approachSel").value="";$("actSel").value="";render();});
 
 function goForm(kind,name){
   $("f-kind").value=kind; if(name) $("f-name").value=name;
