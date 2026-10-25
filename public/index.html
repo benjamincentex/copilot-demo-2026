@@ -156,7 +156,11 @@ nav.links a[aria-current="page"]{color:var(--oak);text-decoration:underline;text
 .datebox span{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--oak)}
 .emptynote{background:var(--surface);border:1px dashed var(--line);border-radius:var(--r);padding:16px;color:var(--muted);font-size:15px}
 .qa{border-top:1px dashed var(--line);padding-top:8px;display:flex;flex-direction:column;gap:8px}
-.qa .q{font-size:14px;margin:0}.qa .a{font-size:14px;margin:0;padding-left:10px;border-left:3px solid var(--oak)}
+.qa .q{font-size:14px;margin:0}.qa .a{font-size:14px;margin:0;padding-left:10px;border-left:3px solid var(--line)}
+.qa .a.school{border-left-color:var(--oak)}
+.qa .a .who{font-weight:600}.qa .a .school-tag{font-size:11px;font-weight:700;color:var(--oak);background:var(--oak-soft);border-radius:4px;padding:0 5px;margin-left:4px}
+.qa .qitem{display:flex;flex-direction:column;gap:4px}
+.qa .noans{font-size:13px;color:var(--muted);margin:0;padding-left:10px}
 form.ask{display:flex;flex-direction:column;gap:8px}
 form.ask textarea{font:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);min-height:60px}
 @media (max-width:780px){.community,.row2{grid-template-columns:1fr}}
@@ -1016,7 +1020,12 @@ let acct={signedIn:false}, QA={};
 const fmtDate=d=>{const t=new Date(d+"T12:00:00");return {m:t.toLocaleString("en-US",{month:"short"}),d:t.getDate(),w:t.toLocaleString("en-US",{weekday:"long"})};};
 function qaBlock(x){
   const list=QA[sid(x)]||[];
-  return `<div class="qa">${list.slice(0,3).map(q=>`<p class="q"><b>Q:</b> ${esc(q.question)} <span class="meta">— ${esc(q.name||"A parent")}</span></p><p class="a"><b>${esc(x.n)}:</b> ${esc(q.answer)}</p>`).join("")}
+  const ansHtml=a=>`<p class="a${a.school?" school":""}"><span class="who">${esc(a.school?x.n:(a.name||"A parent"))}</span>${a.school?`<span class="school-tag">School</span>`:""}: ${esc(a.answer)}</p>`;
+  return `<div class="qa">${list.slice(0,3).map(q=>{ const an=q.answers||[];
+      return `<div class="qitem"><p class="q"><b>Q:</b> ${esc(q.question)} <span class="meta">— ${esc(q.name||"A parent")}</span></p>
+      ${an.length?an.slice(0,4).map(ansHtml).join(""):`<p class="noans">No answers yet. Know the answer?</p>`}
+      <button class="linkbtn" type="button" data-answer="${q.id}" style="align-self:flex-start;font-size:13px">Answer</button>
+      <form class="ask" data-answerq="${q.id}" hidden novalidate><textarea maxlength="600" placeholder="Share what you know. Please don't include phone numbers or email addresses."></textarea><div class="nrow"><button class="btn sm" type="submit" style="margin-top:0">Post answer</button></div><span class="status" role="status"></span></form></div>`;}).join("")}
     <button class="linkbtn" type="button" data-ask="${esc(sid(x))}" style="align-self:flex-start">Ask ${list.length?"another":"a"} question</button>
     <form class="ask" data-for="${esc(sid(x))}" hidden novalidate><textarea maxlength="300" placeholder="e.g. Do you take mid-year families?"></textarea><div class="nrow"><button class="btn sm" type="submit" style="margin-top:0">Send question</button></div><span class="status" role="status"></span></form>
   </div>`;
@@ -1122,8 +1131,8 @@ async function loadEvents(){
   renderCalendar();
 }
 document.addEventListener("click",async e=>{
-  const ask=e.target.closest("[data-ask]"), rep=e.target.closest("[data-reply]"), rm=e.target.closest("[data-remove]");
-  if(ask){ if(!ready())return; const f=ask.parentElement.querySelector("form.ask"); f.hidden=!f.hidden; if(!f.hidden) f.querySelector("textarea").focus(); }
+  const ask=e.target.closest("[data-ask]")||e.target.closest("[data-answer]"), rep=e.target.closest("[data-reply]"), rm=e.target.closest("[data-remove]");
+  if(ask){ if(!ready())return; const f=ask.dataset.answer?ask.parentElement.querySelector(`form[data-answerq="${ask.dataset.answer}"]`):ask.parentElement.querySelector("form.ask[data-for]"); f.hidden=!f.hidden; if(!f.hidden) f.querySelector("textarea").focus(); }
   if(rep){ if(!ready())return; const f=rep.parentElement.querySelector("form.ask"); f.hidden=!f.hidden; if(!f.hidden) f.querySelector("textarea").focus(); }
   if(rm){ rm.disabled=true; const r=await api("/api/board/remove",{id:Number(rm.dataset.remove)}); if(r.ok) loadBoard(); else rm.disabled=false; }
 });
@@ -1131,8 +1140,10 @@ document.addEventListener("submit",async e=>{
   const f=e.target; if(!f.matches("form.ask")||f.dataset.job) return; e.preventDefault();
   const st=f.querySelector(".status"), text=f.querySelector("textarea").value.trim(); st.className="status"; st.textContent="Sending…";
   let r;
-  if(f.dataset.for){ const x=L.find(v=>sid(v)===f.dataset.for); r=await api("/api/questions",{slug:f.dataset.for,listing:x?x.n:"",question:text});
-    if(r.ok){f.reset(); st.className="status ok"; st.textContent=r.hasLeader?"Sent. The group will answer here, and we'll email you when they do.":"Sent. This group hasn't claimed its listing yet, so an answer may take longer."; return;} }
+  if(f.dataset.answerq){ r=await api("/api/questions/answer",{id:Number(f.dataset.answerq),answer:text});
+    if(r.ok){ st.className="status ok"; st.textContent="Posted. Thanks for helping."; await loadQuestions(); return; } }
+  else if(f.dataset.for){ const x=L.find(v=>sid(v)===f.dataset.for); r=await api("/api/questions",{slug:f.dataset.for,listing:x?x.n:"",question:text});
+    if(r.ok){f.reset(); st.className="status ok"; st.textContent=r.hasLeader?"Posted. The group and other families can answer here, and we'll email you when they do.":"Posted. Other families can answer here, and we'll email you when someone does."; await loadQuestions(); return;} }
   else { r=await api("/api/board/reply",{id:Number(f.dataset.post),message:text});
     if(r.ok){f.reset(); st.className="status ok"; st.textContent="Sent. They have your email now and can write back."; return;} }
   st.className="status err"; st.textContent=r.error;

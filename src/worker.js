@@ -432,10 +432,23 @@ const routes = {
 
   // ---------- questions on listings ----------
   "GET /api/questions": async (req, env) => {
+    // All visible questions, newest first, each with every answer (the school's and the community's).
     const { results } = await env.DB.prepare(
-      "SELECT id, slug, name, question, answer, answered_at FROM questions WHERE status='answered' ORDER BY answered_at DESC LIMIT 500").all();
+      "SELECT id, slug, listing, name, question, answer, answered_at, created_at FROM questions WHERE status IN ('open','answered') ORDER BY id DESC LIMIT 500").all();
+    const ids = results.map((q) => q.id);
+    const answers = {};
+    if (ids.length) {
+      const { results: ans } = await env.DB.prepare(
+        `SELECT id, question_id, name, answer, from_school, created_at FROM question_answers WHERE status='live' AND question_id IN (${ids.map(() => "?").join(",")}) ORDER BY id`).bind(...ids).all();
+      for (const a of ans) (answers[a.question_id] = answers[a.question_id] || []).push({ name: a.name, answer: a.answer, school: !!a.from_school });
+    }
     const by = {};
-    for (const q of results) (by[q.slug] = by[q.slug] || []).push(q);
+    for (const q of results) {
+      const list = [];
+      if (q.answer) list.push({ name: q.listing, answer: q.answer, school: true }); // answer given from the school's portal
+      list.push(...(answers[q.id] || []));
+      (by[q.slug] = by[q.slug] || []).push({ id: q.id, name: q.name, question: q.question, answers: list });
+    }
     return json({ questions: by });
   },
 
@@ -454,6 +467,29 @@ const routes = {
         `A family asked:\n\n"${question}"\n\nAnswer it at ${env.SITE_URL || "https://centexhomeschool.org"}/leaders.html. Your answer will show on your listing so other families see it too.\n\nCenTex Homeschool Hub`); } catch (e) {}
     }
     return json({ ok: true, hasLeader: owners.length > 0 });
+  },
+
+  // Anyone signed in (school, parent or teacher) can answer a question on a listing.
+  "POST /api/questions/answer": async (req, env) => {
+    const email = await leaderEmail(req, env); if (!email) return bad("Sign in first.", 401);
+    const b = await body(req); const id = Number(b && b.id) || 0, answer = clip(b && b.answer, 600);
+    if (answer.length < 2) return bad("Write your answer first.");
+    const problem = privacyProblem(answer); if (problem) return bad(problem);
+    const q = await env.DB.prepare("SELECT id, slug, listing, email, question FROM questions WHERE id=? AND status IN ('open','answered')").bind(id).first();
+    if (!q) return bad("That question isn't available anymore.", 404);
+    const owner = await env.DB.prepare("SELECT 1 FROM listing_owners WHERE slug=? AND email=?").bind(q.slug, email).first();
+    const fromSchool = !!owner;
+    const prof = fromSchool ? null : await profileOf(env, email);
+    if (!fromSchool && !prof) return bad("Add your display name first.");
+    await env.DB.prepare("INSERT INTO question_answers (question_id, email, name, answer, from_school) VALUES (?,?,?,?,?)")
+      .bind(id, email, fromSchool ? q.listing : prof.name, answer, fromSchool ? 1 : 0).run();
+    if (fromSchool) await env.DB.prepare("UPDATE questions SET status='answered', answered_at=COALESCE(answered_at, datetime('now')) WHERE id=?").bind(id).run();
+    const site = env.SITE_URL || "https://centexhomeschool.org";
+    if (q.email !== email) {
+      try { await sendMail(env, q.email, `New answer to your question about ${q.listing}`,
+        `${fromSchool ? q.listing : prof.name} answered your question on CenTex Homeschool Hub:\n\nYou asked: "${q.question}"\n\nAnswer: "${answer}"\n\nSee all answers: ${site}/directory\n\nCenTex Homeschool Hub`); } catch (e) {}
+    }
+    return json({ ok: true, fromSchool });
   },
 
   "GET /api/leader/questions": async (req, env) => {
@@ -477,20 +513,21 @@ const routes = {
 
   // ---------- owner moderation ----------
   "GET /api/admin/moderation": async (req, env) => {
-    const [{ results: posts }, { results: evs }, { results: qs }] = await Promise.all([
+    const [{ results: posts }, { results: evs }, { results: qs }, { results: answers }] = await Promise.all([
       env.DB.prepare("SELECT id, name, email, town, ages, want, details, created_at FROM board_posts WHERE status='approved' AND expires_at > datetime('now') ORDER BY id DESC LIMIT 50").all(),
       env.DB.prepare("SELECT id, name, email, title, event_date, event_time, town, place, host, link, details FROM events WHERE status='approved' AND event_date >= date('now','-1 day') ORDER BY event_date LIMIT 50").all(),
       env.DB.prepare("SELECT id, listing, name, question, answer, status FROM questions WHERE status IN ('open','answered') ORDER BY id DESC LIMIT 30").all(),
+      env.DB.prepare("SELECT a.id, a.name, a.email, a.answer, a.from_school, q.listing, q.question FROM question_answers a JOIN questions q ON q.id=a.question_id WHERE a.status='live' ORDER BY a.id DESC LIMIT 50").all(),
     ]);
-    return json({ posts, events: evs, questions: qs });
+    return json({ posts, events: evs, questions: qs, answers });
   },
 
   "POST /api/admin/moderate": async (req, env) => {
     const b = await body(req) || {};
-    const table = { post: "board_posts", event: "events", question: "questions" }[b.kind];
+    const table = { post: "board_posts", event: "events", question: "questions", answer: "question_answers" }[b.kind];
     const status = { remove: "removed", hide: "hidden" }[b.action];
     if (!table || !status) return bad("Unknown action.");
-    await env.DB.prepare(`UPDATE ${table} SET status=? ${table === "questions" ? "" : ", reviewed_at=datetime('now')"} WHERE id=?`).bind(table === "questions" ? "hidden" : "removed", Number(b.id) || 0).run();
+    await env.DB.prepare(`UPDATE ${table} SET status=? ${table === "questions" || table === "question_answers" ? "" : ", reviewed_at=datetime('now')"} WHERE id=?`).bind(table === "questions" ? "hidden" : "removed", Number(b.id) || 0).run();
     return json({ ok: true });
   },
 

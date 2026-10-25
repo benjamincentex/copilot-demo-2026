@@ -250,7 +250,8 @@ html{scroll-behavior:smooth}
     <div class="box"><h2>Tutor listings</h2><p class="where" style="margin:0">Listings tutors created themselves. They go live right away.</p><div id="mTutors" class="where">No tutor listings yet.</div></div>
     <div class="box"><h2>Job posts</h2><p class="where" style="margin:0">Hiring posts go live when you mark them paid. Family tutor requests are already live.</p><div id="mJobs" class="where">No job posts yet.</div></div>
     <div class="box"><h2>Live events</h2><div id="mEvents" class="where">No events yet.</div></div>
-    <div class="box"><h2>Recent listing questions</h2><p class="where" style="margin:0">Questions go to the group's leader. Hide anything inappropriate.</p><div id="mQs" class="where"></div></div>
+    <div class="box"><h2>Recent listing questions</h2><p class="where" style="margin:0">Questions go to the group's leader, and anyone signed in can answer. Hide anything inappropriate.</p><div id="mQs" class="where"></div></div>
+    <div class="box"><h2>Recent answers</h2><p class="where" style="margin:0">Anyone signed in can answer a question on a listing. Remove anything inappropriate.</p><div id="mAns" class="where"></div></div>
     <div class="box"><h2>Unmet demand</h2><p class="where" style="margin:0">What families asked for in the quiz where no listing near them fit.</p><div id="gaps" class="demand" style="margin-top:0;border:0;padding:0"></div></div>
   </div>
 </section>
@@ -285,6 +286,7 @@ async function load(){
     const btns=(k,id,hideOnly)=>`<div class="row"><button class="btn ghost sm" type="button" data-mod="${k}:${id}:${hideOnly?"hide":"remove"}">${hideOnly?"Hide":"Remove"}</button></div>`;
     $("mPosts").innerHTML=m.posts.length?m.posts.map(p=>`<div class="rev"><b style="color:var(--ink)">${esc(p.want||"Looking for")}</b><span>${esc(p.name)} · ${esc(p.email)}${p.town?" · "+esc(p.town):""}${p.ages?" · ages "+esc(p.ages):""}</span><span>${esc(p.details)}</span>${btns("post",p.id)}</div>`).join(""):"No posts yet.";
     $("mEvents").innerHTML=m.events.length?m.events.map(v=>`<div class="rev"><b style="color:var(--ink)">${esc(v.title)}</b><span>${esc(v.event_date)} ${esc(v.event_time||"")} · ${esc([v.place,v.town].filter(Boolean).join(", "))}</span><span>From ${esc(v.name)} · ${esc(v.email)}${v.host?" · host: "+esc(v.host):""}</span>${v.details?`<span>${esc(v.details)}</span>`:""}${v.link?`<a href="${esc(v.link)}" target="_blank" rel="noopener">${esc(v.link)}</a>`:""}${btns("event",v.id)}</div>`).join(""):"No events yet.";
+    $("mAns").innerHTML=(m.answers||[]).length?m.answers.map(a=>`<div class="rev"><b style="color:var(--ink)">${esc(a.listing)}</b><span>Q: "${esc(a.question)}"</span><span>${esc(a.name)}${a.from_school?" (school)":""} &lt;${esc(a.email)}&gt;: ${esc(a.answer)}</span>${btns("answer",a.id,false)}</div>`).join(""):"No answers yet.";
     $("mQs").innerHTML=m.questions.length?m.questions.map(q=>`<div class="rev"><b style="color:var(--ink)">${esc(q.listing)}</b><span>${esc(q.name)}: "${esc(q.question)}"</span>${q.answer?`<span>Answer: ${esc(q.answer)}</span>`:"<span>Not answered yet</span>"}${btns("question",q.id,true)}</div>`).join(""):"No questions yet.";
   }
   const lo=await api("/api/listings");
