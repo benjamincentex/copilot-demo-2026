@@ -178,9 +178,29 @@ const routes = {
     const b = await body(req); if (!b) return bad("Invalid request.");
     const email = clip(b.email, 160).toLowerCase();
     if (!EMAIL_RE.test(email)) return bad("Enter a valid email address.");
-    await env.DB.prepare("INSERT INTO subscribers (email, source, answers) VALUES (?,?,?)")
-      .bind(email, clip(b.source, 40) || "quiz", JSON.stringify(b.answers || {}).slice(0, 1000)).run();
+    const existing = await env.DB.prepare("SELECT id, unsubscribed_at FROM subscribers WHERE email=? ORDER BY id LIMIT 1").bind(email).first();
+    if (existing) {
+      // Already on the list: re-subscribe if they had left, otherwise nothing to do.
+      if (existing.unsubscribed_at) await env.DB.prepare("UPDATE subscribers SET unsubscribed_at=NULL WHERE email=?").bind(email).run();
+      return json({ ok: true, already: !existing.unsubscribed_at });
+    }
+    const token = crypto.randomUUID().replace(/-/g, "");
+    await env.DB.prepare("INSERT INTO subscribers (email, source, answers, token) VALUES (?,?,?,?)")
+      .bind(email, clip(b.source, 40) || "quiz", JSON.stringify(b.answers || {}).slice(0, 1000), token).run();
+    const site = env.SITE_URL || "https://centexhomeschool.org";
+    await sendMail(env, email, "Welcome to CenTex Homeschool Hub",
+      `Hi there,\n\nThanks for signing up for the CenTex Homeschool Hub newsletter. Once a month you'll get registration dates coming up, groups with open spots, new listings near you and public homeschool events around Central Texas.\n\n` +
+      `While you wait for the first issue:\n- Find co-ops and classes near you: ${site}/directory\n- Take the 5-question quiz to find your fit: ${site}/#fit\n- See open houses and deadlines: ${site}/calendar\n\n` +
+      `Thanks,\nBenjamin\nCenTex Homeschool Hub\n\nDon't want these emails? Unsubscribe: ${site}/api/unsubscribe?t=${token}`);
     return json({ ok: true });
+  },
+
+  "GET /api/unsubscribe": async (req, env) => {
+    const t = clip(new URL(req.url).searchParams.get("t"), 64).replace(/[^a-f0-9]/gi, "");
+    let ok = false;
+    if (t) { const r = await env.DB.prepare("UPDATE subscribers SET unsubscribed_at=datetime('now') WHERE token=? AND unsubscribed_at IS NULL").bind(t).run(); ok = true; }
+    const msg = ok ? "You're unsubscribed. You won't get the CenTex Homeschool Hub newsletter anymore." : "That unsubscribe link isn't valid. Reply to any of our emails and we'll take you off the list.";
+    return new Response(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Unsubscribe · CenTex Homeschool Hub</title><body style="font-family:system-ui,sans-serif;background:#F8F1E7;color:#2A2219;padding:48px 16px;text-align:center"><h1 style="font-family:Georgia,serif;font-weight:normal">${msg}</h1><p><a href="/" style="color:#3546A8">Back to CenTex Homeschool Hub</a></p></body>`, { headers: { "content-type": "text/html; charset=utf-8" } });
   },
 
   "POST /api/alerts": async (req, env) => {

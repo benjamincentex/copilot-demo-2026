@@ -940,7 +940,7 @@ $("quiz").addEventListener("submit",async e=>{
   if(!/^\S+@\S+\.\S+$/.test(email)){st.className="status err";st.textContent="Enter a valid email address to sign up.";$("n-email").focus();return;}
   st.textContent="Signing you up…";
   const r=await api("/api/subscribe",{email,source:"quiz",answers:ans});
-  if(r.ok){e.target.reset(); st.className="status ok"; st.textContent="You're in. Your first newsletter arrives at the start of next month.";}
+  if(r.ok){e.target.reset(); st.className="status ok"; st.textContent=r.already?"You're already on the list. Your next newsletter arrives at the start of the month.":"You're in. Check your inbox for a welcome email. The newsletter arrives at the start of each month.";}
   else{st.className="status err";st.textContent=r.error;}
 });
 
@@ -1245,7 +1245,7 @@ $("mainNewsForm").addEventListener("submit",async e=>{
   if(!/^\S+@\S+\.\S+$/.test(email)){st.className="status err";st.textContent="Enter a valid email address to sign up.";$("nl-email").focus();return;}
   st.textContent="Signing you up…";
   const r=await api("/api/subscribe",{email,source:"newsletter",answers:{town:$("nl-town").value}});
-  if(r.ok){e.target.reset(); st.className="status ok"; st.textContent="You're in. Your first newsletter arrives at the start of next month.";}
+  if(r.ok){e.target.reset(); st.className="status ok"; st.textContent=r.already?"You're already on the list. Your next newsletter arrives at the start of the month.":"You're in. Check your inbox for a welcome email. The newsletter arrives at the start of each month.";}
   else{st.className="status err";st.textContent=r.error;}
 });
 $("form").addEventListener("submit",async e=>{
