@@ -217,6 +217,16 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .t-class{background:var(--sun-soft);color:var(--ink)}
 .t-tutor{background:var(--bonnet-soft);color:var(--ink)}
 .t-micro{background:var(--line);color:var(--ink)}
+.signbar{margin:28px 0 8px;background:var(--oak-soft);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px;display:flex;gap:14px 20px;align-items:center;flex-wrap:wrap}
+.signbar .sbcopy{flex:1 1 280px;min-width:0}
+.signbar h3{font-size:20px;margin:0 0 4px}
+.signbar p{margin:0;color:var(--muted);font-size:15px}
+.signbar form{display:flex;gap:8px;flex:1 1 320px;flex-wrap:wrap}
+.signbar input{flex:1 1 200px;min-width:0;font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
+.signbar .status{flex-basis:100%}
+.socialproof{font-size:13px;color:var(--oak);font-weight:600}
+.remind{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.remind input{flex:1 1 160px;min-width:0;font:inherit;font-size:14px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
 .quoteband{margin:28px auto 4px;max-width:760px;text-align:center;padding:0 8px}
 .quoteband blockquote{margin:0;font-family:var(--display);font-size:clamp(22px,3vw,30px);line-height:1.35;color:var(--oak)}
 .quoteband figcaption{margin-top:10px;font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
@@ -460,6 +470,7 @@ html{scroll-behavior:smooth}
 </div>
 <div class="wrap">
   <div id="acctSlotDir" data-view="directory"></div>
+  <div data-view="directory"><div class="signbar" data-signbar="directory"></div></div>
   <div data-view="directory"><div class="empty" id="empty" hidden><span id="emptyMsg">No listings match yet. Try another town, or <a href="#submit">add the school you know about</a>.</span></div></div>
 
   <section id="calendar" data-view="calendar">
@@ -502,6 +513,7 @@ html{scroll-behavior:smooth}
         <div id="regList"></div>
       </div>
     </div>
+      <div class="signbar" data-signbar="calendar"></div>
   </section>
   <section id="community" data-view="community">
     <div class="intro">
@@ -515,6 +527,7 @@ html{scroll-behavior:smooth}
       <form id="cEmailForm" novalidate class="inline">
         <div class="field"><label for="c-email">Your email</label><input id="c-email" type="email" autocomplete="email" maxlength="160" placeholder="you@example.com"></div>
         <button class="btn" type="submit" style="margin-top:0">Email me a sign-in code</button>
+        <label style="display:flex;gap:8px;align-items:center;font-size:14px;flex-basis:100%"><input type="checkbox" id="c-news" checked> Also send me the free monthly newsletter</label>
       </form>
       <form id="cCodeForm" novalidate class="inline" hidden>
         <div class="field"><label for="c-code">6-digit code</label><input id="c-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456"></div>
@@ -586,6 +599,7 @@ html{scroll-behavior:smooth}
     <nav class="rtabs" aria-label="Resources">
       <a href="#start">Getting started</a><a href="#law">Texas homeschool law</a><a href="#tefa">TEFA funding</a><a href="#faq">FAQ</a><a href="#reading">Helpful links</a>
     </nav>
+    <div class="signbar" data-signbar="checklist"></div>
 
     <div class="rsub" id="start">
       <h3>How to start homeschooling in Texas</h3>
@@ -902,6 +916,7 @@ function render(){
   const inSection=L.filter(x=>!x.test&&((state.section==="activity")===(x.type==="activity"))).length;
   $("count").textContent=`${res.length} of ${inSection} ${state.section==="activity"?"activities":"listings"}`;
   $("showAll").textContent=`Show all ${res.length} ${state.section==="activity"?"activities":"listings"}`;
+  renderBars();
   $("tabLearn").setAttribute("aria-selected",state.section!=="activity"); $("tabAct").setAttribute("aria-selected",state.section==="activity");
   $("typeSel").hidden=state.section==="activity"; $("approachSel").hidden=state.section==="activity"; $("actSel").hidden=state.section!=="activity";
   $("dirIntro").textContent=state.section==="activity"?"Sports, gymnastics, swim, martial arts, music and more with daytime or homeschool-friendly classes. Always confirm current class times with the provider.":"Co-ops, support groups, classes, tutors and microschools from Liberty Hill to South Austin. Filter by town, type and approach.";
@@ -1100,12 +1115,51 @@ $("cEmailForm").addEventListener("submit",async e=>{
 $("cCodeForm").addEventListener("submit",async e=>{
   e.preventDefault(); const r=await api("/api/auth/verify",{email:$("c-email").value.trim(),code:$("c-code").value.trim()});
   if(!r.ok){setS("cSignStatus","err",r.error);return;}
+  if($("c-news").checked) api("/api/subscribe",{email:$("c-email").value.trim(),source:"account"});
   setS("cSignStatus","",""); await loadAcct(); loadBoard();
 });
 $("cProfileForm").addEventListener("submit",async e=>{
   e.preventDefault(); const r=await api("/api/account/profile",{name:$("p-name").value.trim(),town:$("p-town").value.trim()});
   if(!r.ok){setS("cProfileStatus","err",r.error);return;}
   await loadAcct();
+});
+// ---- Email signup bars (each page makes its own specific promise) ----
+const BARS={
+  directory:{t:"Get registration dates for groups near you",p:"Spring registration fills fast. One email a month with open spots, deadlines and new listings in your town.",src:"directory",btn:"Send me updates"},
+  activities:{t:"New activities in your town, once a month",p:"Sports, music, swim, art and more with daytime and homeschool-friendly classes.",src:"activities",btn:"Send me updates"},
+  calendar:{t:"Never miss a homeschool event",p:"Open houses, deadlines, homeschool days and activities near you, in one email a month.",src:"calendar",btn:"Send me events"},
+  checklist:{t:"Free: Texas Homeschool Starter Checklist",p:"The law in plain terms, a sample withdrawal letter, curriculum, records and TEFA, on one printable page. We'll email it to you, plus our free monthly newsletter.",src:"checklist",btn:"Email me the checklist"},
+};
+let SUBCOUNT=0;
+function renderBars(){
+  document.querySelectorAll("[data-signbar]").forEach(el=>{
+    let k=el.dataset.signbar; if(k==="directory"&&state.section==="activity") k="activities";
+    if(el.dataset.k===k&&(el.dataset.sp==="1")===!!SUBCOUNT) return; el.dataset.k=k; el.dataset.sp=SUBCOUNT?"1":"";
+    const b=BARS[k];
+    el.innerHTML=`<div class="sbcopy"><h3>${esc(b.t)}</h3><p>${esc(b.p)}</p>${SUBCOUNT?`<span class="socialproof">Join ${SUBCOUNT}+ Central Texas homeschool families</span>`:""}</div>
+      <form novalidate data-src="${b.src}"><label hidden>Email</label><input type="email" placeholder="you@example.com" maxlength="160" autocomplete="email" aria-label="Email"><button class="btn" type="submit" style="margin-top:0">${esc(b.btn)}</button><span class="status" role="status"></span><span class="where" style="font-size:12px;flex-basis:100%">Free. Unsubscribe anytime. We never share your email.</span></form>`;
+  });
+}
+document.addEventListener("submit",async e=>{
+  const f=e.target; if(!f.dataset||!f.dataset.src) return; e.preventDefault();
+  const st=f.querySelector(".status"), email=f.querySelector("input").value.trim(); st.className="status";
+  if(!/^\S+@\S+\.\S+$/.test(email)){st.className="status err";st.textContent="Enter a valid email address.";return;}
+  st.textContent="Signing you up…";
+  const r=await api("/api/subscribe",{email,source:f.dataset.src});
+  if(!r.ok){st.className="status err";st.textContent=r.error;return;}
+  f.querySelector("input").value=""; st.className="status ok";
+  st.innerHTML=f.dataset.src==="checklist"?`You're in! <a href="/checklist.html" target="_blank" rel="noopener">Open your checklist now</a>. We'll email you a copy too.`:(r.already?"You're already on the list. Thanks!":"You're in! Watch your inbox for a welcome email.");
+});
+api("/api/stats").then(r=>{ if(r.ok&&r.subscribers){ SUBCOUNT=r.subscribers; renderBars(); } });
+// "Remind me" on calendar events
+document.addEventListener("click",e=>{const b=e.target.closest("[data-remind]"); if(!b) return; const f=b.parentElement.querySelector("form.remind"); f.hidden=!f.hidden; if(!f.hidden) f.querySelector("input").focus();});
+document.addEventListener("submit",async e=>{
+  const f=e.target; if(!f.classList||!f.classList.contains("remind")) return; e.preventDefault();
+  const st=f.querySelector(".status"), email=f.querySelector("input").value.trim(); st.className="status";
+  if(!/^\S+@\S+\.\S+$/.test(email)){st.className="status err";st.textContent="Enter a valid email address.";return;}
+  const r=await api("/api/cal/remind",{id:Number(f.dataset.ev),email});
+  if(!r.ok){st.className="status err";st.textContent=r.error;return;}
+  f.querySelector("input").hidden=true; f.querySelector("button").hidden=true; st.className="status ok"; st.textContent="Done! We'll email you the morning before.";
 });
 function setS(id,k,m){const el=$(id); el.className="status"+(k?" "+k:""); el.textContent=m;}
 $("newPostBtn").onclick=()=>{ if(ready()){$("postForm").hidden=!$("postForm").hidden; if(acct.profile&&acct.profile.town&&!$("b-town").value) $("b-town").value=acct.profile.town;} };
@@ -1158,7 +1212,8 @@ function eventCard(ev){
   const d=fmtDate(ev.event_date);
   return `<div class="event"><div class="datebox"><span>${d.m}</span><b>${d.d}</b></div><div style="display:flex;flex-direction:column;gap:4px;min-width:0">${ev.category&&CATS[ev.category]?`<span class="tag" style="align-self:flex-start">${esc(CATS[ev.category])}</span>`:""}<b>${esc(ev.title)}</b>
     <span class="meta">${[d.w,ev.event_time,[ev.place,ev.town].filter(Boolean).join(", ")].filter(Boolean).map(esc).join(" · ")}</span>
-    ${ev.details?`<p>${esc(ev.details)}</p>`:""}<span class="meta">${sourceLine(ev)}${ev.link?` · <a href="${esc(ev.link)}" target="_blank" rel="noopener">Details ↗</a>`:""}</span></div></div>`;
+    ${ev.details?`<p>${esc(ev.details)}</p>`:""}<span class="meta">${sourceLine(ev)}${ev.link?` · <a href="${esc(ev.link)}" target="_blank" rel="noopener">Details ↗</a>`:""}</span>
+    ${ev.event_date>=ymd(new Date())&&ev.id?`<button class="linkbtn" type="button" data-remind style="align-self:flex-start;font-size:14px">🔔 Remind me</button><form class="remind" data-ev="${ev.id}" hidden novalidate><input type="email" placeholder="you@example.com" maxlength="160" aria-label="Email for reminder"><button class="btn sm" type="submit" style="margin-top:0">Remind me the day before</button><span class="status" role="status" style="flex-basis:100%"></span><span class="where" style="font-size:12px;flex-basis:100%">We'll also send our free monthly newsletter. Unsubscribe anytime.</span></form>`:""}</div></div>`;
 }
 function renderCalendar(){
   const today=new Date(); if(!calMonth) calMonth=new Date(today.getFullYear(),today.getMonth(),1);

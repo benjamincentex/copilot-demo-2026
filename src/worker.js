@@ -253,7 +253,7 @@ const routes = {
     const site = env.SITE_URL || "https://centexhomeschool.org";
     await sendMail(env, email, "Welcome to CenTex Homeschool Hub",
       `Hi there,\n\nThanks for signing up for the CenTex Homeschool Hub newsletter. Once a month you'll get registration dates coming up, groups with open spots, new listings near you and public homeschool events around Central Texas.\n\n` +
-      `While you wait for the first issue:\n- Find co-ops and classes near you: ${site}/directory\n- Take the 5-question quiz to find your fit: ${site}/#fit\n- See open houses and deadlines: ${site}/calendar\n\n` +
+      `Your free Texas Homeschool Starter Checklist: ${site}/checklist.html\n\nWhile you wait for the first issue:\n- Find co-ops and classes near you: ${site}/directory\n- Homeschool-friendly activities: ${site}/activities\n- Take the 5-question quiz to find your fit: ${site}/#fit\n- See open houses and deadlines: ${site}/calendar\n\n` +
       `Thanks,\nBenjamin\nCenTex Homeschool Hub\n\nDon't want these emails? Unsubscribe: ${site}/api/unsubscribe?t=${token}`);
     return json({ ok: true });
   },
@@ -264,6 +264,25 @@ const routes = {
     if (t) { const r = await env.DB.prepare("UPDATE subscribers SET unsubscribed_at=datetime('now') WHERE token=? AND unsubscribed_at IS NULL").bind(t).run(); ok = true; }
     const msg = ok ? "You're unsubscribed. You won't get the CenTex Homeschool Hub newsletter anymore." : "That unsubscribe link isn't valid. Reply to any of our emails and we'll take you off the list.";
     return new Response(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Unsubscribe · CenTex Homeschool Hub</title><body style="font-family:system-ui,sans-serif;background:#F8F1E7;color:#2A2219;padding:48px 16px;text-align:center"><h1 style="font-family:Georgia,serif;font-weight:normal">${msg}</h1><p><a href="/" style="color:#3546A8">Back to CenTex Homeschool Hub</a></p></body>`, { headers: { "content-type": "text/html; charset=utf-8" } });
+  },
+
+  // Coarse public count for "Join N families" (only shown by the page once it's 100+).
+  "GET /api/stats": async (req, env) => {
+    const r = await env.DB.prepare("SELECT COUNT(DISTINCT email) AS n FROM subscribers WHERE unsubscribed_at IS NULL").first();
+    return json({ subscribers: r.n >= 100 ? Math.floor(r.n / 50) * 50 : 0 });
+  },
+
+  // "Remind me" on a calendar event: reminder email the morning before + monthly newsletter.
+  "POST /api/cal/remind": async (req, env) => {
+    const b = await body(req) || {}; const email = clip(b.email, 160).toLowerCase(), id = Number(b.id) || 0;
+    if (!EMAIL_RE.test(email)) return bad("Enter a valid email address.");
+    const ev = await env.DB.prepare("SELECT id FROM events WHERE id=? AND status='approved' AND event_date >= date('now')").bind(id).first();
+    if (!ev) return bad("That event isn't on the calendar anymore.", 404);
+    await env.DB.batch([
+      env.DB.prepare("INSERT OR IGNORE INTO event_reminders (event_id, email) VALUES (?,?)").bind(id, email),
+      env.DB.prepare("INSERT INTO subscribers (email, source, token) SELECT ?,?,? WHERE NOT EXISTS (SELECT 1 FROM subscribers WHERE email=?)").bind(email, "reminder", crypto.randomUUID().replace(/-/g, ""), email),
+    ]);
+    return json({ ok: true });
   },
 
   "POST /api/alerts": async (req, env) => {
@@ -978,6 +997,19 @@ async function monthlyReports(env) {
   }
 }
 
+// Event reminders: runs with the 8 a.m. daily job and emails anyone who asked about tomorrow's events.
+async function sendEventReminders(env) {
+  const { results } = await env.DB.prepare(
+    "SELECT r.id, r.email, e.title, e.event_date, e.event_time, e.place, e.town, e.link, s.token FROM event_reminders r JOIN events e ON e.id=r.event_id LEFT JOIN subscribers s ON s.email=r.email AND s.unsubscribed_at IS NULL WHERE r.sent=0 AND e.status='approved' AND e.event_date = date('now','-5 hours','+1 day') LIMIT 300").all();
+  const site = env.SITE_URL || "https://centexhomeschool.org";
+  for (const r of results) {
+    const when = new Date(r.event_date + "T12:00:00Z").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" });
+    const ok = await sendMail(env, r.email, `Reminder: ${r.title} is tomorrow`,
+      `Just a reminder: ${r.title} is tomorrow, ${when}${r.event_time ? " at " + r.event_time : ""}${r.place || r.town ? ", " + [r.place, r.town].filter(Boolean).join(", ") : ""}.\n\n${r.link ? "Details and registration: " + r.link + "\n\n" : ""}Please confirm details with the host before you go.\n\nMore homeschool events: ${site}/calendar\n\nCenTex Homeschool Hub${r.token ? "\nUnsubscribe from all emails: " + site + "/api/unsubscribe?t=" + r.token : ""}`);
+    await env.DB.prepare("UPDATE event_reminders SET sent=? WHERE id=?").bind(ok ? 1 : 2, r.id).run();
+  }
+}
+
 // Daily summary for the owner (runs on the cron in wrangler.jsonc). Skipped when nothing is new.
 // ---------- monthly newsletter: drafted, approved by the owner, then sent to every subscriber ----------
 const NL_BATCH = 40;
@@ -1046,7 +1078,7 @@ async function dailyDigest(env) {
 
 export default {
   async scheduled(event, env, ctx) {
-    if (event.cron === "0 13 * * *") { ctx.waitUntil(dailyDigest(env)); ctx.waitUntil(monthlyReports(env)); }
+    if (event.cron === "0 13 * * *") { ctx.waitUntil(dailyDigest(env)); ctx.waitUntil(monthlyReports(env)); ctx.waitUntil(sendEventReminders(env)); }
     ctx.waitUntil(processNewsletters(env, 200));
   },
 

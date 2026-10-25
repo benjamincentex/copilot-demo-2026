@@ -34,6 +34,8 @@ CREATE TABLE IF NOT EXISTS newsletter_sends (id INTEGER PRIMARY KEY AUTOINCREMEN
 CREATE TABLE IF NOT EXISTS moderation_flags (id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL, item_id INTEGER, action TEXT NOT NULL, categories TEXT, reason TEXT, excerpt TEXT, email TEXT, name TEXT, status TEXT DEFAULT 'open', created_at TEXT DEFAULT (datetime('now')), resolved_at TEXT);
 -- Featured perk: newsletter spotlight twice a year (their photo + their words)
 CREATE TABLE IF NOT EXISTS spotlights (id INTEGER PRIMARY KEY AUTOINCREMENT, slug TEXT NOT NULL, listing TEXT, email TEXT, text TEXT NOT NULL, photo_type TEXT, photo TEXT, status TEXT DEFAULT 'pending', newsletter_id INTEGER, created_at TEXT DEFAULT (datetime('now')), used_at TEXT);
+-- "Remind me" on calendar events
+CREATE TABLE IF NOT EXISTS event_reminders (id INTEGER PRIMARY KEY AUTOINCREMENT, event_id INTEGER NOT NULL, email TEXT NOT NULL, sent INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')), UNIQUE(event_id, email));
 -- Calendar sources: community (parents), leader (verified group), imported (from a group's public website)
 ALTER TABLE events ADD COLUMN slug TEXT;
 ALTER TABLE events ADD COLUMN source TEXT DEFAULT 'community';
