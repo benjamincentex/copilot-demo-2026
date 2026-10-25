@@ -119,6 +119,9 @@ async function publishListing(env, slug, listing, town, fields, updatedBy) {
   return alerted;
 }
 
+// Paid plans (Featured listing, paid job posts) are off until PAID_PLANS is set to "1" on the Worker.
+const paidOn = (env) => env.PAID_PLANS === "1";
+
 // Free listings get a 75-character description; Featured listings get up to 2,000.
 const DESC_FREE = 75, DESC_FEATURED = 2000;
 function cleanFields(f, dMax = DESC_FREE) {
@@ -499,6 +502,7 @@ const routes = {
       const { results: owned } = await env.DB.prepare("SELECT o.data FROM listing_overrides o JOIN listing_owners w ON w.slug=o.slug WHERE w.email=?").bind(email).all();
       featured = owned.some((r) => { try { return ["featured", "partner", "enhanced"].includes(JSON.parse(r.data).plan); } catch { return false; } });
     }
+    if (!paidOn(env)) featured = true; // paid plans off: every job post is free and goes live right away
     const open = await env.DB.prepare("SELECT COUNT(*) AS n FROM jobs WHERE email=? AND status IN ('live','awaiting_payment') AND (expires_at IS NULL OR expires_at > datetime('now'))").bind(email).first();
     if (open.n >= 5) return bad("You have 5 active posts. Remove one to add another.");
     const r = await env.DB.prepare(
@@ -629,7 +633,7 @@ const routes = {
         `Hi ${c.name || "there"},\n\nYour claim for ${c.listing} is approved. Sign in at ${env.SITE_URL || "https://centexhomeschool.org"}/leaders.html with this email address to update your details and availability anytime.\n\n` +
         `A few things that help families find you:\n- Mark your availability (open spots, waitlist or full)\n- Add your next open house or application deadline to the community calendar\n- Answer families' questions on your listing\n\n` +
         `When you mark open spots or post a registration date, families waiting on your group get an email right away.\n\n` +
-        (paid ? `P.S. Want families to enroll in one click? A Featured listing ($39/month) adds a highlighted banner, photos, a "Register" button straight to your registration page, an unlimited description (free listings get 75 characters), a quarterly newsletter shout-out, free job posts and a monthly report on how your listing is doing. Details: ${env.SITE_URL || "https://centexhomeschool.org"}/leaders.html#plans\n\n` : "") +
+        (paid && paidOn(env) ? `P.S. Want families to enroll in one click? A Featured listing ($39/month) adds a highlighted banner, photos, a "Register" button straight to your registration page, an unlimited description (free listings get 75 characters), a quarterly newsletter shout-out, free job posts and a monthly report on how your listing is doing. Details: ${env.SITE_URL || "https://centexhomeschool.org"}/leaders.html#plans\n\n` : "") +
         `Thanks,\nBenjamin\nCenTex Homeschool Hub`);
     } catch (e) { console.error("approval email failed", e.code, e.message); }
     return json({ ok: true });

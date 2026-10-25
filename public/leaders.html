@@ -305,7 +305,7 @@ html{scroll-behavior:smooth}
           <div class="field"><label for="t-format">Format</label><select id="t-format"><option>In person</option><option>Online</option><option>In person or online</option></select></div>
         </div>
         <div class="field" style="margin-top:12px"><label for="t-site">Website (optional)</label><input id="t-site" type="url" maxlength="300" placeholder="https://"></div>
-        <div class="field" style="margin-top:12px"><label for="t-desc">About you</label><textarea id="t-desc" maxlength="75" data-count placeholder="e.g. Certified math teacher, grades 6–12, small groups or one-on-one"></textarea><span class="where" style="font-size:13px"><span data-left></span> characters left. Featured listings get unlimited.</span></div>
+        <div class="field" style="margin-top:12px"><label for="t-desc">About you</label><textarea id="t-desc" maxlength="75" data-count placeholder="e.g. Certified math teacher, grades 6–12, small groups or one-on-one"></textarea><span class="where" style="font-size:13px"><span data-left></span> characters left.</span></div>
         <div class="formfoot" style="margin-top:12px"><button class="btn" type="submit" style="margin-top:0">Publish my listing</button><span class="status" id="tutorStatus" role="status"></span></div>
         <p class="where" style="margin:8px 0 0;font-size:13px">Please don't include your phone number or home address. Families contact you through your website or by asking a question on your listing.</p>
       </form>
@@ -361,7 +361,7 @@ html{scroll-behavior:smooth}
       </div>
     </div>
   </section>
-<p class="where" style="margin-top:16px">Hiring a teacher or tutor? Job posts are $39 for 30 days on the <a href="/jobs">jobs board</a>, and free with a Featured listing.</p>
+<p class="where" id="jobNote" style="margin-top:16px">Hiring a teacher or tutor? Job posts are $39 for 30 days on the <a href="/jobs">jobs board</a>, and free with a Featured listing.</p>
 <footer><span>CenTex Homeschool Hub</span><span>Questions? Reply to any email from us.</span></footer>
 </div>
 <script src="/listings.js"></script>
@@ -380,6 +380,9 @@ const slug=n=>n.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").sl
 const setStatus=(id,kind,msg)=>{const el=$(id); el.className="status"+(kind?" "+kind:""); el.textContent=msg;};
 
 const STRIPE_LINKS={featured:""};
+// Paid plans are off for launch. Set to true (and PAID_PLANS=1 on the Worker) to show them.
+const PAID_PLANS=false;
+if(!PAID_PLANS){ const pl=document.getElementById("plans"); if(pl) pl.hidden=true; const jn=document.getElementById("jobNote"); if(jn) jn.innerHTML='Hiring a teacher or tutor? Post it free on the <a href="/jobs">jobs board</a>.'; }
 document.querySelectorAll("[data-plan]").forEach(a=>{ const l=STRIPE_LINKS[a.dataset.plan]; if(l) a.href=l; });
 const AVL={open:"Open spots",waitlist:"Waitlist",full:"Full",opens:"Registration opens soon",unknown:"Not sure / ask us"};
 let me=null, overrides={};
@@ -420,7 +423,7 @@ function editor(x){
       <div class="field"><label>Website or Facebook page</label><input name="site" type="url" maxlength="300" value="${esc(c.site||"")}"></div>
       <div class="field" style="grid-column:1/-1"><label>Members-only activities (optional, no dates or places)</label><input name="members" maxlength="120" placeholder="e.g. Weekly park days, monthly field trips, spring play" value="${esc(c.members||"")}"></div>
     </div>
-    ${(()=>{const feat=["featured","partner","enhanced"].includes(c.plan);const mx=feat?2000:75;return `<div class="field"><label>Description</label><textarea name="d" maxlength="${mx}" data-count>${esc(feat?(c.d||""):(c.d||"").slice(0,75))}</textarea><span class="where" style="font-size:13px"><span data-left></span> ${feat?"characters left. Featured listings show a Read more link for longer descriptions.":"characters left. Free listings get 75 characters; <a href=\"#plans\">Featured listings</a> get unlimited, with a Read more link."}</span></div>`;})()}
+    ${(()=>{const feat=["featured","partner","enhanced"].includes(c.plan);const mx=feat?2000:75;return `<div class="field"><label>Description</label><textarea name="d" maxlength="${mx}" data-count>${esc(feat?(c.d||""):(c.d||"").slice(0,75))}</textarea><span class="where" style="font-size:13px"><span data-left></span> ${feat?"characters left. Featured listings show a Read more link for longer descriptions.":(PAID_PLANS?"characters left. Free listings get 75 characters; <a href=\"#plans\">Featured listings</a> get unlimited, with a Read more link.":"characters left.")}</span></div>`;})()}
     <label style="display:flex;gap:8px;align-items:center;font-size:15px"><input type="checkbox" name="littles"${(typeof c.littles==="boolean"?c.littles:(x.tags||[]).includes("Littles welcome"))?" checked":""}> Little ones are welcome (younger siblings can come, or we offer care or classes for babies and toddlers)</label>
     <div class="formfoot"><button class="btn" type="submit" style="margin-top:0">Save and publish</button><span class="status" role="status"></span></div>
   </form>`;
@@ -494,9 +497,9 @@ load().then(()=>{ if(me){ loadQs(); loadEv(); } });
 </script>
 <script>
 // Live character counters for description boxes
-function updCount(t){const l=t.parentElement.querySelector("[data-left]"); if(l) l.textContent=Math.max(0,t.maxLength-t.value.length);}
+function updCount(t){const l=t.parentElement.querySelector("[data-left]"); if(!l) return; const v=String(Math.max(0,t.maxLength-t.value.length)); if(l.textContent!==v) l.textContent=v;}
 document.addEventListener("input",e=>{if(e.target.matches("textarea[data-count]")) updCount(e.target);});
-new MutationObserver(()=>document.querySelectorAll("textarea[data-count]").forEach(updCount)).observe(document.body,{childList:true,subtree:true});
+new MutationObserver(ms=>{ if(ms.some(m=>[...m.addedNodes].some(n=>n.nodeType===1&&(n.matches("textarea[data-count]")||n.querySelector("textarea[data-count]"))))) document.querySelectorAll("textarea[data-count]").forEach(updCount); }).observe(document.body,{childList:true,subtree:true});
 document.querySelectorAll("textarea[data-count]").forEach(updCount);
 </script>
 </body>

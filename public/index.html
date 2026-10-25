@@ -758,6 +758,8 @@ html{scroll-behavior:smooth}
 <script>
 // Stripe Payment Links: paste each link here once created in the Stripe dashboard.
 const STRIPE_LINKS = { featured: "", job: "" };
+// Paid plans are off for launch. To turn them on, set this to true and set PAID_PLANS=1 on the Worker.
+const PAID_PLANS = false;
 
 // Listings live in /listings.js so the leader page shares them.
 
@@ -1138,7 +1140,8 @@ document.addEventListener("submit",async e=>{
 async function loadQuestions(){ const r=await api("/api/questions"); if(r.ok){QA=r.questions||{}; render();} }
 
 // ---- Jobs board ----
-function jobKindUI(){ const h=$("j-kind").value==="hiring"; $("j-org-wrap").hidden=!h; $("j-link-wrap").hidden=!h; $("jobSubmit").textContent=h?"Continue to payment":"Post"; }
+function jobKindUI(){ const h=$("j-kind").value==="hiring"; $("j-org-wrap").hidden=!h; $("j-link-wrap").hidden=!h; $("jobSubmit").textContent=h&&PAID_PLANS?"Continue to payment":"Post"; }
+if(!PAID_PLANS){ const o=document.querySelector('#j-kind option[value="hiring"]'); if(o) o.textContent="Hiring for a co-op, school or business (free)"; document.querySelectorAll("#f-kind option").forEach(op=>{ if(op.textContent.includes("Featured")) op.remove(); }); }
 $("j-kind").addEventListener("change",jobKindUI); jobKindUI();
 $("newJobBtn").onclick=()=>{ if(ready()) $("jobForm").hidden=!$("jobForm").hidden; };
 $("jobForm").addEventListener("submit",async e=>{
