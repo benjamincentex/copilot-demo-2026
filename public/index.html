@@ -183,10 +183,31 @@ form.ask textarea{font:inherit;font-size:14px;padding:8px 10px;border:1px solid 
 .day.has{background:var(--bonnet-soft);border-color:var(--bonnet)}
 .day.sel{outline:2px solid var(--bonnet);outline-offset:-2px}
 .day i{font-style:normal;font-size:11px;line-height:1.25;padding:1px 4px;border-radius:4px;background:var(--oak-soft);color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.day i.imported{background:var(--bonnet-soft)}
-.day i.leader{background:var(--sun-soft)}
-.day i.more{background:transparent;color:var(--muted)}
-.day i.wk{background:transparent;color:var(--oak);font-weight:600}
+.day i b{font-weight:500;overflow:hidden;text-overflow:ellipsis}
+.day i small{display:block;font-size:10px;color:var(--muted);font-weight:500;overflow:hidden;text-overflow:ellipsis}
+.day i.k-school{background:var(--sun-soft);border-left:3px solid var(--sun)}
+.day i.k-public{background:var(--bonnet-soft);border-left:3px solid var(--bonnet)}
+.day i.k-act{background:var(--oak-soft);border-left:3px solid var(--oak)}
+.day i.more{background:transparent;color:var(--muted);border:0}
+.wkrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+.wkrow:first-of-type{border-top:0}
+.wkrow .dd{font-weight:700;color:var(--oak);white-space:nowrap}
+.wkrow .meta{grid-column:1/-1}
+@media (min-width:1000px){
+  .calwrap{grid-template-columns:1fr}
+  .cal{padding:18px}
+  .calgrid{gap:6px}
+  .day{min-height:128px;padding:6px;gap:3px}
+  .day span{font-size:14px}
+  .day i{font-size:12px;line-height:1.3;padding:3px 6px;white-space:normal;display:block}
+  .day i b{font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .day i small{font-size:11px;white-space:nowrap}
+  .day.has{background:var(--bg);border-color:var(--line)}
+  .day:hover{border-color:var(--oak)}
+  .calside .colhead{margin-top:6px}
+  #eventList{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:10px;align-items:start}
+  #eventList>.linkbtn{grid-column:1/-1}
+}
 .wkcard{border-left:3px solid var(--oak)}
 .calkey{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center;font-size:13px;color:var(--muted);margin:10px 0 0}
 .calkey span{display:inline-flex;align-items:center;gap:6px}
@@ -500,7 +521,7 @@ html{scroll-behavior:smooth}
       <div class="cal">
         <div class="calhead"><button class="linkbtn" type="button" id="calPrev" aria-label="Previous month">‹ Prev</button><h3 id="calTitle"></h3><button class="linkbtn" type="button" id="calNext" aria-label="Next month">Next ›</button></div>
         <div class="calgrid" id="calGrid" role="grid"></div>
-        <p class="calkey"><span><i style="background:var(--bonnet)"></i>Events &amp; deadlines</span><span><i style="background:var(--oak)"></i>Weekly homeschool activities</span> · Tap a day to see what's on</p>
+        <p class="calkey"><span><i style="background:var(--sun)"></i>Open houses &amp; deadlines</span><span><i style="background:var(--bonnet)"></i>Public homeschool events</span><span><i style="background:var(--oak)"></i>Weekly homeschool activities</span> · Click a day for details</p>
       </div>
       <div class="calside">
         <div class="colhead"><h3 id="calListTitle">Coming up</h3><button class="linkbtn" type="button" id="newEventBtn">Add an event</button></div>
@@ -1247,6 +1268,19 @@ function eventCard(ev){
     ${ev.details?`<p>${esc(ev.details)}</p>`:""}<span class="meta">${sourceLine(ev)}${ev.link?` · <a href="${esc(ev.link)}" target="_blank" rel="noopener">Details ↗</a>`:""}</span>
     ${ev.event_date>=ymd(new Date())&&ev.id?`<button class="linkbtn" type="button" data-remind style="align-self:flex-start;font-size:14px">🔔 Remind me</button><form class="remind" data-ev="${ev.id}" hidden novalidate><input type="email" placeholder="you@example.com" maxlength="160" aria-label="Email for reminder"><button class="btn sm" type="submit" style="margin-top:0">Remind me the day before</button><span class="status" role="status" style="flex-basis:100%"></span><span class="where" style="font-size:12px;flex-basis:100%">We'll also send our free monthly newsletter. Unsubscribe anytime.</span></form>`:""}</div></div>`;
 }
+const kindOf=ev=>ev.category==="activity"?"act":(ev.category==="openhouse"||ev.category==="deadline")?"school":"public";
+const wkTown=(x,d)=>{ // "Tue in Cedar Park · Wed in Round Rock" -> the town for this weekday, else the listing's towns
+  const k=DOWK[d.getDay()], m=String(x.sched||"").match(new RegExp(k+"[a-z]*\\.? in ([^·,]+)")); return m?m[1].trim():townsOf(x).join(", "); };
+function cellItems(evs,wk,d){
+  const all=evs.map(ev=>({c:kindOf(ev),t:ev.title,s:[ev.event_time,ev.town].filter(Boolean).join(" · ")}))
+    .concat(wk.map(x=>({c:"act",t:x.n,s:wkTown(x,d)})));
+  const max=innerWidth>=1000?4:2, shown=all.slice(0,max);
+  return shown.map(x=>`<i class="k-${x.c}" title="${esc(x.t+(x.s?" — "+x.s:""))}"><b>${esc(x.t)}</b>${x.s?`<small>${esc(x.s)}</small>`:""}</i>`).join("")+(all.length>max?`<i class="more">+${all.length-max} more</i>`:"");
+}
+const DAYSHORT=d=>{ const o=["Mon","Tue","Wed","Thu","Fri"].filter(x=>d.includes(x)); const i=o.map(x=>["Mon","Tue","Wed","Thu","Fri"].indexOf(x));
+  return o.length>2&&i[i.length-1]-i[0]===o.length-1?o[0]+"–"+o[o.length-1]:o.join(", "); };
+function weekSummary(WK){ if(!WK.length) return "";
+  return `<div class="post wkcard"><b>Every week</b><span class="meta">Recurring daytime homeschool sessions. Confirm times and sign-up with each provider.</span>${WK.map(x=>`<div class="wkrow"><span>${x.site?`<a href="${esc(x.site)}" target="_blank" rel="noopener">${esc(x.n)}</a>`:esc(x.n)}</span><span class="dd">${esc(DAYSHORT(x.days))}</span><span class="meta">${esc([townsOf(x).join(", "),x.sched||""].filter(Boolean).join(" · "))}</span></div>`).join("")}</div>`; }
 function renderCalendar(){
   const today=new Date(); if(!calMonth) calMonth=new Date(today.getFullYear(),today.getMonth(),1);
   $("calTitle").textContent=calMonth.toLocaleString("en-US",{month:"long",year:"numeric"});
@@ -1259,7 +1293,7 @@ function renderCalendar(){
     const inMonth=d.getMonth()===calMonth.getMonth();
     if(k>=35&&!inMonth&&d.getDay()===0) break;
     const wk=key>=ymd(today)?weeklyOn(d,WK):[];
-    cells+=`<button type="button" class="day${inMonth?"":" out"}${key===ymd(today)?" today":""}${evs.length?" has":""}${wk.length?" wk":""}${key===calDay?" sel":""}" data-day="${key}" aria-label="${d.toDateString()}${evs.length?", "+evs.length+" event"+(evs.length>1?"s":""):""}${wk.length?", "+wk.length+" weekly activities":""}"><span>${d.getDate()}</span>${evs.slice(0,2).map(ev=>`<i class="${ev.source}">${esc(ev.title)}</i>`).join("")}${evs.length>2?`<i class="more">+${evs.length-2} more</i>`:""}${wk.length?`<i class="wk">${wk.length} weekly activit${wk.length>1?"ies":"y"}</i>`:""}</button>`;
+    cells+=`<button type="button" class="day${inMonth?"":" out"}${key===ymd(today)?" today":""}${evs.length?" has":""}${wk.length?" wk":""}${key===calDay?" sel":""}" data-day="${key}" aria-label="${d.toDateString()}${evs.length?", "+evs.length+" event"+(evs.length>1?"s":""):""}${wk.length?", "+wk.length+" weekly activities":""}"><span>${d.getDate()}</span>${cellItems(evs,wk,d)}</button>`;
   }
   $("calGrid").innerHTML=cells;
   const todayKey=ymd(today);
@@ -1267,16 +1301,13 @@ function renderCalendar(){
   let extra="";
   if(calDay){ const dd=new Date(calDay+"T12:00:00"), wd=dd.getDay();
     if(calDay>=todayKey){ extra=weeklyOn(dd,WK).map(x=>wkCard(x,dd)).join(""); if(wd>0&&wd<6) extra+=flexNote(); } }
-  else if(WK.length||flexActs().length){ // mix the next 7 days of recurring activity sessions into "Coming up", by date
-    const items=list.map(ev=>({k:ev.event_date,h:eventCard(ev)}));
-    for(let i=0;i<7;i++){ const dd=new Date(today); dd.setDate(today.getDate()+i); weeklyOn(dd,WK).forEach(x=>items.push({k:ymd(dd),h:wkCard(x,dd)})); }
-    items.sort((a,b)=>a.k<b.k?-1:a.k>b.k?1:0); list=[];
-    extra=items.map(x=>x.h).join("")+flexNote(); }
+  else extra=weekSummary(WK)+flexNote();
   $("calListTitle").textContent=calDay?new Date(calDay+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}):"Coming up";
   $("eventList").innerHTML=(list.length||extra)?list.map(eventCard).join("")+extra+(calDay?`<button class="linkbtn" type="button" id="calClear" style="align-self:flex-start">Show all upcoming</button>`:"")
     :`<div class="emptynote">${calDay?"Nothing on this day.":calFilter==="all"?"No upcoming events yet.":"No upcoming events of this type yet."} Hosting an open house, a homeschool class or a public homeschool event? Add it here.</div>`;
   const c=$("calClear"); if(c) c.onclick=()=>{calDay=null;renderCalendar();renderWeekly();};
 }
+let calRz; addEventListener("resize",()=>{clearTimeout(calRz); calRz=setTimeout(()=>{ if(curView==="calendar") renderCalendar(); },200);});
 $("calPrev").onclick=()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()-1,1);calDay=null;renderCalendar();};
 $("calNext").onclick=()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+1,1);calDay=null;renderCalendar();};
 $("calGrid").addEventListener("click",e=>{const b=e.target.closest("[data-day]"); if(!b) return; calDay=calDay===b.dataset.day?null:b.dataset.day; renderCalendar(); renderWeekly();});
