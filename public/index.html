@@ -180,13 +180,26 @@ form.ask textarea{font:inherit;font-size:14px;padding:8px 10px;border:1px solid 
 .day span{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
 .day.out{opacity:.45}
 .day.today span{background:var(--oak);color:var(--bg);border-radius:999px;align-self:flex-start;padding:0 6px}
-.day.has{background:var(--bonnet-soft);border-color:var(--bonnet)}
+.agenda{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 14px;grid-column:1/-1}
+.ag-head{display:flex;justify-content:space-between;align-items:center;padding:4px 0 8px;border-bottom:1px solid var(--line);font-size:17px}
+.ag-head .linkbtn{font-size:22px;padding:0 10px;text-decoration:none}
+.ag-row{display:grid;grid-template-columns:64px minmax(0,1fr);gap:10px;border-bottom:1px dashed var(--line);min-height:30px}
+.ag-row:last-child{border-bottom:0}
+.ag-h{font-size:12px;font-weight:700;color:var(--muted);padding-top:6px;text-transform:uppercase;letter-spacing:.04em}
+.ag-row:not(.busy) .ag-h{opacity:.6}
+.ag-slot{display:flex;flex-direction:column;gap:6px;padding:4px 0}
+.ag-item{display:flex;flex-direction:column;gap:2px;padding:6px 10px;border-radius:6px;font-size:14px}
+.ag-item.k-school{background:var(--sun-soft);border-left:4px solid var(--sun)}
+.ag-item.k-act{background:var(--oak-soft);border-left:4px solid var(--oak)}
+.ag-item .meta{font-size:13px}
+.swatch{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;vertical-align:0}
+.event.k-school{border-left:4px solid var(--sun)}
+.event.k-act{border-left:4px solid var(--oak)}
 .day.sel{outline:2px solid var(--bonnet);outline-offset:-2px}
 .day i{font-style:normal;font-size:11px;line-height:1.25;padding:1px 4px;border-radius:4px;background:var(--oak-soft);color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .day i b{font-weight:500;overflow:hidden;text-overflow:ellipsis}
 .day i small{display:block;font-size:10px;color:var(--muted);font-weight:500;overflow:hidden;text-overflow:ellipsis}
 .day i.k-school{background:var(--sun-soft);border-left:3px solid var(--sun)}
-.day i.k-public{background:var(--bonnet-soft);border-left:3px solid var(--bonnet)}
 .day i.k-act{background:var(--oak-soft);border-left:3px solid var(--oak)}
 .day i.more{background:transparent;color:var(--muted);border:0}
 .wkrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
@@ -202,7 +215,6 @@ form.ask textarea{font:inherit;font-size:14px;padding:8px 10px;border:1px solid 
   .day i{font-size:12px;line-height:1.3;padding:3px 6px;white-space:normal;display:block}
   .day i b{font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   .day i small{font-size:11px;white-space:nowrap}
-  .day.has{background:var(--bg);border-color:var(--line)}
   .day:hover{border-color:var(--oak)}
   .calside .colhead{margin-top:6px}
   #eventList{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:10px;align-items:start}
@@ -218,9 +230,9 @@ form.ask textarea{font:inherit;font-size:14px;padding:8px 10px;border:1px solid 
   .calwrap{grid-template-columns:1fr}
   .day{min-height:44px;align-items:center}
   .day i{display:none}
-  .day.has::after,.day.wk::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--bonnet);margin-top:3px}
-  .day.wk:not(.has)::after{background:var(--oak)}
-  .day.has.wk::after{transform:translateX(-6px);box-shadow:12px 0 0 var(--oak)}
+  .day.sch::after,.day.act::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--oak);margin-top:3px}
+  .day.sch::after{background:var(--sun)}
+  .day.sch.act::after{transform:translateX(-6px);box-shadow:12px 0 0 var(--oak)}
   nav.links{flex-wrap:wrap;width:100%;gap:8px 16px}
   nav.links a{white-space:nowrap}
 }
@@ -512,16 +524,15 @@ html{scroll-behavior:smooth}
     </div>
     <div class="dirtabs" role="tablist" aria-label="Show events" id="calFilters" style="margin:0 0 16px">
       <button type="button" role="tab" data-calf="all" aria-selected="true">All events</button>
-      <button type="button" role="tab" data-calf="schools" aria-selected="false">Schools &amp; deadlines</button>
-      <button type="button" role="tab" data-calf="activity" aria-selected="false">Activities</button>
-      <button type="button" role="tab" data-calf="public" aria-selected="false">Public homeschool events</button>
+      <button type="button" role="tab" data-calf="schools" aria-selected="false"><i class="swatch" style="background:var(--sun)"></i>Schools &amp; co-ops</button>
+      <button type="button" role="tab" data-calf="activity" aria-selected="false"><i class="swatch" style="background:var(--oak)"></i>Activities &amp; field trips</button>
     </div>
     <div class="chips" id="calTownChips" role="group" aria-label="Filter events by town (pick one or more)" style="margin:0 0 16px"></div>
     <div class="calwrap">
       <div class="cal">
         <div class="calhead"><button class="linkbtn" type="button" id="calPrev" aria-label="Previous month">‹ Prev</button><h3 id="calTitle"></h3><button class="linkbtn" type="button" id="calNext" aria-label="Next month">Next ›</button></div>
         <div class="calgrid" id="calGrid" role="grid"></div>
-        <p class="calkey"><span><i style="background:var(--sun)"></i>Open houses &amp; deadlines</span><span><i style="background:var(--bonnet)"></i>Public homeschool events</span><span><i style="background:var(--oak)"></i>Weekly homeschool activities</span> · Click a day for details</p>
+        <p class="calkey"><span><i style="background:var(--sun)"></i>Schools &amp; co-ops: open houses, deadlines</span><span><i style="background:var(--oak)"></i>Activities &amp; field trips: classes, library, museum and park days</span> · Click a day for details</p>
       </div>
       <div class="calside">
         <div class="colhead"><h3 id="calListTitle">Coming up</h3><button class="linkbtn" type="button" id="newEventBtn">Add an event</button></div>
@@ -1233,7 +1244,7 @@ function sourceLine(ev){
 const CATS={"openhouse":"Open house or info session","deadline":"Application or registration deadline","public":"Public homeschool event","activity":"Homeschool activity","other":"Other public event"};
 let calFilter="all", calTowns=[];
 const evTownOk=ev=>!calTowns.length||calTowns.some(t=>String(ev.town||"").toLowerCase().includes(t.toLowerCase()));
-const CALF={all:null,schools:["openhouse","deadline"],activity:["activity"],public:["public","other"]};
+const CALF={all:null,schools:["openhouse","deadline"],activity:["activity","public","other"]};
 const shownEvents=()=>EVENTS.filter(ev=>(!CALF[calFilter]||CALF[calFilter].includes(ev.category))&&evTownOk(ev));
 function renderCalTowns(){ const el=$("calTownChips"); if(!el) return;
   el.innerHTML=TOWNS.map(t=>`<button class="chip" type="button" data-caltown="${esc(t)}" aria-pressed="${t==="All"?!calTowns.length:calTowns.includes(t)}">${esc(t)}</button>`).join(""); }
@@ -1244,8 +1255,8 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-calf]"); i
 const DAYNAME={Mon:"Monday",Tue:"Tuesday",Wed:"Wednesday",Thu:"Thursday",Fri:"Friday"};
 const DOWK=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const actTownOk=x=>!calTowns.length||townsOf(x).some(t=>calTowns.includes(t));
-const weeklyActs=()=>(calFilter==="schools"||calFilter==="public")?[]:L.filter(x=>!x.test&&x.type==="activity"&&(x.daytime||x.homeschool)&&x.days&&x.days.length&&actTownOk(x));
-const flexActs=()=>(calFilter==="schools"||calFilter==="public")?[]:L.filter(x=>!x.test&&x.type==="activity"&&(x.daytime||x.homeschool)&&!(x.days&&x.days.length)&&actTownOk(x));
+const weeklyActs=()=>calFilter==="schools"?[]:L.filter(x=>!x.test&&x.type==="activity"&&(x.daytime||x.homeschool)&&x.days&&x.days.length&&actTownOk(x));
+const flexActs=()=>calFilter==="schools"?[]:L.filter(x=>!x.test&&x.type==="activity"&&(x.daytime||x.homeschool)&&!(x.days&&x.days.length)&&actTownOk(x));
 const weeklyOn=(d,acts)=>{const k=DOWK[d.getDay()]; return acts.filter(x=>x.days.includes(k));};
 function wkCard(x,d){
   const dd=d?fmtDate(ymd(d)):null;
@@ -1263,12 +1274,12 @@ function renderWeekly(){
 }
 function eventCard(ev){
   const d=fmtDate(ev.event_date);
-  return `<div class="event"><div class="datebox"><span>${d.m}</span><b>${d.d}</b></div><div style="display:flex;flex-direction:column;gap:4px;min-width:0">${ev.category&&CATS[ev.category]?`<span class="tag" style="align-self:flex-start">${esc(CATS[ev.category])}</span>`:""}<b>${esc(ev.title)}</b>
+  return `<div class="event k-${kindOf(ev)}"><div class="datebox"><span>${d.m}</span><b>${d.d}</b></div><div style="display:flex;flex-direction:column;gap:4px;min-width:0">${ev.category&&CATS[ev.category]?`<span class="tag" style="align-self:flex-start">${esc(CATS[ev.category])}</span>`:""}<b>${esc(ev.title)}</b>
     <span class="meta">${[d.w,ev.event_time,[ev.place,ev.town].filter(Boolean).join(", ")].filter(Boolean).map(esc).join(" · ")}</span>
     ${ev.details?`<p>${esc(ev.details)}</p>`:""}<span class="meta">${sourceLine(ev)}${ev.link?` · <a href="${esc(ev.link)}" target="_blank" rel="noopener">Details ↗</a>`:""}</span>
     ${ev.event_date>=ymd(new Date())&&ev.id?`<button class="linkbtn" type="button" data-remind style="align-self:flex-start;font-size:14px">🔔 Remind me</button><form class="remind" data-ev="${ev.id}" hidden novalidate><input type="email" placeholder="you@example.com" maxlength="160" aria-label="Email for reminder"><button class="btn sm" type="submit" style="margin-top:0">Remind me the day before</button><span class="status" role="status" style="flex-basis:100%"></span><span class="where" style="font-size:12px;flex-basis:100%">We'll also send our free monthly newsletter. Unsubscribe anytime.</span></form>`:""}</div></div>`;
 }
-const kindOf=ev=>ev.category==="activity"?"act":(ev.category==="openhouse"||ev.category==="deadline")?"school":"public";
+const kindOf=ev=>(ev.category==="openhouse"||ev.category==="deadline")?"school":"act";
 const wkTown=(x,d)=>{ // "Tue in Cedar Park · Wed in Round Rock" -> the town for this weekday, else the listing's towns
   const k=DOWK[d.getDay()], m=String(x.sched||"").match(new RegExp(k+"[a-z]*\\.? in ([^·,]+)")); return m?m[1].trim():townsOf(x).join(", "); };
 function cellItems(evs,wk,d){
@@ -1281,6 +1292,27 @@ const DAYSHORT=d=>{ const o=["Mon","Tue","Wed","Thu","Fri"].filter(x=>d.includes
   return o.length>2&&i[i.length-1]-i[0]===o.length-1?o[0]+"–"+o[o.length-1]:o.join(", "); };
 function weekSummary(WK){ if(!WK.length) return "";
   return `<div class="post wkcard"><b>Every week</b><span class="meta">Recurring daytime homeschool sessions. Confirm times and sign-up with each provider.</span>${WK.map(x=>`<div class="wkrow"><span>${x.site?`<a href="${esc(x.site)}" target="_blank" rel="noopener">${esc(x.n)}</a>`:esc(x.n)}</span><span class="dd">${esc(DAYSHORT(x.days))}</span><span class="meta">${esc([townsOf(x).join(", "),x.sched||""].filter(Boolean).join(" · "))}</span></div>`).join("")}</div>`; }
+// "1:00–2:00 pm", "10am", "9:00 AM", "6pm" -> minutes after midnight (null if no time)
+function startMin(t){ const s=String(t||""); const m=s.match(/(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?/i); if(!m) return null;
+  let h=+m[1], mi=+(m[2]||0); if(h>23) return null; let mer=m[3]; if(!mer){ const n=s.slice(m.index+m[0].length).match(/(a\.?m|p\.?m)/i); mer=n?n[1]:(h<7?"pm":"am"); }
+  mer=mer.toLowerCase()[0]; if(mer==="p"&&h<12) h+=12; if(mer==="a"&&h===12) h=0; return h*60+mi; }
+const hrLabel=h=>(h%12||12)+(h<12?" AM":" PM");
+function agendaItem(ev){ const k=kindOf(ev);
+  return `<div class="ag-item k-${k}"><b>${ev.link?`<a href="${esc(ev.link)}" target="_blank" rel="noopener">${esc(ev.title)}</a>`:esc(ev.title)}</b><span class="meta">${[ev.event_time,[ev.place,ev.town].filter(Boolean).join(", ")].filter(Boolean).map(esc).join(" · ")}</span>${ev.details?`<span class="meta">${esc(ev.details)}</span>`:""}<span class="meta">${sourceLine(ev)}</span></div>`; }
+function dayAgenda(key,evs,wk,flex){
+  const dd=new Date(key+"T12:00:00"), timed=[], untimed=[];
+  evs.forEach(ev=>{ const m=startMin(ev.event_time); (m==null?untimed:timed).push({m,ev}); });
+  timed.sort((a,b)=>a.m-b.m);
+  const hs=timed.map(x=>Math.floor(x.m/60)), h0=Math.min(8,...hs), h1=Math.max(17,...hs);
+  let rows=""; for(let h=h0;h<=h1;h++){ const items=timed.filter(x=>Math.floor(x.m/60)===h);
+    rows+=`<div class="ag-row${items.length?" busy":""}"><span class="ag-h">${hrLabel(h)}</span><div class="ag-slot">${items.map(x=>agendaItem(x.ev)).join("")}</div></div>`; }
+  const step=n=>{ const x=new Date(dd); x.setDate(x.getDate()+n); return ymd(x); };
+  const anyTime=untimed.map(x=>agendaItem(x.ev)).join("")+wk.map(x=>`<div class="ag-item k-act"><b>${x.site?`<a href="${esc(x.site)}" target="_blank" rel="noopener">${esc(x.n)}</a>`:esc(x.n)}</b><span class="meta">Weekly session · ${esc(wkTown(x,dd))}${x.sched?" · "+esc(x.sched):""}</span><span class="meta">Times vary. Confirm with the provider.</span></div>`).join("");
+  return `<div class="agenda"><div class="ag-head"><button class="linkbtn" type="button" data-agday="${step(-1)}" aria-label="Previous day">‹</button><b>${dd.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}</b><button class="linkbtn" type="button" data-agday="${step(1)}" aria-label="Next day">›</button></div>
+    ${timed.length?rows:`<p class="where" style="margin:8px 0">No timed events this day.</p>`}
+    ${anyTime?`<div class="ag-row busy"><span class="ag-h">Any time</span><div class="ag-slot">${anyTime}</div></div>`:""}</div>${flex||""}`;
+}
+document.addEventListener("click",e=>{const b=e.target.closest("[data-agday]"); if(!b) return; calDay=b.dataset.agday; const d=new Date(calDay+"T12:00:00"); if(d.getMonth()!==calMonth.getMonth()||d.getFullYear()!==calMonth.getFullYear()) calMonth=new Date(d.getFullYear(),d.getMonth(),1); renderCalendar();});
 function renderCalendar(){
   const today=new Date(); if(!calMonth) calMonth=new Date(today.getFullYear(),today.getMonth(),1);
   $("calTitle").textContent=calMonth.toLocaleString("en-US",{month:"long",year:"numeric"});
@@ -1293,14 +1325,14 @@ function renderCalendar(){
     const inMonth=d.getMonth()===calMonth.getMonth();
     if(k>=35&&!inMonth&&d.getDay()===0) break;
     const wk=key>=ymd(today)?weeklyOn(d,WK):[];
-    cells+=`<button type="button" class="day${inMonth?"":" out"}${key===ymd(today)?" today":""}${evs.length?" has":""}${wk.length?" wk":""}${key===calDay?" sel":""}" data-day="${key}" aria-label="${d.toDateString()}${evs.length?", "+evs.length+" event"+(evs.length>1?"s":""):""}${wk.length?", "+wk.length+" weekly activities":""}"><span>${d.getDate()}</span>${cellItems(evs,wk,d)}</button>`;
+    cells+=`<button type="button" class="day${inMonth?"":" out"}${key===ymd(today)?" today":""}${evs.some(e=>kindOf(e)==="school")?" sch":""}${evs.some(e=>kindOf(e)==="act")||wk.length?" act":""}${key===calDay?" sel":""}" data-day="${key}" aria-label="${d.toDateString()}${evs.length?", "+evs.length+" event"+(evs.length>1?"s":""):""}${wk.length?", "+wk.length+" weekly activities":""}"><span>${d.getDate()}</span>${cellItems(evs,wk,d)}</button>`;
   }
   $("calGrid").innerHTML=cells;
   const todayKey=ymd(today);
   let list=calDay?(byDay[calDay]||[]):shownEvents().filter(ev=>ev.event_date>=todayKey).slice(0,8);
   let extra="";
   if(calDay){ const dd=new Date(calDay+"T12:00:00"), wd=dd.getDay();
-    if(calDay>=todayKey){ extra=weeklyOn(dd,WK).map(x=>wkCard(x,dd)).join(""); if(wd>0&&wd<6) extra+=flexNote(); } }
+    extra=dayAgenda(calDay,list,calDay>=todayKey?weeklyOn(dd,WK):[],(calDay>=todayKey&&wd>0&&wd<6)?flexNote():""); list=[]; }
   else extra=weekSummary(WK)+flexNote();
   $("calListTitle").textContent=calDay?new Date(calDay+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}):"Coming up";
   $("eventList").innerHTML=(list.length||extra)?list.map(eventCard).join("")+extra+(calDay?`<button class="linkbtn" type="button" id="calClear" style="align-self:flex-start">Show all upcoming</button>`:"")
@@ -1310,7 +1342,7 @@ function renderCalendar(){
 let calRz; addEventListener("resize",()=>{clearTimeout(calRz); calRz=setTimeout(()=>{ if(curView==="calendar") renderCalendar(); },200);});
 $("calPrev").onclick=()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()-1,1);calDay=null;renderCalendar();};
 $("calNext").onclick=()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+1,1);calDay=null;renderCalendar();};
-$("calGrid").addEventListener("click",e=>{const b=e.target.closest("[data-day]"); if(!b) return; calDay=calDay===b.dataset.day?null:b.dataset.day; renderCalendar(); renderWeekly();});
+$("calGrid").addEventListener("click",e=>{const b=e.target.closest("[data-day]"); if(!b) return; calDay=calDay===b.dataset.day?null:b.dataset.day; renderCalendar(); renderWeekly(); const ag=document.querySelector(".agenda"); if(ag){ const r=ag.getBoundingClientRect(); if(r.top>innerHeight-80||r.top<0) ag.scrollIntoView({behavior:"smooth",block:"start"}); }});
 async function loadEvents(){
   const r=await api("/api/cal"); EVENTS=(r.ok&&Array.isArray(r.events))?r.events:[];
   if(!r.ok||!Array.isArray(r.events)){ console.error("Calendar couldn't load events:", r.error||"unexpected response"); renderCalendar(); $("eventList").innerHTML=`<div class="emptynote">The calendar couldn't load right now. Refresh the page to try again.</div>`; return; }
