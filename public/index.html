@@ -391,7 +391,7 @@ html{scroll-behavior:smooth}
   <div>
     <span class="label">The free guide to homeschooling in Central Texas</span>
     <h1>Homeschool <em>begins</em> here.</h1>
-    <p>One place for Central Texas homeschool families: schools, co-ops, classes and tutors, plus homeschool-friendly activities like music, swim, sports and martial arts, from Liberty Hill to South Austin. Always free for families.</p>
+    <p>One place for Central Texas homeschool families: schools, co-ops, classes and tutors, plus homeschool-friendly activities like music, swim, sports and martial arts, and field trips to museums, zoos and parks, from Liberty Hill to South Austin. Always free for families.</p>
     <div class="heroacts">
       <a class="btn" href="/directory" style="margin-top:0">Find schools &amp; co-ops</a>
       <a class="btn ghost" href="/activities" style="margin-top:0">Find activities</a>
@@ -472,7 +472,7 @@ html{scroll-behavior:smooth}
   <p id="dirIntro">Co-ops, support groups, classes, tutors and microschools from Liberty Hill to South Austin. Filter by town, type and approach.</p>
   <div class="dirtabs" role="tablist" aria-label="Directory sections">
     <button type="button" role="tab" id="tabLearn" aria-selected="true">Schools, co-ops &amp; classes</button>
-    <button type="button" role="tab" id="tabAct" aria-selected="false">Homeschool-friendly activities</button>
+    <button type="button" role="tab" id="tabAct" aria-selected="false">Activities &amp; field trips</button>
   </div>
 </div>
 <div class="dirwrap" data-view="directory">
@@ -899,6 +899,7 @@ const AV={open:["Open spots","a-open"],waitlist:["Waitlist","a-wait"],full:["Ful
 function availLabel(x){ const a=x.avail; return a.s==="opens"&&a.when?`Registration opens ${a.when}`:AV[a.s][0]; }
 const state={q:"",type:"",approach:"",towns:[],open:false,section:"learn"};
 const $=id=>document.getElementById(id);
+const FIELD_TAGS=new Set(["Museums","Zoos & animals","Nature centers & gardens","State parks","Farms & living history","Caves","Stargazing","Libraries"]);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
 function townsOf(x){return [x.town].concat(x.also||[])}
@@ -1054,7 +1055,9 @@ $("approachSel").addEventListener("change",e=>{state.approach=e.target.value;ren
 $("openNow").addEventListener("click",()=>{state.open=!state.open;render();});
 const setSection=sec=>{ state.section=sec; state.type=""; state.approach=""; $("typeSel").value=""; $("approachSel").value=""; $("actSel").value=""; showAll=false; render(); if(curView==="directory"){ const want=sec==="activity"?"/activities":"/directory"; if(location.pathname!==want) history.replaceState(null,"",want); } };
 $("tabLearn").addEventListener("click",()=>setSection("learn"));
-(()=>{ const tags=[...new Set(L.filter(x=>x.type==="activity").flatMap(x=>x.tags))].sort(); $("actSel").innerHTML='<option value="">All activities</option>'+tags.map(t=>`<option>${esc(t)}</option>`).join(""); })();
+(()=>{ const tags=[...new Set(L.filter(x=>x.type==="activity").flatMap(x=>x.tags))].sort();
+  const grp=(label,xs)=>xs.length?`<optgroup label="${label}">${xs.map(t=>`<option>${esc(t)}</option>`).join("")}</optgroup>`:"";
+  $("actSel").innerHTML='<option value="">All activities &amp; field trips</option>'+grp("Field trips",tags.filter(t=>FIELD_TAGS.has(t)))+grp("Classes, sports &amp; play",tags.filter(t=>!FIELD_TAGS.has(t))); })();
 $("actSel").addEventListener("change",e=>{state.approach=e.target.value;render();});
 $("tabAct").addEventListener("click",()=>setSection("activity"));
 $("clearBtn").addEventListener("click",()=>{Object.assign(state,{q:"",type:"",approach:"",towns:[],open:false});$("q").value="";$("typeSel").value="";$("approachSel").value="";$("actSel").value="";render();});
@@ -1256,7 +1259,7 @@ const DAYNAME={Mon:"Monday",Tue:"Tuesday",Wed:"Wednesday",Thu:"Thursday",Fri:"Fr
 const DOWK=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const actTownOk=x=>!calTowns.length||townsOf(x).some(t=>calTowns.includes(t));
 const weeklyActs=()=>calFilter==="schools"?[]:L.filter(x=>!x.test&&x.type==="activity"&&(x.daytime||x.homeschool)&&x.days&&x.days.length&&actTownOk(x));
-const flexActs=()=>calFilter==="schools"?[]:L.filter(x=>!x.test&&x.type==="activity"&&(x.daytime||x.homeschool)&&!(x.days&&x.days.length)&&actTownOk(x));
+const flexActs=()=>calFilter==="schools"?[]:L.filter(x=>!x.test&&x.type==="activity"&&(x.daytime||x.homeschool)&&!x.tags.some(t=>FIELD_TAGS.has(t))&&!(x.days&&x.days.length)&&actTownOk(x));
 const weeklyOn=(d,acts)=>{const k=DOWK[d.getDay()]; return acts.filter(x=>x.days.includes(k));};
 function wkCard(x,d){
   const dd=d?fmtDate(ymd(d)):null;
