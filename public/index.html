@@ -192,6 +192,14 @@ form.ask textarea{font:inherit;font-size:14px;padding:8px 10px;border:1px solid 
 .ag-item.k-school{background:var(--sun-soft);border-left:4px solid var(--sun)}
 .ag-item.k-act{background:var(--oak-soft);border-left:4px solid var(--oak)}
 .ag-item .meta{font-size:13px}
+.newslist{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.newscard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;display:flex;flex-direction:column;gap:6px}
+.newscard h3{font-size:19px;line-height:1.3;margin:0}
+.newscard h3 a{color:var(--ink);text-decoration:none}
+.newscard h3 a:hover{text-decoration:underline}
+.newscard .nmeta{font-size:13px;color:var(--muted);display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.newscard p{margin:0;font-size:15px}
+.newscard .read{font-size:14px;font-weight:600;margin-top:auto}
 .swatch{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;vertical-align:0}
 .event.k-school{border-left:4px solid var(--sun)}
 .event.k-act{border-left:4px solid var(--oak)}
@@ -382,8 +390,8 @@ html{scroll-behavior:smooth}
     <a href="/calendar">Calendar</a>
     <a href="/community">Community</a>
     <a href="/resources">Resources</a>
+    <a href="/news">News</a>
     <a href="/jobs">Jobs/Tutors</a>
-    <a href="/newsletter">Newsletter</a>
   </nav>
 </header>
 
@@ -461,6 +469,7 @@ html{scroll-behavior:smooth}
       <a href="/calendar"><b>Calendar</b><span>Open houses, application deadlines and public homeschool events</span></a>
       <a href="/community"><b>Community</b><span>Find what your family is looking for, share insights and meet families nearby</span></a>
       <a href="/resources"><b>Resources</b><span>Getting started, Texas homeschool law, TEFA funding and FAQ</span></a>
+      <a href="/news"><b>News</b><span>Texas and national homeschool news, law changes and TEFA updates</span></a>
       <a href="/jobs"><b>Jobs/Tutors</b><span>Hiring a teacher, or a tutor for hire</span></a>
     </div>
   </section>
@@ -513,7 +522,6 @@ html{scroll-behavior:smooth}
 </div>
 <div class="wrap">
   <div id="acctSlotDir" data-view="directory"></div>
-  <div data-view="directory"><div class="signbar" data-signbar="directory"></div></div>
   <div data-view="directory"><div class="empty" id="empty" hidden><span id="emptyMsg">No listings match yet. Try another town, or <a href="#submit">add the school you know about</a>.</span></div></div>
 
   <section id="calendar" data-view="calendar">
@@ -557,7 +565,6 @@ html{scroll-behavior:smooth}
         <div id="regList"></div>
       </div>
     </div>
-      <div class="signbar" data-signbar="calendar"></div>
   </section>
   <section id="community" data-view="community">
     <div class="intro">
@@ -633,6 +640,21 @@ html{scroll-behavior:smooth}
       <div><div class="colhead"><h3>Now hiring</h3></div><div id="hiringList" class="stack"></div></div>
       <div><div class="colhead"><h3>Families seeking a tutor</h3></div><div id="seekingList" class="stack"></div></div>
     </div>
+  </section>
+  <section id="news" data-view="news">
+    <div class="intro">
+      <span class="label">News</span>
+      <h2>Homeschool news that matters here</h2>
+      <p>Law and policy changes, TEFA updates and trends in Texas and across the country, in plain language. We write a short summary; tap through to read the full story at the source.</p>
+    </div>
+    <div class="dirtabs" role="tablist" aria-label="News region" style="margin:0 0 12px">
+      <button type="button" role="tab" data-newsr="" aria-selected="true">All news</button>
+      <button type="button" role="tab" data-newsr="texas" aria-selected="false">Texas &amp; Central Texas</button>
+      <button type="button" role="tab" data-newsr="national" aria-selected="false">Nationwide</button>
+    </div>
+    <div class="chips" id="newsTopics" role="group" aria-label="News topic" style="margin:0 0 16px"></div>
+    <div id="newsList" class="newslist"></div>
+    <p class="where" style="margin-top:18px">Summaries are general information, not legal advice. See something we missed? <a href="/directory#submit">Tell us</a>.</p>
   </section>
   <section id="resources" data-view="resources">
     <div class="intro">
@@ -834,6 +856,7 @@ html{scroll-behavior:smooth}
     </form>
   </section>
 
+  <div class="signbar" id="footBar" data-signbar="newsletter"></div>
   <footer>
     <a href="/leaders.html" class="where">For schools, families &amp; teachers</a>
     <span>CenTex Homeschool Hub · Liberty Hill, Leander, Cedar Park, Round Rock, Pflugerville, Georgetown, Austin</span>
@@ -853,8 +876,8 @@ const PAID_PLANS = false;
 // Listings live in /listings.js so the leader page shares them.
 
 // ---- Pages: each area has its own address (/directory, /calendar, ...) served by this one file ----
-const VIEWS={"/":"home","/directory":"directory","/activities":"directory","/calendar":"calendar","/community":"community","/resources":"resources","/jobs":"jobs","/newsletter":"newsletter"};
-const TITLES={home:"CenTex Homeschool Hub",directory:"Directory",calendar:"Calendar",community:"Community",resources:"Resources",jobs:"Jobs/Tutors",newsletter:"Newsletter"};
+const VIEWS={"/":"home","/directory":"directory","/activities":"directory","/calendar":"calendar","/community":"community","/resources":"resources","/news":"news","/jobs":"jobs","/newsletter":"newsletter"};
+const TITLES={home:"CenTex Homeschool Hub",directory:"Directory",calendar:"Calendar",community:"Community",resources:"Resources",news:"Homeschool news",jobs:"Jobs/Tutors",newsletter:"Newsletter"};
 // Old one-page links like /#calendar keep working.
 const LEGACY={directory:"/directory",calendar:"/calendar",register:"/calendar",community:"/community",jobs:"/jobs",resources:"/resources",tefa:"/resources#tefa",start:"/resources#start",law:"/resources#law",faq:"/resources#faq",reading:"/resources#reading",newsletter:"/newsletter",submit:"/directory#submit"};
 let curView="home";
@@ -871,6 +894,7 @@ function showView(noScroll){
   document.querySelectorAll("nav.links a").forEach(a=>{ if(viewOf(new URL(a.href).pathname)===curView&&curView!=="home") a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
   document.title=curView==="home"?"CenTex Homeschool Hub":TITLES[curView]+" · CenTex Homeschool Hub";
   if(curView==="community"||curView==="jobs"||curView==="calendar") placeAcct(false);
+  const fb=$("footBar"); if(fb){ fb.hidden=curView==="newsletter"; fb.dataset.signbar=({directory:"directory",calendar:"calendar",news:"news"})[curView]||"newsletter"; try{ renderBars(); }catch(e){} }
   if(noScroll) return;
   const t=location.hash&&document.getElementById(decodeURIComponent(location.hash.slice(1)));
   if(t&&!t.closest("[hidden]")) setTimeout(()=>t.scrollIntoView(),0); else window.scrollTo(0,0);
@@ -1179,6 +1203,8 @@ const BARS={
   directory:{t:"Get registration dates for groups near you",p:"Spring registration fills fast. One email a month with open spots, deadlines and new listings in your town.",src:"directory",btn:"Send me updates"},
   activities:{t:"New activities in your town, once a month",p:"Sports, music, swim, art and more with daytime and homeschool-friendly classes.",src:"activities",btn:"Send me updates"},
   calendar:{t:"Never miss a homeschool event",p:"Open houses, deadlines, homeschool days and activities near you, in one email a month.",src:"calendar",btn:"Send me events"},
+  newsletter:{t:"Get the free CenTex Homeschool newsletter",p:"Once a month: open houses and deadlines, homeschool days, law and TEFA changes, and tips for your homeschool. Unsubscribe anytime.",src:"newsletter",btn:"Subscribe"},
+  news:{t:"Law changes and TEFA news, in your inbox",p:"Our free monthly newsletter sums up what changed for Texas homeschoolers, plus events and tips.",src:"news",btn:"Keep me posted"},
   checklist:{t:"Free: Texas Homeschool Starter Checklist",p:"The law in plain terms, a sample withdrawal letter, curriculum, records and TEFA, on one printable page. We'll email it to you, plus our free monthly newsletter.",src:"checklist",btn:"Email me the checklist"},
 };
 let SUBCOUNT=0;
@@ -1414,6 +1440,24 @@ document.addEventListener("submit",async e=>{
   const r=await api("/api/jobs/reply",{id:Number(f.dataset.job),message:f.querySelector("textarea").value.trim()});
   if(r.ok){f.reset(); st.className="status ok"; st.textContent="Sent. They have your email now and can write back.";} else {st.className="status err"; st.textContent=r.error;}
 },true);
+// News page
+const NTOPICS={law:"Law & policy",tefa:"TEFA & funding",trends:"Trends & research",local:"Central Texas"};
+let NEWS=[], newsRegion="", newsTopic="";
+function renderNews(){
+  const tp=$("newsTopics"); if(!tp) return;
+  const have=new Set(NEWS.map(n=>n.topic));
+  tp.innerHTML=[["","All topics"]].concat(Object.entries(NTOPICS).filter(([k])=>have.has(k))).map(([k,v])=>`<button class="chip" type="button" data-newst="${k}" aria-pressed="${newsTopic===k}">${esc(v)}</button>`).join("");
+  const xs=NEWS.filter(n=>(!newsRegion||n.region===newsRegion||(newsRegion==="texas"&&n.region==="local"))&&(!newsTopic||n.topic===newsTopic));
+  $("newsList").innerHTML=xs.length?xs.map(n=>{ const d=new Date(n.published+"T12:00:00");
+    return `<article class="newscard"><span class="nmeta"><span class="tag">${esc(NTOPICS[n.topic]||"News")}</span>${esc(n.region==="national"?"Nationwide":"Texas")} · ${d.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}</span>
+      <h3><a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.title)}</a></h3><p>${esc(n.summary||"")}</p>
+      <a class="read" href="${esc(n.url)}" target="_blank" rel="noopener">Read at ${esc(n.source||"the source")} ↗</a></article>`; }).join("")
+    :`<div class="emptynote">No stories here yet. Check back soon.</div>`;
+}
+document.addEventListener("click",e=>{ const r=e.target.closest("[data-newsr]"), t=e.target.closest("[data-newst]");
+  if(r){ newsRegion=r.dataset.newsr; document.querySelectorAll("[data-newsr]").forEach(x=>x.setAttribute("aria-selected",x===r)); renderNews(); }
+  if(t){ newsTopic=t.dataset.newst; renderNews(); } });
+api("/api/news").then(r=>{ NEWS=(r.ok&&r.news)||[]; renderNews(); });
 initPages(); render(); renderQuiz(); renderRegistration(); loadOverrides(); loadAcct(); loadBoard(); loadEvents(); loadQuestions(); loadJobs();
 // Scatter bluebonnets and draw the park-day gathering (seeded so it looks the same every load).
 (function(){

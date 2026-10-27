@@ -241,6 +241,7 @@ html{scroll-behavior:smooth}
     <div class="box"><h2>At a glance</h2><div class="stats4" id="stats"></div><p class="where" id="emailLine" style="margin:0"></p></div>
     <div class="box"><h2>Listing claims to review</h2><div id="claims" class="where">No claims waiting.</div></div>
     <div class="box" id="activity"><h2>Listing activity (last 30 days)</h2><p class="where" style="margin:0">How families interact with each listing. Views count when a listing is on screen for a second (once per visit). Featured listings get a quarterly version of this by email (Jan 1, Apr 1, Jul 1, Oct 1).</p><div id="actTable" class="where" style="overflow-x:auto">No activity yet.</div></div>
+    <div class="box" id="newsAdmin"><h2>News page</h2><p class="where" style="margin:0">Stories are added automatically each week with a short summary and a link to the source. Hide anything you don't want on the site.</p><div id="newsAdminList" class="where">No stories yet.</div></div>
     <div class="box" id="referrals"><h2>Top referrers</h2><p class="where" style="margin:0">Every subscriber gets a personal share link in their welcome email, each newsletter and event reminders. Signups through a link are credited here, so you can thank (or later reward) your best ambassadors.</p><div id="refList" class="where">No referred signups yet.</div></div>
     <div class="box" id="flags"><h2>Blocked posts</h2><p class="where" style="margin:0">Every post is screened automatically. Anything with child-sensitive details, inappropriate language, hostility, drama or spam is never published; the poster is asked to rewrite it. Nothing here needs action. It's a log for your peace of mind.</p><div id="flagList" class="where">Nothing blocked yet.</div></div>
     <div class="box" id="newsletter"><h2>Monthly newsletter</h2><p class="where" style="margin:0">Each month's draft appears here. Preview it, send yourself a test, then approve it to email every subscriber. Each copy has its own unsubscribe link.</p><p class="where" id="nlInfo" style="margin:0"></p><div id="nlList" class="where"></div><span class="status" id="nlStatus" role="status"></span></div>
@@ -291,6 +292,11 @@ document.addEventListener("click",async e=>{
   if(s){ if(!confirm(`Send this newsletter to ${s.dataset.n} subscriber${s.dataset.n==="1"?"":"s"} now? This can't be undone.`)) return; s.disabled=true; st.textContent="Sending…"; const x=await api("/api/admin/newsletter/approve",{id:Number(s.dataset.nlsend)}); st.className="status "+(x.ok?"ok":"err"); st.textContent=x.ok?`Approved. ${x.sentNow} of ${x.total} sent so far; the rest go out automatically within minutes.`:x.error; if(!x.ok) s.disabled=false; loadNewsletters(); }
   if(d){ d.disabled=true; await api("/api/admin/newsletter/delete",{id:Number(d.dataset.nldel)}); loadNewsletters(); }
 });
+async function loadNewsAdmin(){
+  const r=await api("/api/admin/news"); if(!r.ok) return;
+  $("newsAdminList").innerHTML=r.news.length?r.news.map(n=>`<div class="rev"><b style="color:var(--ink)"><a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.title)}</a></b><span>${esc(n.source||"")} · ${esc(n.published)} · ${esc(n.region||"")}/${esc(n.topic||"")}${n.status!=="live"?" · hidden":""}</span><button class="linkbtn" type="button" data-newsst="${n.id}" data-to="${n.status==="live"?"hidden":"live"}" style="align-self:flex-start">${n.status==="live"?"Hide":"Show again"}</button></div>`).join(""):"No stories yet.";
+}
+document.addEventListener("click",async e=>{const b=e.target.closest("[data-newsst]"); if(!b) return; b.disabled=true; await api("/api/admin/news/status",{id:Number(b.dataset.newsst),status:b.dataset.to}); loadNewsAdmin();});
 async function loadReferrals(){
   const r=await api("/api/admin/referrals"); if(!r.ok) return;
   $("refList").innerHTML=r.referrers.length?`<p style="margin:0 0 6px">${r.total} subscriber${r.total===1?"":"s"} joined through a friend's link.</p>`+r.referrers.map(x=>`<div class="rev"><b style="color:var(--ink)">${esc(x.email)} · ${x.n} signup${x.n===1?"":"s"}</b><span>Last referral ${esc(x.last)} UTC</span></div>`).join(""):"No referred signups yet.";
@@ -306,7 +312,7 @@ async function loadActivity(){
   $("actTable").innerHTML=rows.length?`<table style="width:100%;border-collapse:collapse;font-size:14px"><tr style="text-align:left"><th>Listing</th><th>Views</th><th>Website</th><th>Register</th><th>Notify me</th><th>Questions</th></tr>${rows.slice(0,60).map(x=>`<tr style="border-top:1px solid var(--line)"><td>${esc(name(x.slug))}</td><td>${x.views}</td><td>${x.website}</td><td>${x.register}</td><td>${x.alerts}</td><td>${x.questions}</td></tr>`).join("")}</table>`:"No activity yet.";
 }
 async function load(){
-  loadNewsletters(); loadFlags(); loadActivity(); loadReferrals();
+  loadNewsletters(); loadFlags(); loadActivity(); loadReferrals(); loadNewsAdmin();
   const me=await api("/api/admin/me");
   if(!(me.ok&&me.admin)){$("denied").hidden=false;return;}
   $("tools").hidden=false;

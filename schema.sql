@@ -48,3 +48,7 @@ ALTER TABLE subscribers ADD COLUMN token TEXT;
 ALTER TABLE subscribers ADD COLUMN ref TEXT;
 ALTER TABLE subscribers ADD COLUMN referred_by TEXT;
 CREATE INDEX IF NOT EXISTS idx_subscribers_ref ON subscribers(ref);
+
+-- Homeschool news: short original summaries linking to the source article
+CREATE TABLE IF NOT EXISTS news (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, source TEXT, url TEXT NOT NULL UNIQUE, published TEXT NOT NULL, summary TEXT, region TEXT, topic TEXT, status TEXT DEFAULT 'live', created_at TEXT DEFAULT (datetime('now')));
+CREATE INDEX IF NOT EXISTS idx_news_published ON news(published);

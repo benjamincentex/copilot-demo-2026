@@ -269,6 +269,12 @@ const routes = {
     return new Response(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Unsubscribe · CenTex Homeschool Hub</title><body style="font-family:system-ui,sans-serif;background:#F8F1E7;color:#2A2219;padding:48px 16px;text-align:center"><h1 style="font-family:Georgia,serif;font-weight:normal">${msg}</h1><p><a href="/" style="color:#3546A8">Back to CenTex Homeschool Hub</a></p></body>`, { headers: { "content-type": "text/html; charset=utf-8" } });
   },
 
+  // Homeschool news: summaries written by us, each linking to the original article.
+  "GET /api/news": async (req, env) => {
+    const { results } = await env.DB.prepare("SELECT id, title, source, url, published, summary, region, topic FROM news WHERE status='live' ORDER BY published DESC, id DESC LIMIT 100").all();
+    return json({ news: results });
+  },
+
   // Coarse public count for "Join N families" (only shown by the page once it's 100+).
   "GET /api/stats": async (req, env) => {
     const r = await env.DB.prepare("SELECT COUNT(DISTINCT email) AS n FROM subscribers WHERE unsubscribed_at IS NULL").first();
@@ -709,6 +715,16 @@ const routes = {
   "GET /api/admin/activity": async (req, env) => {
     const days = Math.min(365, Math.max(1, Number(new URL(req.url).searchParams.get("days")) || 30));
     return json({ days, listings: await listingActivity(env, `-${days} days`, "+1 day") });
+  },
+
+  "GET /api/admin/news": async (req, env) => {
+    const { results } = await env.DB.prepare("SELECT id, title, source, url, published, region, topic, status FROM news ORDER BY published DESC, id DESC LIMIT 100").all();
+    return json({ news: results });
+  },
+  "POST /api/admin/news/status": async (req, env) => {
+    const b = await body(req) || {}; const id = Number(b.id) || 0; const st = b.status === "live" ? "live" : "hidden";
+    await env.DB.prepare("UPDATE news SET status=? WHERE id=?").bind(st, id).run();
+    return json({ ok: true });
   },
 
   "GET /api/admin/referrals": async (req, env) => {
