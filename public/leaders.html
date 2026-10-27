@@ -293,7 +293,7 @@ html{scroll-behavior:smooth}
     <div id="myListings"></div>
     <div class="box">
       <h2>Tutor? Create your own listing</h2>
-      <p class="where" style="margin:0">Independent tutors can list themselves for free. It goes live right away, and families can find you by subject and town.</p>
+      <p class="where" style="margin:0">Independent tutors can create their own listing. It goes live right away, and families can find you by subject and town.</p>
       <button class="btn ghost" type="button" id="tutorToggle" style="align-self:flex-start">Create a tutor listing</button>
       <form id="tutorForm" novalidate hidden>
         <div class="row2">
@@ -384,7 +384,7 @@ const setStatus=(id,kind,msg)=>{const el=$(id); el.className="status"+(kind?" "+
 const STRIPE_LINKS={featured:""};
 // Paid plans are off for launch. Set to true (and PAID_PLANS=1 on the Worker) to show them.
 const PAID_PLANS=false;
-if(!PAID_PLANS){ const pl=document.getElementById("plans"); if(pl) pl.hidden=true; const jn=document.getElementById("jobNote"); if(jn) jn.innerHTML='Hiring a teacher or tutor? Post it free on the <a href="/jobs">jobs board</a>.'; }
+if(!PAID_PLANS){ const pl=document.getElementById("plans"); if(pl) pl.hidden=true; const jn=document.getElementById("jobNote"); if(jn) jn.innerHTML='Hiring a teacher or tutor? Post it on the <a href="/jobs">jobs board</a>.'; }
 document.querySelectorAll("[data-plan]").forEach(a=>{ const l=STRIPE_LINKS[a.dataset.plan]; if(l) a.href=l; });
 const AVL={open:"Open spots",waitlist:"Waitlist",full:"Full",opens:"Registration opens soon",unknown:"Not sure / ask us"};
 let me=null, overrides={};

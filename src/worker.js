@@ -256,7 +256,7 @@ const routes = {
     const site = env.SITE_URL || "https://centexhomeschool.org";
     await sendMail(env, email, "Welcome to CenTex Homeschool Hub",
       `Hi there,\n\nThanks for signing up for the CenTex Homeschool Hub newsletter. Once a month you'll get registration dates coming up, groups with open spots, new listings near you and public homeschool events around Central Texas.\n\n` +
-      `Your free Texas Homeschool Starter Checklist: ${site}/checklist.html\n\nWhile you wait for the first issue:\n- Find co-ops and classes near you: ${site}/directory\n- Homeschool-friendly activities: ${site}/activities\n- Take the 5-question quiz to find your fit: ${site}/#fit\n- See open houses and deadlines: ${site}/calendar\n\n` +
+      `Your Texas Homeschool Starter Checklist: ${site}/checklist.html\n\nWhile you wait for the first issue:\n- Find co-ops and classes near you: ${site}/directory\n- Homeschool-friendly activities: ${site}/activities\n- Take the 5-question quiz to find your fit: ${site}/#fit\n- See open houses and deadlines: ${site}/calendar\n\n` +
       `${shareLine(env, ref)}\n\nThanks,\nBenjamin\nCenTex Homeschool Hub\n\nDon't want these emails? Unsubscribe: ${site}/api/unsubscribe?t=${token}`);
     return json({ ok: true, ref });
   },
