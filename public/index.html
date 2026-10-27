@@ -195,6 +195,84 @@ form.ask textarea{font:inherit;font-size:14px;padding:8px 10px;border:1px solid 
 .ag-item.k-school{background:var(--sun-soft);border-left:4px solid var(--sun)}
 .ag-item.k-act{background:var(--oak-soft);border-left:4px solid var(--oak)}
 .ag-item .meta{font-size:13px}
+/* ---- Texas History ---- */
+.th-hero{position:relative;background:linear-gradient(160deg,var(--surface),var(--sun-soft));border:1px solid var(--line);border-radius:18px;padding:28px 24px 22px;overflow:hidden}
+.th-hero h2{font-size:clamp(30px,5vw,48px);line-height:1.1;margin:6px 0 10px;max-width:720px}
+.th-hero h2 em{font-style:normal;color:var(--oak)}
+.th-hero p{max-width:640px;margin:0 0 16px;color:var(--muted)}
+.th-hero .th-days{margin:14px 0 0;font-size:14px;color:var(--ink)}
+.th-days b{color:var(--oak)}
+.flags{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;max-width:760px}
+.flag{display:flex;flex-direction:column;gap:5px;font-size:12px;line-height:1.25;color:var(--muted);background:none;border:0;padding:0;text-align:left;cursor:pointer;font-family:inherit}
+.flag svg{width:100%;aspect-ratio:3/2;height:auto;border-radius:4px;box-shadow:0 1px 0 var(--line),0 2px 8px rgba(0,0,0,.12);transition:transform .15s}
+.flag:hover svg,.flag[aria-pressed="true"] svg{transform:translateY(-3px) rotate(-2deg)}
+.flag b{color:var(--ink);font-size:13px}
+.th-nav{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0 8px;position:sticky;top:0;z-index:5;background:var(--bg);padding:8px 0}
+.th-nav a{font-size:14px;font-weight:600;color:var(--oak);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:6px 12px;background:var(--surface)}
+.th-nav a:hover{border-color:var(--oak)}
+.th-block{margin:34px 0 0;scroll-margin-top:70px}
+.th-block h3{font-size:clamp(22px,3vw,28px);margin:0 0 6px}
+.eras{display:flex;gap:8px;overflow-x:auto;padding:8px 2px 12px;scroll-snap-type:x mandatory}
+.era{flex:0 0 auto;scroll-snap-align:start;display:flex;flex-direction:column;gap:2px;min-width:132px;text-align:left;font:inherit;cursor:pointer;border:1px solid var(--line);border-top:5px solid var(--ec);background:var(--surface);border-radius:10px;padding:8px 12px;color:var(--ink)}
+.era span{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.era b{font-size:14px}
+.era[aria-selected="true"]{background:var(--ec);color:#fff;border-color:var(--ec)}
+.era[aria-selected="true"] span{color:rgba(255,255,255,.85)}
+.era-panel{background:var(--surface);border:1px solid var(--line);border-left:6px solid var(--ec,var(--oak));border-radius:12px;padding:18px 20px}
+.era-panel h4{font-family:var(--display);font-weight:400;font-size:24px;margin:0 0 4px}
+.era-panel .lede{margin:0 0 14px;color:var(--muted)}
+.tl{list-style:none;margin:0;padding:0;position:relative}
+.tl:before{content:"";position:absolute;left:104px;top:6px;bottom:6px;width:2px;background:var(--line)}
+.tl li{display:grid;grid-template-columns:92px minmax(0,1fr);gap:24px;padding:7px 0;position:relative}
+.tl li:before{content:"";position:absolute;left:99px;top:13px;width:12px;height:12px;border-radius:50%;background:var(--ec,var(--oak));box-shadow:0 0 0 3px var(--surface)}
+.tl .yr{font-weight:700;font-variant-numeric:tabular-nums;color:var(--ec,var(--oak));text-align:right;font-size:14px;padding-top:2px}
+.tl p{margin:0;font-size:15px}
+.era-panel .see{margin:14px 0 0;font-size:14px}
+.towns{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;margin-top:10px}
+.town{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.town b{display:block;font-family:var(--display);font-weight:400;font-size:20px;margin-bottom:2px}
+.town .yr{font-size:12px;font-weight:700;color:var(--sun);letter-spacing:.04em;text-transform:uppercase}
+.town p{margin:6px 0 0;font-size:14.5px}
+.th-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px;margin-top:10px}
+.th-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:5px}
+.th-card b{font-size:16px}
+.th-card .meta{font-size:13px;color:var(--muted)}
+.th-card p{margin:0;font-size:14.5px}
+.th-card a.go{margin-top:auto;font-weight:600;font-size:14px}
+.th-card.ours{border:2px dashed var(--oak)}
+.pill{align-self:flex-start;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:var(--oak-soft);color:var(--oak)}
+.pill.sun{background:var(--sun-soft);color:var(--ink)}
+.passport-cta{display:flex;gap:14px 20px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--oak-soft);border-radius:12px;padding:14px 18px;margin:10px 0 6px}
+.passport-cta div{display:flex;flex-direction:column;gap:2px;max-width:620px}
+.passport-cta span{font-size:14px;color:var(--muted)}
+.gogroup h4{font-size:15px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:18px 0 0;font-family:var(--body)}
+.books{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;margin-top:10px}
+.book{display:grid;grid-template-columns:54px minmax(0,1fr);gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px}
+.spine{width:54px;height:78px;border-radius:3px 6px 6px 3px;background:var(--bc);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:22px;box-shadow:inset 6px 0 0 rgba(0,0,0,.18),0 2px 6px rgba(0,0,0,.15)}
+.book b{font-size:15px;line-height:1.3;display:block}
+.book .meta{font-size:12.5px;color:var(--muted);display:block;margin:2px 0 4px}
+.book p{margin:0 0 6px;font-size:13.5px}
+.book a{font-size:13px;font-weight:600}
+.curric{margin-top:18px}
+.curric h4{font-size:18px;margin:0}
+.quizbox{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px;max-width:720px}
+.qprog{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-bottom:14px}
+.qprog i{display:block;height:100%;background:var(--oak);transition:width .25s}
+.qq{font-family:var(--display);font-size:21px;margin:0 0 12px}
+.qopts{display:grid;gap:8px}
+.qopt{font:inherit;text-align:left;padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.qopt:hover:not(:disabled){border-color:var(--oak)}
+.qopt.right{background:var(--oak-soft);border-color:var(--oak);font-weight:600}
+.qopt.wrong{background:var(--sun-soft);border-color:var(--sun)}
+.qexp{margin:12px 0 0;font-size:14.5px}
+.qnext{margin-top:12px}
+.qscore{font-family:var(--display);font-size:40px;color:var(--oak);margin:0}
+@media (max-width:640px){
+  .flags{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .th-hero{padding:22px 16px 18px}
+  .tl:before{left:80px}.tl li{grid-template-columns:70px minmax(0,1fr);gap:20px}.tl li:before{left:75px}
+}
+@media print{.th-nav{display:none}}
 .newslist{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
 .newscard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;display:flex;flex-direction:column;gap:6px}
 .newscard h3{font-size:19px;line-height:1.3;margin:0}
@@ -393,6 +471,7 @@ html{scroll-behavior:smooth}
     <a href="/calendar">Calendar</a>
     <a href="/community">Community</a>
     <a href="/resources">Resources</a>
+    <a href="/texas-history">Texas History</a>
     <a href="/news">News</a>
     <a href="/jobs">Jobs/Tutors</a>
   </nav>
@@ -472,6 +551,7 @@ html{scroll-behavior:smooth}
       <a href="/calendar"><b>Calendar</b><span>Open houses, application deadlines and public homeschool events</span></a>
       <a href="/community"><b>Community</b><span>Find what your family is looking for, share insights and meet families nearby</span></a>
       <a href="/resources"><b>Resources</b><span>Getting started, Texas homeschool law, TEFA funding and FAQ</span></a>
+      <a href="/texas-history"><b>Texas History</b><span>The story of Texas, field trips, classes, books, a quiz and a printable passport</span></a>
       <a href="/news"><b>News</b><span>Texas and national homeschool news, law changes and TEFA updates</span></a>
       <a href="/jobs"><b>Jobs/Tutors</b><span>Hiring a teacher, or a tutor for hire</span></a>
     </div>
@@ -642,6 +722,62 @@ html{scroll-behavior:smooth}
     <div class="community">
       <div><div class="colhead"><h3>Now hiring</h3></div><div id="hiringList" class="stack"></div></div>
       <div><div class="colhead"><h3>Families seeking a tutor</h3></div><div id="seekingList" class="stack"></div></div>
+    </div>
+  </section>
+  <section id="texas-history" data-view="history" class="th">
+    <div class="th-hero">
+      <span class="label">Texas History</span>
+      <h2>The story of Texas, <em>told for families</em></h2>
+      <p>From the first people who camped on Buttermilk Creek near Georgetown to "Houston, Tranquility Base here." Learn it, go see it, read it and print it, all in one place.</p>
+      <div class="flags" id="thFlags" aria-label="The six flags of Texas"></div>
+      <p class="th-days" id="thDays"></p>
+    </div>
+    <nav class="th-nav" aria-label="Texas history sections">
+      <a href="#th-story">The story</a><a href="#th-hometown">Your hometown</a><a href="#th-learn">Classes</a><a href="#th-go">Field trips</a><a href="#th-read">Books</a><a href="#th-free">Free downloads</a><a href="#th-quiz">Quiz</a>
+    </nav>
+
+    <div class="th-block" id="th-story">
+      <h3>The story of Texas in nine eras</h3>
+      <p class="where">Tap an era to explore it.</p>
+      <div class="eras" id="thEras" role="tablist" aria-label="Eras of Texas history"></div>
+      <div class="era-panel" id="thEra" role="tabpanel"></div>
+    </div>
+
+    <div class="th-block" id="th-hometown">
+      <h3>How your hometown got its name</h3>
+      <div class="towns" id="thTowns"></div>
+    </div>
+
+    <div class="th-block" id="th-learn">
+      <h3>Classes and homeschool programs</h3>
+      <p class="where">Hands-on and live Texas history for homeschoolers, most of them free. Check the <a href="/calendar">calendar</a> for upcoming dates.</p>
+      <div class="th-grid" id="thLearn"></div>
+    </div>
+
+    <div class="th-block" id="th-go">
+      <h3>Go see it: Texas history field trips</h3>
+      <div class="passport-cta"><div><b>Print the Texas History Passport</b><span>A kid-sized passport with every site below. Check them off, write the date, and draw your favorite thing. Comes with a one-page Texas timeline.</span></div><a class="btn" href="/texas-history-passport.html" target="_blank" rel="noopener" style="margin-top:0">Print the passport</a></div>
+      <div id="thGo"></div>
+    </div>
+
+    <div class="th-block" id="th-read">
+      <h3>Top 10 Texas history books for kids</h3>
+      <p class="where">In story order, from the first Texans to the 1900 storm. Ages are a guide; most work as family read-alouds.</p>
+      <div class="books" id="thBooks"></div>
+      <div class="curric">
+        <h4>Want a full curriculum?</h4>
+        <div class="th-grid" id="thCurric"></div>
+      </div>
+    </div>
+
+    <div class="th-block" id="th-free">
+      <h3>Free downloads and primary sources</h3>
+      <div class="th-grid" id="thFree"></div>
+    </div>
+
+    <div class="th-block" id="th-quiz">
+      <h3>How Texan are you? Take the quiz</h3>
+      <div class="quizbox" id="thQuiz"></div>
     </div>
   </section>
   <section id="news" data-view="news">
@@ -879,8 +1015,8 @@ const PAID_PLANS = false;
 // Listings live in /listings.js so the leader page shares them.
 
 // ---- Pages: each area has its own address (/directory, /calendar, ...) served by this one file ----
-const VIEWS={"/":"home","/directory":"directory","/activities":"directory","/calendar":"calendar","/community":"community","/resources":"resources","/news":"news","/jobs":"jobs","/newsletter":"newsletter"};
-const TITLES={home:"CenTex Homeschool Hub",directory:"Directory",calendar:"Calendar",community:"Community",resources:"Resources",news:"Homeschool news",jobs:"Jobs/Tutors",newsletter:"Newsletter"};
+const VIEWS={"/":"home","/directory":"directory","/activities":"directory","/calendar":"calendar","/community":"community","/resources":"resources","/news":"news","/texas-history":"history","/jobs":"jobs","/newsletter":"newsletter"};
+const TITLES={home:"CenTex Homeschool Hub",directory:"Directory",calendar:"Calendar",community:"Community",resources:"Resources",news:"Homeschool news",history:"Texas History",jobs:"Jobs/Tutors",newsletter:"Newsletter"};
 // Old one-page links like /#calendar keep working.
 const LEGACY={directory:"/directory",calendar:"/calendar",register:"/calendar",community:"/community",jobs:"/jobs",resources:"/resources",tefa:"/resources#tefa",start:"/resources#start",law:"/resources#law",faq:"/resources#faq",reading:"/resources#reading",newsletter:"/newsletter",submit:"/directory#submit"};
 let curView="home";
@@ -930,7 +1066,7 @@ function availWhen(x){ if(x.seen){ const t=new Date(x.seen.at+"T12:00:00").toLoc
   return `<span class="aw${days>62?" stale":""}">${days>62?"Last confirmed":"Updated"} ${t}</span>`; }
 const state={q:"",type:"",approach:"",towns:[],open:false,section:"learn"};
 const $=id=>document.getElementById(id);
-const FIELD_TAGS=new Set(["Museums","Zoos & animals","Nature centers & gardens","State parks","Farms & living history","Caves","Stargazing","Libraries"]);
+const FIELD_TAGS=new Set(["Texas history","Museums","Zoos & animals","Nature centers & gardens","State parks","Farms & living history","Caves","Stargazing","Libraries"]);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
 function townsOf(x){return [x.town].concat(x.also||[])}
@@ -1450,6 +1586,188 @@ document.addEventListener("submit",async e=>{
   const r=await api("/api/jobs/reply",{id:Number(f.dataset.job),message:f.querySelector("textarea").value.trim()});
   if(r.ok){f.reset(); st.className="status ok"; st.textContent="Sent. They have your email now and can write back.";} else {st.className="status err"; st.textContent=r.error;}
 },true);
+// ---- Texas History page ----
+(()=>{
+const star=(cx,cy,r,fill)=>{let p="";for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5, rr=i%2?r*.42:r; p+=(i?"L":"M")+(cx+rr*Math.cos(a)).toFixed(2)+" "+(cy+rr*Math.sin(a)).toFixed(2);} return `<path d="${p}Z" fill="${fill}"/>`;};
+const FLAGS=[
+ {n:"Spain",y:"1519–1685, 1690–1821",svg:`<rect width="30" height="20" fill="#AA151B"/><rect y="5" width="30" height="10" fill="#F1BF00"/>`},
+ {n:"France",y:"1685–1690",svg:`<rect width="30" height="20" fill="#FBFBF5"/>${[[9,7],[21,7],[15,14]].map(([x,y])=>`<g fill="#C9A227" transform="translate(${x} ${y})"><ellipse rx="1" ry="2.6" cy="-.6"/><ellipse rx=".9" ry="1.9" cx="-1.7" cy=".2" transform="rotate(-35 -1.7 .2)"/><ellipse rx=".9" ry="1.9" cx="1.7" cy=".2" transform="rotate(35 1.7 .2)"/><rect x="-2.4" y="1.3" width="4.8" height=".8"/></g>`).join("")}`},
+ {n:"Mexico",y:"1821–1836",svg:`<rect width="10" height="20" fill="#006847"/><rect x="10" width="10" height="20" fill="#fff"/><rect x="20" width="10" height="20" fill="#CE1126"/><circle cx="15" cy="10" r="2.4" fill="#8B5A2B"/>`},
+ {n:"Republic of Texas",y:"1836–1845",svg:`<rect width="30" height="10" fill="#fff"/><rect y="10" width="30" height="10" fill="#BF0A30"/><rect width="10" height="20" fill="#002868"/>${star(5,10,3.6,"#fff")}`},
+ {n:"Confederacy",y:"1861–1865",svg:`<rect width="30" height="20" fill="#fff"/><rect width="30" height="6.67" fill="#B22234"/><rect y="13.33" width="30" height="6.67" fill="#B22234"/><rect width="13.3" height="13.33" fill="#002868"/>${[...Array(7)].map((_,i)=>{const a=-Math.PI/2+i*2*Math.PI/7;return star(6.65+3.6*Math.cos(a),6.67+3.6*Math.sin(a),1,"#fff");}).join("")}`},
+ {n:"United States",y:"1845–1861, 1865–today",svg:[...Array(13)].map((_,i)=>`<rect y="${(i*20/13).toFixed(2)}" width="30" height="${(20/13).toFixed(2)}" fill="${i%2?"#fff":"#B22234"}"/>`).join("")+`<rect width="12" height="10.77" fill="#3C3B6E"/>`+[...Array(20)].map((_,i)=>`<circle cx="${1.2+(i%5)*2.4+(Math.floor(i/5)%2?1.2:0)}" cy="${1.3+Math.floor(i/5)*2.6}" r=".45" fill="#fff"/>`).join("")},
+];
+const ERAS=[
+ {k:"first",t:"The first Texans",y:"Before 1519",c:"#8B5E3C",flag:-1,lede:"People lived in Texas for thousands of years before any European arrived, and they named the land.",ev:[
+  ["13,000+ yrs ago","Some of the oldest evidence of people in North America comes from the Gault site on Buttermilk Creek, near Florence, just north of Georgetown."],
+  ["1500s","The Caddo farm corn, beans and squash in East Texas villages. Their word for friends or allies, taysha, became the name Texas."],
+  ["1500s","The Tonkawa hunt bison across Central Texas. The Karankawa fish the Gulf Coast, and Coahuiltecan bands gather food in South Texas."],
+  ["1700s","Comanche riders, masters of the horse, become the most powerful nation on the southern plains for more than a century."]]},
+ {k:"spain",t:"Spanish explorers",y:"1519–1690",c:"#B03A2E",flag:0,lede:"Spain claims Texas, but for more than a century Europeans mostly pass through.",ev:[
+  ["1519","Alonso Álvarez de Pineda sails and maps the Texas coast, the first European to do so."],
+  ["1528","Álvar Núñez Cabeza de Vaca is shipwrecked near Galveston Island and spends years living and traveling among Native peoples."],
+  ["1541","Francisco Vázquez de Coronado's expedition crosses the Texas Panhandle looking for cities of gold. They don't find any."]]},
+ {k:"missions",t:"Missions & presidios",y:"1685–1821",c:"#6E5A2E",flag:1,lede:"France tries to take Texas, so Spain builds missions and forts to hold it.",ev:[
+  ["1685","French explorer La Salle builds Fort Saint Louis on Matagorda Bay. His ship La Belle sinks nearby; today you can see its hull at the Bullock Museum."],
+  ["1690","Spain founds its first East Texas mission, San Francisco de los Tejas."],
+  ["1718","Spain founds San Antonio, including Mission San Antonio de Valero, later known as the Alamo."],
+  ["1731","Three more missions move to the San Antonio River. Today they're part of a UNESCO World Heritage Site."]]},
+ {k:"mexico",t:"Mexican Texas",y:"1821–1835",c:"#2E7D4F",flag:2,lede:"Mexico wins independence from Spain and invites settlers to its northern frontier.",ev:[
+  ["1821","Mexico becomes independent. Stephen F. Austin begins bringing settlers, the 'Old Three Hundred', to his colony."],
+  ["1824","Mexico's new constitution makes Texas part of the state of Coahuila y Tejas."],
+  ["1830","Mexico limits new immigration from the United States as tensions grow."]]},
+ {k:"revolution",t:"The Texas Revolution",y:"1835–1836",c:"#A0452D",flag:-1,lede:"Seven months that changed everything, from 'Come and Take It' to San Jacinto.",ev:[
+  ["Oct 2, 1835","At Gonzales, Texians refuse to give up a small cannon and fly a flag that says 'Come and Take It.' The first battle of the revolution."],
+  ["Mar 2, 1836","Delegates sign the Texas Declaration of Independence at Washington-on-the-Brazos. Tejanos José Antonio Navarro and José Francisco Ruiz sign too."],
+  ["Mar 6, 1836","After a 13-day siege, Santa Anna's army takes the Alamo. 'Remember the Alamo!' becomes the battle cry."],
+  ["Mar 27, 1836","Hundreds of Texian prisoners are executed at Goliad."],
+  ["Apr 21, 1836","Sam Houston's army wins the Battle of San Jacinto in about 18 minutes. Santa Anna is captured the next day. Juan Seguín leads Tejano soldiers in the fight."]]},
+ {k:"republic",t:"Republic of Texas",y:"1836–1845",c:"#1F3A93",flag:3,lede:"For nearly ten years Texas is its own country, with its own president, money and navy.",ev:[
+  ["1836","Sam Houston becomes the first elected president. Lorenzo de Zavala is the first vice president."],
+  ["1839","President Mirabeau Lamar moves the capital to the frontier village of Waterloo and names it Austin. The Lone Star flag is adopted."],
+  ["1839","France recognizes Texas. Its diplomat's house, the French Legation, still stands in East Austin."]]},
+ {k:"statehood",t:"Statehood & Civil War",y:"1845–1870",c:"#5B4A8B",flag:5,lede:"Texas joins the United States, then leaves it, then returns.",ev:[
+  ["Dec 29, 1845","Texas becomes the 28th state."],
+  ["1861","Texas secedes and joins the Confederacy. Governor Sam Houston refuses to swear loyalty to it and is removed from office."],
+  ["Jun 19, 1865","In Galveston, Union General Gordon Granger announces that enslaved people are free. Juneteenth becomes a celebration, now a national holiday."],
+  ["1870","Texas is readmitted to the Union."]]},
+ {k:"cattle",t:"Cattle, rails & frontier",y:"1866–1900",c:"#9A6B1F",flag:5,lede:"Longhorns, cowboys and railroads, the Texas of legend.",ev:[
+  ["1867","Cowboys begin driving millions of longhorns north on the Chisholm Trail, right through Round Rock and Georgetown. Many cowboys are Black or Mexican American vaqueros."],
+  ["1874–75","The Red River War ends Comanche power on the southern plains."],
+  ["1876","Texas adopts the constitution it still uses today."],
+  ["1888","The new Capitol opens in Austin, built of red granite from Granite Mountain near Marble Falls."],
+  ["1900","The Galveston hurricane kills thousands, the deadliest natural disaster in U.S. history."]]},
+ {k:"modern",t:"Oil, space & today",y:"1901–today",c:"#2F4F6F",flag:5,lede:"Oil, the Space Age and booming cities turn Texas into a giant.",ev:[
+  ["1901","The Spindletop gusher near Beaumont starts the Texas oil boom."],
+  ["1930s","Civilian Conservation Corps crews build parks like Bastrop and Lockhart State Parks. You can still stay in their cabins."],
+  ["1963","Texan Lyndon B. Johnson becomes the 36th president. His boyhood home and ranch are a National Historical Park near Johnson City."],
+  ["1969","When Apollo 11 lands on the Moon, Neil Armstrong radios Mission Control: 'Houston, Tranquility Base here. The Eagle has landed.'"],
+  ["Today","Texas is the second-largest state by both size and population, and Central Texas is one of the fastest-growing places in the country."]]},
+];
+const TOWNS=[
+ ["Austin","1839","Started as the village of Waterloo. President Mirabeau Lamar picked it as the capital of the Republic and named it for Stephen F. Austin."],
+ ["Georgetown","1848","Founded as the seat of the new Williamson County and named for George Washington Glasscock, who donated the land."],
+ ["Round Rock","1850s","Named for a big round rock in Brushy Creek that marked a safe crossing for wagons and, later, cattle drives. Outlaw Sam Bass met his end here in 1878."],
+ ["Leander","1882","First called Bagdad. When the railroad came through in 1882, the town moved to the depot and took the name of railroad official and former Austin mayor Leander Brown."],
+ ["Liberty Hill","1853","Named when its post office opened in 1853; postmaster William Spencer suggested 'Liberty Hill.' The 1871 Stubblefield store is now the visitors center."],
+ ["Cedar Park","1887","A post office called Running Brushy in 1874, then Brueggerhoff after the 1882 railroad, then Cedar Park in 1887. It became a city in 1973."],
+ ["Pflugerville","1850s","Named for the Pfluger family, German immigrants who farmed the area and helped start the town."],
+ ["Bastrop","1832","One of Texas's oldest towns, founded in Stephen F. Austin's colony and named for the Baron de Bastrop, who helped Austin get his land grant."],
+];
+const LEARN=[
+ {t:"Bullock Museum Homeschool Days",m:"Austin · free · 4 times a year",p:"Free museum admission for homeschool families, 10 a.m.–2 p.m., with hands-on stations and classes led by museum educators. No RSVP.",u:"https://www.thestoryoftexas.com/event-series/homeschool-days/"},
+ {t:"Bullock virtual homeschool classes",m:"Online · free · grades 4–8",p:"Live Texas history classes with a museum educator, held regularly through the school year. Register through Connect2Texas.",u:"https://www.thestoryoftexas.com/event-series/virtual-homeschool-class/"},
+ {t:"Texas State Capitol tours",m:"Austin · free · daily",p:"40-minute guided tours leave the South Foyer Mon–Sat 9 a.m.–4:15 p.m. and Sun noon–4:15 p.m. Groups over 10: call (512) 305-8402.",u:"https://tspb.texas.gov/plan/tours/tours.html"},
+ {t:"Lockhart State Park homeschool classes",m:"Lockhart · grades 1–5 · Sep–Apr",p:"Monthly outdoor classes like CCC history hikes and quill-and-oak-gall ink making. Free with park entry; register ahead.",u:"https://tpwd.texas.gov/state-parks/lockhart"},
+ {t:"Washington-on-the-Brazos",m:"Washington · school & family programs",p:"Independence Hall, the Star of the Republic Museum and Barrington Living History Farm, home of the Republic's last president.",u:"https://thc.texas.gov/complex/washington-brazos-complex"},
+ {t:"Pioneer Farms",m:"Austin · living history",p:"Walk through 1800s Texas farms with costumed interpreters. Hosts a yearly homeschool day.",u:"https://www.pioneerfarms.org/"},
+ {t:"Texas General Land Office Archives",m:"Austin · visits & family activities",p:"Tours of the state's land archives (Spanish and Mexican land grants, old maps), plus history puzzles and art activities for kids.",u:"https://glo.texas.gov/archives-and-heritage/education-resources"},
+];
+const GO=[
+ {g:"In Austin",items:[
+  {t:"Texas State Capitol",u:"https://tspb.texas.gov/plan/tours/tours.html",tip:"Look down in the rotunda: the floor shows the seals of the six nations whose flags flew over Texas."},
+  {t:"Bullock Texas State History Museum",u:"https://www.thestoryoftexas.com/",tip:"Find La Belle, La Salle's ship that sank in 1686, rebuilt from the original timbers."},
+  {t:"Texas State Cemetery",u:"https://cemetery.texas.gov/",tip:"Stephen F. Austin, the Father of Texas, is buried here. Free self-guided visits."},
+  {t:"French Legation State Historic Site",u:"https://texastimetravel.com/directory/french-legation-state-historic-site/",tip:"Built in 1841 for France's diplomat to the Republic of Texas."},
+  {t:"Pioneer Farms",u:"https://www.pioneerfarms.org/",tip:"Chores, games and blacksmithing the way 1800s Texas kids saw them."}]},
+ {g:"Under an hour",items:[
+  {t:"Williamson Museum, Georgetown",u:"https://www.williamsonmuseum.org/",tip:"County history right on the Georgetown square, including the Chisholm Trail."},
+  {t:"McKinney Falls State Park",u:"https://tpwd.texas.gov/state-parks/mckinney-falls",tip:"Explore the ruins of Thomas McKinney's 1850s homestead. He was one of Austin's Old Three Hundred."},
+  {t:"Bastrop State Park",u:"https://tpwd.texas.gov/state-parks/bastrop",tip:"Cabins and stonework built by the Civilian Conservation Corps in the 1930s."},
+  {t:"Lockhart State Park",u:"https://tpwd.texas.gov/state-parks/lockhart",tip:"Another CCC park, with homeschool classes most months."},
+  {t:"LBJ National Historical Park",u:"https://www.nps.gov/lyjo/",tip:"See the 36th president's boyhood home in Johnson City and the 'Texas White House' ranch."}]},
+ {g:"Day trips",items:[
+  {t:"The Alamo, San Antonio",u:"https://www.thealamo.org/",tip:"About 1 hr 20 min from Austin. Walk the church where the 1836 siege ended."},
+  {t:"San Antonio Missions",u:"https://www.nps.gov/saan/",tip:"Four 1700s missions, a UNESCO World Heritage Site. Junior Ranger books are free."},
+  {t:"Washington-on-the-Brazos",u:"https://thc.texas.gov/complex/washington-brazos-complex",tip:"About 1 hr 45 min. Stand where Texas declared independence on March 2, 1836."},
+  {t:"San Jacinto Battleground & Monument",u:"https://www.sanjacinto-museum.org/",tip:"Near Houston, about 2 hr 45 min. The monument is taller than the Washington Monument."}]},
+];
+const BOOKS=[
+ {t:"Indians Who Lived in Texas",a:"Betsy Warren",age:"6–10",e:"First Texans",w:"Short and illustrated: who lived in Texas before Spain arrived.",c:"#8B5E3C"},
+ {t:"Texas History for Kids: Lone Star Lives and Legends",a:"Karen Bush Gibson",age:"9–12",e:"Whole story",w:"The best one-book overview, with 21 hands-on activities. A great spine for a family study.",c:"#2F5A3D"},
+ {t:"Twenty Texans: Historic Lives for Young Readers",a:"Betsy Warren",age:"8–12",e:"Whole story",w:"Short biographies of explorers, Tejanos, women, cowboys and leaders.",c:"#5B4A8B"},
+ {t:"Stephen F. Austin: The Son Becomes Father of Texas",a:"Mary Dodson Wade",age:"6–9",e:"Mexican Texas",w:"Austin's colony and how settlement began, for younger readers.",c:"#2E7D4F"},
+ {t:"Make Way for Sam Houston",a:"Jean Fritz",age:"9–13",e:"Revolution & Republic",w:"Sam Houston's wild life, told with Jean Fritz's humor.",c:"#1F3A93"},
+ {t:"Susanna of the Alamo",a:"John Jakes",age:"6–10",e:"Revolution",w:"The Alamo through the eyes of a survivor. Gentle for younger kids.",c:"#A0452D"},
+ {t:"Inside the Alamo",a:"Jim Murphy",age:"11–15",e:"Revolution",w:"Nonfiction for older kids that separates myth from what really happened.",c:"#7A3B2E"},
+ {t:"Black Cowboys, Wild Horses",a:"Julius Lester",age:"6–10",e:"Cattle drives",w:"Picture book about real cowboy Bob Lemmons, with beautiful art.",c:"#9A6B1F"},
+ {t:"Old Yeller",a:"Fred Gipson",age:"9+",e:"Frontier",w:"The Hill Country classic about frontier life. Bring tissues.",c:"#6E5A2E"},
+ {t:"Galveston's Summer of the Storm",a:"Julie Lake",age:"10–14",e:"1900 hurricane",w:"A novel set during the deadliest storm in U.S. history.",c:"#2F4F6F"},
+];
+const CURRIC=[
+ {t:"Texas History for Teachers (TX4T)",m:"Free · full curriculum",p:"A complete, free Texas history curriculum from the University of North Texas, built around primary sources and the state's standards.",u:"https://education.texashistory.unt.edu/about/"},
+ {t:"Beautiful Feet Books: Texas History (4–6)",m:"Literature-based",p:"Teacher guide, notebook, map and many of the books above, in a gentle literature-based course.",u:"https://bfbooks.com/collections/texas-history-4-6"},
+];
+const FREE=[
+ {t:"Texas History Passport & Timeline",m:"Printable · from us",p:"A kid-sized passport for every field trip on this page, plus a one-page Texas timeline. Print or save as PDF.",u:"/texas-history-passport.html",ours:true},
+ {t:"The Portal to Texas History",m:"Free · primary sources",p:"Millions of old Texas newspapers, maps, letters and photos from UNT. Search your town's name!",u:"https://texashistory.unt.edu/"},
+ {t:"Handbook of Texas Online",m:"Free · encyclopedia",p:"The Texas State Historical Association's encyclopedia of Texas people, places and events.",u:"https://www.tshaonline.org/handbook"},
+ {t:"Historic Texas maps",m:"Free · Texas General Land Office",p:"Browse and download centuries of Texas maps from the state's land archives.",u:"https://historictexasmaps.com/"},
+ {t:"Capitol field trip guide (grades 7–8)",m:"Free PDF",p:"The Capitol Visitors Center's teacher guide, great for planning a Capitol day.",u:"https://tspb.texas.gov/plan/fieldtrips/doc/CVCTeacherGuides/CVC_7th-8th_Teacher_Guide.pdf"},
+ {t:"Texas Capitol visitor guide",m:"Free PDF",p:"Map and highlights of the Capitol and grounds to bring along.",u:"https://tspb.texas.gov/plan/tours/maps/doc/capitol_visitors_guide.pdf"},
+];
+const QUIZ=[
+ ["Where does the name 'Texas' come from?",["A Spanish word for 'big land'","A Caddo word meaning 'friends' or 'allies'","The name of a French ship","A river in Mexico"],1,"The Caddo word taysha means friends or allies. Spanish explorers wrote it as Tejas."],
+ ["How many national flags have flown over Texas?",["Three","Four","Six","Eight"],2,"Spain, France, Mexico, the Republic of Texas, the Confederacy and the United States."],
+ ["Where did Texans sign their Declaration of Independence?",["The Alamo","Washington-on-the-Brazos","Gonzales","Austin"],1,"Delegates signed it at Washington-on-the-Brazos on March 2, 1836, now Texas Independence Day."],
+ ["Which battle won Texas its independence?",["The Alamo","Goliad","San Jacinto","Gonzales"],2,"Sam Houston's army won at San Jacinto on April 21, 1836, in about 18 minutes."],
+ ["Who was the first elected president of the Republic of Texas?",["Stephen F. Austin","Davy Crockett","Sam Houston","Mirabeau Lamar"],2,"Sam Houston was elected in 1836. Austin, the Father of Texas, served as his secretary of state."],
+ ["In what year did Texas become a U.S. state?",["1821","1836","1845","1865"],2,"Texas became the 28th state on December 29, 1845."],
+ ["What happened in Galveston on June 19, 1865?",["A hurricane hit","Enslaved Texans were told they were free","Oil was discovered","The Capitol opened"],1,"General Gordon Granger announced emancipation. That day became Juneteenth."],
+ ["What started the Texas oil boom in 1901?",["Spindletop","The Chisholm Trail","Granite Mountain","Big Bend"],0,"The Spindletop gusher near Beaumont shot oil more than 100 feet into the air."],
+ ["Which Tejano hero fought at San Jacinto and later became mayor of San Antonio?",["José Antonio Navarro","Lorenzo de Zavala","Juan Seguín","Juan Cortina"],2,"Juan Seguín led Tejano soldiers at San Jacinto. The city of Seguin is named for him."],
+ ["What is the Texas Capitol built from?",["Limestone","Red granite","Marble","Brick"],1,"Red 'sunset' granite from Granite Mountain near Marble Falls. The railroad through Liberty Hill hauled it."],
+];
+const DAYS=[[10,2,"Come and Take It Day (Gonzales, 1835)"],[3,2,"Texas Independence Day"],[3,6,"Alamo Heroes Day"],[4,21,"San Jacinto Day"],[6,19,"Juneteenth"],[12,29,"Texas Statehood Day"]];
+const $$=id=>document.getElementById(id);
+if(!$$("thFlags")) return;
+$$("thFlags").innerHTML=FLAGS.map((f,i)=>`<button type="button" class="flag" data-flag="${i}" aria-pressed="false"><svg viewBox="0 0 30 20" role="img" aria-label="Flag of ${f.n}">${f.svg}</svg><b>${f.n}</b><span>${f.y}</span></button>`).join("");
+// Next Texas days
+(()=>{ const now=new Date(); now.setHours(0,0,0,0);
+  const next=DAYS.map(([m,d,n])=>{ let t=new Date(now.getFullYear(),m-1,d); if(t<now) t=new Date(now.getFullYear()+1,m-1,d); return {n,t,days:Math.round((t-now)/864e5)}; }).sort((a,b)=>a.days-b.days).slice(0,2);
+  const isMarch=now.getMonth()===2;
+  $$("thDays").innerHTML=(isMarch?"<b>March is Texas History Month!</b> · ":"")+next.map(x=>x.days===0?`<b>Today is ${esc(x.n)}!</b>`:`<b>${x.days} days</b> until ${esc(x.n)} (${x.t.toLocaleDateString("en-US",{month:"short",day:"numeric"})})`).join(" · ");
+})();
+let era=0;
+function renderEra(){
+  const e=ERAS[era];
+  $$("thEras").innerHTML=ERAS.map((x,i)=>`<button type="button" role="tab" class="era" style="--ec:${x.c}" data-era="${i}" aria-selected="${i===era}"><span>${esc(x.y)}</span><b>${esc(x.t)}</b></button>`).join("");
+  const p=$$("thEra"); p.style.setProperty("--ec",e.c);
+  p.innerHTML=`<h4>${esc(e.t)} <span class="where" style="font-family:var(--body);font-size:14px">${esc(e.y)}</span></h4><p class="lede">${esc(e.lede)}</p><ul class="tl">${e.ev.map(([y,t])=>`<li><span class="yr">${esc(y)}</span><p>${esc(t)}</p></li>`).join("")}</ul>
+    <p class="see">${era>0?`<button class="linkbtn" type="button" data-era="${era-1}">‹ ${esc(ERAS[era-1].t)}</button>`:""}${era<ERAS.length-1?` <button class="linkbtn" type="button" data-era="${era+1}" style="float:right">${esc(ERAS[era+1].t)} ›</button>`:""}</p>`;
+  document.querySelectorAll("[data-flag]").forEach(b=>b.setAttribute("aria-pressed",String(+b.dataset.flag===e.flag)));
+}
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-era]"); if(b){ era=+b.dataset.era; renderEra(); const t=$$("thEras").querySelector(`[data-era="${era}"]`); if(t) t.scrollIntoView({block:"nearest",inline:"center",behavior:"smooth"}); return; }
+  const f=e.target.closest("[data-flag]"); if(f){ const i=ERAS.findIndex(x=>x.flag===+f.dataset.flag); if(i>=0){ era=i; renderEra(); $$("th-story").scrollIntoView({behavior:"smooth"}); } }
+});
+renderEra();
+$$("thTowns").innerHTML=TOWNS.map(([n,y,t])=>`<div class="town"><span class="yr">${esc(y)}</span><b>${esc(n)}</b><p>${esc(t)}</p></div>`).join("");
+const card=x=>`<div class="th-card${x.ours?" ours":""}"><span class="pill${x.ours?"":" sun"}">${esc(x.m)}</span><b>${esc(x.t)}</b><p>${esc(x.p)}</p><a class="go" href="${esc(x.u)}" target="_blank" rel="noopener">${x.ours?"Print it":"Visit"} ↗</a></div>`;
+$$("thLearn").innerHTML=LEARN.map(card).join("");
+$$("thCurric").innerHTML=CURRIC.map(card).join("");
+$$("thFree").innerHTML=FREE.map(card).join("");
+$$("thGo").innerHTML=GO.map(g=>`<div class="gogroup"><h4>${esc(g.g)}</h4><div class="th-grid">${g.items.map(x=>`<div class="th-card"><b>${esc(x.t)}</b><p>${esc(x.tip)}</p><a class="go" href="${esc(x.u)}" target="_blank" rel="noopener">Plan a visit ↗</a></div>`).join("")}</div></div>`).join("");
+$$("thBooks").innerHTML=BOOKS.map((b,i)=>`<div class="book"><div class="spine" style="--bc:${b.c}" aria-hidden="true">${i+1}</div><div><b>${esc(b.t)}</b><span class="meta">${esc(b.a)} · ages ${esc(b.age)} · ${esc(b.e)}</span><p>${esc(b.w)}</p><a href="https://bookshop.org/search?keywords=${encodeURIComponent(b.t+" "+b.a)}" target="_blank" rel="noopener">Order ↗</a></div></div>`).join("");
+// Quiz
+let qi=0, score=0, answered=false; let best=0; try{ best=+localStorage.getItem("chh_txquiz_best")||0; }catch(e){}
+function renderQuiz(){
+  const box=$$("thQuiz");
+  if(qi>=QUIZ.length){ if(score>best){ best=score; try{ localStorage.setItem("chh_txquiz_best",String(best)); }catch(e){} }
+    const msg=score===10?"Certified Texas legend! 🤠":score>=8?"True Texan. Impressive!":score>=5?"Not bad, partner. A field trip would fix the rest.":"Time for a road trip to the Alamo!";
+    box.innerHTML=`<p class="qscore">${score}/10</p><p style="margin:4px 0 12px;font-size:18px">${msg}</p><p class="where" style="margin:0 0 12px">Your best: ${best}/10</p><button class="btn" type="button" id="qAgain" style="margin-top:0">Play again</button> <a class="linkbtn" href="#th-story" style="margin-left:10px">Read the story</a>`;
+    $$("qAgain").onclick=()=>{ qi=0; score=0; renderQuiz(); }; return; }
+  const [q,opts]=QUIZ[qi]; answered=false;
+  box.innerHTML=`<div class="qprog"><i style="width:${qi*10}%"></i></div><span class="where" style="font-size:13px">Question ${qi+1} of ${QUIZ.length} · Score ${score}</span><p class="qq">${esc(q)}</p><div class="qopts">${opts.map((o,i)=>`<button type="button" class="qopt" data-qo="${i}">${esc(o)}</button>`).join("")}</div><div id="qAfter"></div>`;
+}
+document.addEventListener("click",e=>{ const b=e.target.closest("[data-qo]"); if(!b||answered) return; answered=true;
+  const [,,ans,exp]=QUIZ[qi], pick=+b.dataset.qo; if(pick===ans) score++;
+  document.querySelectorAll("[data-qo]").forEach(x=>{ x.disabled=true; if(+x.dataset.qo===ans) x.classList.add("right"); else if(x===b) x.classList.add("wrong"); });
+  $$("qAfter").innerHTML=`<p class="qexp"><b>${pick===ans?"Yes!":"Not quite."}</b> ${esc(exp)}</p><button class="btn qnext" type="button" id="qNext">${qi===QUIZ.length-1?"See my score":"Next question"}</button>`;
+  $$("qNext").onclick=()=>{ qi++; renderQuiz(); };
+});
+renderQuiz();
+})();
 // News page
 const NTOPICS={law:"Law & policy",tefa:"TEFA & funding",trends:"Trends & research",local:"Central Texas"};
 let NEWS=[], newsRegion="", newsTopic="";
