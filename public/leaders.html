@@ -60,6 +60,7 @@ nav.links a:hover{color:var(--oak)}
 .scene svg{display:block;width:100%;height:auto;max-width:100%}
 .scene figcaption{position:absolute;left:-9999px}
 /* availability */
+.availbox{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;background:var(--oak-soft);border-radius:8px;padding:10px 12px;margin:4px 0 6px;font-size:14px}
 .avail{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 .ab{font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;border:1px solid transparent}
 .a-open{background:var(--oak-soft);color:var(--oak);border-color:var(--oak)}
@@ -251,7 +252,7 @@ html{scroll-behavior:smooth}
   <ol class="steps">
     <li>Sign in with a one-time code sent to your email.</li>
     <li>Claim your listing. We confirm it's yours, usually within two days.</li>
-    <li>Update details and availability whenever they change.</li>
+    <li>Update details and availability whenever they change. On the 1st of each month we email you a one-click "still accurate?" check.</li>
   </ol>
 
   <div class="box" id="signinBox">
@@ -416,6 +417,7 @@ function editor(x){
   const id=sid(x), c=current(x);
   return `<form class="box" data-slug="${esc(id)}" novalidate>
     <h2>${esc(x.n)}</h2><span class="where" style="margin-top:-8px">${esc(x.town)}${x.test?" · demo listing":""}</span>
+    <div class="availbox"><span>Families see: <b>${esc(AVL[c.avail.s]||"Not set")}</b>${c.availAt?` · last confirmed ${new Date(c.availAt).toLocaleDateString("en-US",{month:"short",day:"numeric"})}`:""}</span>${c.avail.s!=="unknown"?`<button class="btn sm ghost" type="button" data-availok="${esc(id)}" style="margin-top:0">Still accurate</button>`:""}<span class="status" role="status"></span></div>
     <div class="row2">
       <div class="field"><label>Availability right now</label><select name="s">${Object.entries(AVL).map(([k,v])=>`<option value="${k}"${c.avail.s===k?" selected":""}>${v}</option>`).join("")}</select></div>
       <div class="field"><label>Registration opens</label><input name="when" maxlength="40" placeholder="e.g. March 2027" value="${esc(c.avail.when||"")}"></div>
@@ -535,6 +537,9 @@ function updCount(t){const l=t.parentElement.querySelector("[data-left]"); if(!l
 document.addEventListener("input",e=>{if(e.target.matches("textarea[data-count]")) updCount(e.target);});
 new MutationObserver(ms=>{ if(ms.some(m=>[...m.addedNodes].some(n=>n.nodeType===1&&(n.matches("textarea[data-count]")||n.querySelector("textarea[data-count]"))))) document.querySelectorAll("textarea[data-count]").forEach(updCount); }).observe(document.body,{childList:true,subtree:true});
 document.querySelectorAll("textarea[data-count]").forEach(updCount);
+document.addEventListener("click",async e=>{const b=e.target.closest("[data-availok]"); if(!b) return; b.disabled=true;
+  const st=b.parentElement.querySelector(".status"); const r=await api("/api/leader/avail-confirm",{slug:b.dataset.availok});
+  st.className="status "+(r.ok?"ok":"err"); st.textContent=r.ok?"Thanks! Marked up to date today.":r.error; if(r.ok){ overrides[b.dataset.availok]={...(overrides[b.dataset.availok]||{}),availAt:r.availAt}; } else b.disabled=false; });
 </script>
 </body>
 </html>

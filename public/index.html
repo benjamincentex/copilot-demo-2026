@@ -65,6 +65,8 @@ nav.links a:hover{color:var(--oak)}
 .scene figcaption{position:absolute;left:-9999px}
 /* availability */
 .avail{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.avail .aw{font-size:12px;color:var(--muted);margin-left:8px}
+.avail .aw.stale{color:var(--sun)}
 .ab{font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;border:1px solid transparent}
 .a-open{background:var(--oak-soft);color:var(--oak);border-color:var(--oak)}
 .a-wait{background:var(--sun-soft);color:var(--ink);border-color:var(--sun)}
@@ -920,7 +922,9 @@ const TOWNS=["All","Liberty Hill","Leander","Cedar Park","Round Rock","Pflugervi
 // Everything starts unknown until a group leader confirms it.
 L.forEach(x=>{ if(!x.avail) x.avail={s:"unknown"}; });
 const AV={open:["Open spots","a-open"],waitlist:["Waitlist","a-wait"],full:["Full","a-full"],opens:["Registration opens","a-opens"],unknown:["Availability: ask the group","a-unk"]};
-function availLabel(x){ const a=x.avail; return a.s==="opens"&&a.when?`Registration opens ${a.when}`:AV[a.s][0]; }
+function availLabel(x){ const a=x.avail; if(a.s==="unknown") return x.claimed?"Ask about openings":"Availability not confirmed"; return a.s==="opens"&&a.when?`Registration opens ${a.when}`:AV[a.s][0]; }
+function availWhen(x){ if(!x.availAt||x.avail.s==="unknown") return ""; const d=new Date(x.availAt), days=(Date.now()-d)/864e5, t=d.toLocaleDateString("en-US",{month:"short",day:"numeric"});
+  return `<span class="aw${days>62?" stale":""}">${days>62?"Last confirmed":"Updated"} ${t}</span>`; }
 const state={q:"",type:"",approach:"",towns:[],open:false,section:"learn"};
 const $=id=>document.getElementById(id);
 const FIELD_TAGS=new Set(["Museums","Zoos & animals","Nature centers & gardens","State parks","Farms & living history","Caves","Stargazing","Libraries"]);
@@ -959,7 +963,7 @@ function card(x){
     ${descHtml(x)}
     ${facts.length?`<dl class="facts">${facts.map(f=>`<dt>${f[0]}</dt><dd>${esc(f[1])}</dd>`).join("")}</dl>`:""}
     ${x.tags.length?`<div class="tags">${x.tags.map(t=>`<span class="tag${t==="Littles welcome"?" littles":""}"${t==="Littles welcome"?' title="Little ones are welcome, and some groups offer care or classes for babies and toddlers. Ask the group for details."':""}>${esc(t)}</span>`).join("")}</div>`:""}
-    <div class="avail"><span class="ab ${AV[x.avail.s][1]}">${esc(availLabel(x))}</span>${x.avail.s!=="open"?`<button class="linkbtn" type="button" data-notify="${esc(x.n)}">Notify me when spots open</button>`:""}</div>
+    <div class="avail"><span><span class="ab ${AV[x.avail.s][1]}">${esc(availLabel(x))}</span>${availWhen(x)}</span>${x.avail.s!=="open"?`<button class="linkbtn" type="button" data-notify="${esc(x.n)}">Notify me when spots open</button>`:""}</div>
     <form class="notify" data-for="${esc(x.n)}" hidden novalidate>
       <p>We'll email you when ${esc(x.n)} has openings or opens registration, plus the monthly newsletter with new matches near you.</p>
       <div class="nrow"><input type="email" placeholder="you@example.com" maxlength="160" aria-label="Email for alerts"><button class="btn" type="submit">Alert me</button></div>
@@ -1148,7 +1152,7 @@ async function loadOverrides(){
   Object.entries(r.overrides).forEach(([id,o])=>{const x=L.find(v=>sid(v)===id); if(!x) return;
     ["d","ages","sched","cost","site","members"].forEach(k=>{if(o[k]) x[k]=o[k];});
     if(o.avail&&AV[o.avail.s]) x.avail={s:o.avail.s,when:o.avail.when||""};
-    if(o.claimed) x.claimed=true; if(o.plan) x.plan=o.plan;
+    if(o.claimed) x.claimed=true; if(o.plan) x.plan=o.plan; if(o.availAt) x.availAt=o.availAt;
     if(typeof o.littles==="boolean"){ x.tags=x.tags.filter(t=>t!=="Littles welcome"); if(o.littles) x.tags.push("Littles welcome"); }});
   render(); renderRegistration();
 }

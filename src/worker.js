@@ -98,8 +98,9 @@ function alertEmail(listing, town, avail, siteUrl) {
 async function publishListing(env, slug, listing, town, fields, updatedBy) {
   const prevRow = await env.DB.prepare("SELECT data FROM listing_overrides WHERE slug=?").bind(slug).first();
   const prev = prevRow ? JSON.parse(prevRow.data) : {};
-  const merged = { ...prev, ...fields, claimed: true };
   const stamp = new Date().toISOString();
+  const merged = { ...prev, ...fields, claimed: true };
+  if (fields.avail) merged.availAt = stamp; // when the group last confirmed availability
   await env.DB.prepare(
     "INSERT INTO listing_overrides (slug, data, updated_at, updated_by) VALUES (?,?,?,?) ON CONFLICT(slug) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at, updated_by=excluded.updated_by"
   ).bind(slug, JSON.stringify(merged), stamp, updatedBy).run();
@@ -270,6 +271,24 @@ const routes = {
   },
 
   // Homeschool news: summaries written by us, each linking to the original article.
+  // "Still accurate": the leader confirms availability without changing it.
+  "POST /api/leader/avail-confirm": async (req, env) => {
+    const email = await leaderEmail(req, env); if (!email) return bad("Sign in first.", 401);
+    const b = await body(req) || {}; const slug = clip(b.slug, 140);
+    const owned = await env.DB.prepare("SELECT 1 FROM listing_owners WHERE slug=? AND email=?").bind(slug, email).first();
+    if (!owned) return bad("You can only update listings you manage.", 403);
+    return json({ ok: true, availAt: await confirmAvail(env, slug, email) });
+  },
+  // One-click link from the monthly availability reminder email.
+  "GET /api/avail/confirm": async (req, env) => {
+    const t = clip(new URL(req.url).searchParams.get("t"), 64).replace(/[^a-f0-9]/gi, "");
+    const row = t ? await env.DB.prepare("SELECT slug, email, listing FROM avail_tokens WHERE token=? AND created_at > datetime('now','-45 days')").bind(t).first() : null;
+    const site = env.SITE_URL || "https://centexhomeschool.org";
+    if (row) await confirmAvail(env, row.slug, row.email);
+    const msg = row ? `Thanks! ${row.listing || "Your listing"} is marked up to date as of today.` : "That link has expired. Sign in to update your availability.";
+    return new Response(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Availability · CenTex Homeschool Hub</title><body style="font-family:system-ui,sans-serif;background:#F8F1E7;color:#2A2219;padding:48px 16px;text-align:center"><h1 style="font-family:Georgia,serif;font-weight:normal">${msg.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]))}</h1><p>Something changed? <a href="${site}/leaders.html" style="color:#3546A8">Update your listing</a></p><p><a href="/" style="color:#3546A8">Back to CenTex Homeschool Hub</a></p></body>`, { headers: { "content-type": "text/html; charset=utf-8" } });
+  },
+
   "GET /api/news": async (req, env) => {
     const { results } = await env.DB.prepare("SELECT id, title, source, url, published, summary, region, topic FROM news WHERE status='live' ORDER BY published DESC, id DESC LIMIT 100").all();
     return json({ news: results });
@@ -1001,6 +1020,61 @@ async function listingActivity(env, from, to) {
 }
 
 // Featured perk: quarterly (Jan 1, Apr 1, Jul 1, Oct 1), email each Featured listing a report on the previous 3 months.
+async function confirmAvail(env, slug, email) {
+  const row = await env.DB.prepare("SELECT data FROM listing_overrides WHERE slug=?").bind(slug).first();
+  const data = row ? JSON.parse(row.data) : { claimed: true };
+  const stamp = new Date().toISOString(); data.availAt = stamp;
+  await env.DB.prepare("INSERT INTO listing_overrides (slug, data, updated_at, updated_by) VALUES (?,?,?,?) ON CONFLICT(slug) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at, updated_by=excluded.updated_by")
+    .bind(slug, JSON.stringify(data), stamp, email).run();
+  return stamp;
+}
+
+// 1st of every month: ask each group leader to confirm or update their availability.
+const AVAIL_WORDS = { open: "Open spots", waitlist: "Waitlist", full: "Full", opens: "Registration opens soon", unknown: "Not set yet" };
+async function availReminders(env) {
+  if (new Date().getUTCDate() !== 1 && env.FORCE_MONTHLY !== "1") return 0; // FORCE_MONTHLY=1 only for local testing
+  const { results } = await env.DB.prepare(
+    "SELECT w.slug, w.email, w.name, o.data, (SELECT c.listing FROM claims c WHERE c.slug=w.slug AND c.status='approved' ORDER BY c.id DESC LIMIT 1) AS listing, (SELECT COUNT(DISTINCT a.email) FROM alerts a WHERE a.listing_slug=w.slug) AS waiting FROM listing_owners w LEFT JOIN listing_overrides o ON o.slug=w.slug").all();
+  const site = env.SITE_URL || "https://centexhomeschool.org", byEmail = {};
+  for (const r of results) (byEmail[r.email] = byEmail[r.email] || []).push(r);
+  let sent = 0;
+  for (const [email, rows] of Object.entries(byEmail)) {
+    const parts = [];
+    for (const r of rows) {
+      let d = {}; try { d = JSON.parse(r.data || "{}"); } catch {}
+      const a = d.avail || { s: "unknown" }, name = r.listing || r.slug;
+      const when = d.availAt ? new Date(d.availAt).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "America/Chicago" }) : "";
+      let line = `${name}
+  Shown to families now: ${AVAIL_WORDS[a.s] || "Not set yet"}${a.s === "opens" && a.when ? " (" + a.when + ")" : ""}${when ? ", last confirmed " + when : ""}`;
+      if (r.waiting) line += `
+  ${r.waiting} ${r.waiting === 1 ? "family is" : "families are"} waiting to hear when spots open`;
+      if (a.s !== "unknown") {
+        const token = crypto.randomUUID().replace(/-/g, "");
+        await env.DB.prepare("INSERT INTO avail_tokens (token, slug, email, listing) VALUES (?,?,?,?)").bind(token, r.slug, email, name).run();
+        line += `
+  Still accurate? One click: ${site}/api/avail/confirm?t=${token}`;
+      }
+      parts.push(line);
+    }
+    const ok = await sendMail(env, email, "Quick check: is your availability up to date?",
+      `Hi ${rows[0].name || "there"},
+
+Families use CenTex Homeschool Hub to see which groups have room. Here's what your listing shows right now:
+
+${parts.join("\n\n")}
+
+` +
+      `Something changed? Update it in a minute: ${site}/leaders.html
+Opening spots alerts every family who tapped "Notify me" on your listing.
+
+Thanks,
+Benjamin
+CenTex Homeschool Hub`);
+    if (ok) sent++;
+  }
+  return sent;
+}
+
 async function monthlyReports(env) {
   const today = new Date(); if (today.getUTCDate() !== 1 || today.getUTCMonth() % 3 !== 0) return;
   const { results } = await env.DB.prepare("SELECT o.slug, o.data, w.email FROM listing_overrides o JOIN listing_owners w ON w.slug=o.slug").all();
@@ -1122,7 +1196,7 @@ async function dailyDigest(env) {
 
 export default {
   async scheduled(event, env, ctx) {
-    if (event.cron === "0 13 * * *") { ctx.waitUntil(dailyDigest(env)); ctx.waitUntil(monthlyReports(env)); ctx.waitUntil(sendEventReminders(env)); }
+    if (event.cron === "0 13 * * *") { ctx.waitUntil(dailyDigest(env)); ctx.waitUntil(monthlyReports(env)); ctx.waitUntil(sendEventReminders(env)); ctx.waitUntil(availReminders(env)); }
     ctx.waitUntil(processNewsletters(env, 200));
   },
 
