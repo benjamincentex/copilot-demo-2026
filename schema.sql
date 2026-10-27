@@ -55,3 +55,8 @@ CREATE INDEX IF NOT EXISTS idx_news_published ON news(published);
 
 -- One-click "still accurate" links in the monthly availability reminder
 CREATE TABLE IF NOT EXISTS avail_tokens (token TEXT PRIMARY KEY, slug TEXT NOT NULL, email TEXT NOT NULL, listing TEXT, created_at TEXT DEFAULT (datetime('now')));
+
+-- Website text about enrollment/openings, read automatically; reviewed before use
+CREATE TABLE IF NOT EXISTS site_snapshots (slug TEXT PRIMARY KEY, name TEXT, url TEXT, http_status INTEGER, snippets TEXT, fetched_at TEXT);
+-- Availability seen on a group's own website or Facebook: placeholder for unclaimed listings only
+CREATE TABLE IF NOT EXISTS seen_avail (slug TEXT PRIMARY KEY, s TEXT NOT NULL, when_text TEXT, source TEXT, source_url TEXT, note TEXT, checked_at TEXT DEFAULT (date('now')));

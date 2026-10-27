@@ -218,10 +218,12 @@ const routes = {
     const { results } = await env.DB.prepare("SELECT slug, data FROM listing_overrides").all();
     const out = {};
     for (const r of results) { try { out[r.slug] = JSON.parse(r.data); } catch {} }
+    const { results: seenRows } = await env.DB.prepare("SELECT slug, s, when_text, source, source_url, checked_at FROM seen_avail").all();
+    const seen = Object.fromEntries(seenRows.map((r) => [r.slug, { s: r.s, when: r.when_text || "", source: r.source, url: r.source_url, at: r.checked_at }]));
     const { results: made } = await env.DB.prepare("SELECT slug, data FROM user_listings WHERE status='live' ORDER BY created_at").all();
     const custom = [];
     for (const r of made) { try { custom.push({ ...JSON.parse(r.data), slug: r.slug }); } catch {} }
-    return json({ overrides: out, custom });
+    return json({ overrides: out, custom, seen });
   },
 
   "POST /api/submissions": async (req, env) => {
@@ -1194,8 +1196,60 @@ async function dailyDigest(env) {
   await notifyOwner(env, "Your CenTex Homeschool Hub daily summary", "Here's what's new in the last 24 hours.\n\n" + lines.join("\n\n") + "\n\nRemove anything that breaks the rules from your owner page.");
 }
 
+// ---------- Website availability snapshots ----------
+// Every 10 minutes, read a few listing websites and keep the sentences that talk about enrollment,
+// waitlists or openings. These only feed a "per their website" placeholder for UNCLAIMED listings,
+// set after review; a group's own claimed status always wins.
+const AVAIL_WORDS_RE = /(wait\s?-?list|enrol(l)?(ment|ing)?|registration|register now|now accepting|accepting (new )?(students|families|applications)|applications? (are )?(open|closed|due)|open (spots|seats|enrollment|house)|spots? (left|available|remaining|open)|seats? (left|available|remaining)|currently full|is full|sold out|no openings|limited (spots|space|availability)|openings)/i;
+async function listingSites(env) {
+  const r = await env.ASSETS.fetch(new Request("https://assets.local/listings.js"));
+  const txt = await r.text(), out = [];
+  for (const line of txt.split("\n")) {
+    const n = line.match(/\{n:"([^"]+)"/), site = line.match(/site:"(https?:[^"]+)"/), type = line.match(/type:"([a-z]+)"/);
+    if (!n || !site || /test:true/.test(line)) continue;
+    const slug = n[1].toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 120);
+    out.push({ slug, name: n[1], url: site[1], type: type ? type[1] : "" });
+  }
+  return out;
+}
+function pageSnippets(html) {
+  const text = html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&#39;|&rsquo;/g, "'").replace(/\s+/g, " ");
+  const parts = text.split(/(?<=[.!?])\s+/), keep = [];
+  for (const p of parts) if (AVAIL_WORDS_RE.test(p) && p.length < 400 && !keep.includes(p.trim())) keep.push(p.trim());
+  return keep.slice(0, 8);
+}
+async function snapshotSites(env, batch = 12) {
+  const sites = (await listingSites(env)).filter((s) => !/facebook\.com|instagram\.com|groups\.io/.test(s.url));
+  const { results } = await env.DB.prepare("SELECT slug FROM site_snapshots WHERE fetched_at > datetime('now','-14 days')").all();
+  const fresh = new Set(results.map((r) => r.slug));
+  // Schools and co-ops first; activities after.
+  const todo = sites.filter((s) => !fresh.has(s.slug)).sort((a, b) => (a.type === "activity") - (b.type === "activity")).slice(0, batch);
+  for (const s of todo) {
+    let snippets = [], status = 0, pages = [s.url];
+    try {
+      const res = await fetch(s.url, { headers: { "user-agent": "CenTexHomeschoolHub/1.0 (+https://centexhomeschool.org)" }, redirect: "follow", signal: AbortSignal.timeout(8000) });
+      status = res.status; const html = res.ok ? await res.text() : "";
+      snippets = pageSnippets(html);
+      // Also read up to two admissions/enrollment pages linked from the home page.
+      const links = [...html.matchAll(/href="([^"#]+)"/gi)].map((m) => m[1]).filter((h) => /admission|enrol|register|registration|join|apply|tuition|openings|waitlist/i.test(h)).slice(0, 2);
+      for (const h of links) {
+        try {
+          const u = new URL(h, s.url).toString(); if (pages.includes(u)) continue; pages.push(u);
+          const r2 = await fetch(u, { headers: { "user-agent": "CenTexHomeschoolHub/1.0" }, signal: AbortSignal.timeout(8000) });
+          if (r2.ok) snippets = snippets.concat(pageSnippets(await r2.text()).map((x) => x + " [" + new URL(u).pathname + "]"));
+        } catch {}
+      }
+    } catch (e) { status = -1; }
+    await env.DB.prepare("INSERT INTO site_snapshots (slug, name, url, http_status, snippets, fetched_at) VALUES (?,?,?,?,?,datetime('now')) ON CONFLICT(slug) DO UPDATE SET name=excluded.name, url=excluded.url, http_status=excluded.http_status, snippets=excluded.snippets, fetched_at=excluded.fetched_at")
+      .bind(s.slug, s.name, s.url, status, JSON.stringify(snippets.slice(0, 12))).run();
+  }
+  return todo.length;
+}
+
 export default {
   async scheduled(event, env, ctx) {
+    if (event.cron === "*/10 * * * *") ctx.waitUntil(snapshotSites(env));
     if (event.cron === "0 13 * * *") { ctx.waitUntil(dailyDigest(env)); ctx.waitUntil(monthlyReports(env)); ctx.waitUntil(sendEventReminders(env)); ctx.waitUntil(availReminders(env)); }
     ctx.waitUntil(processNewsletters(env, 200));
   },
