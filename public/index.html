@@ -1039,7 +1039,7 @@ function showView(noScroll){
   document.querySelectorAll("nav.links a").forEach(a=>{ if(viewOf(new URL(a.href).pathname)===curView&&curView!=="home") a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
   document.title=curView==="home"?"CenTex Homeschool Hub":TITLES[curView]+" · CenTex Homeschool Hub";
   if(curView==="community"||curView==="jobs"||curView==="calendar") placeAcct(false);
-  const fb=$("footBar"); if(fb){ fb.hidden=curView==="newsletter"; fb.dataset.signbar=({directory:"directory",calendar:"calendar",news:"news"})[curView]||"newsletter"; try{ renderBars(); }catch(e){} }
+  const fb=$("footBar"); if(fb){ fb.hidden=curView==="newsletter"||curView==="home"; /* these pages already have the full newsletter signup */ fb.dataset.signbar=({directory:"directory",calendar:"calendar",news:"news"})[curView]||"newsletter"; try{ renderBars(); }catch(e){} }
   if(noScroll) return;
   const t=location.hash&&document.getElementById(decodeURIComponent(location.hash.slice(1)));
   if(t&&!t.closest("[hidden]")) setTimeout(()=>t.scrollIntoView(),0); else window.scrollTo(0,0);
