@@ -72,6 +72,7 @@ async function sendMail(env, to, subject, text, html) {
   } catch (e) {
     // Usually means the domain isn't onboarded to Cloudflare Email Sending yet.
     console.error("Email send failed:", e && e.message);
+    try { await env.DB.prepare("INSERT INTO email_errors (to_email, subject, error) VALUES (?,?,?)").bind(String(to).slice(0, 160), String(subject).slice(0, 160), String((e && (e.code ? e.code + ": " : "") + e.message) || e).slice(0, 500)).run(); } catch {}
     return false;
   }
 }

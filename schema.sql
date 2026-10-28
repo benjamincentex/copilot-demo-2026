@@ -60,3 +60,6 @@ CREATE TABLE IF NOT EXISTS avail_tokens (token TEXT PRIMARY KEY, slug TEXT NOT N
 CREATE TABLE IF NOT EXISTS site_snapshots (slug TEXT PRIMARY KEY, name TEXT, url TEXT, http_status INTEGER, snippets TEXT, fetched_at TEXT);
 -- Availability seen on a group's own website or Facebook: placeholder for unclaimed listings only
 CREATE TABLE IF NOT EXISTS seen_avail (slug TEXT PRIMARY KEY, s TEXT NOT NULL, when_text TEXT, source TEXT, source_url TEXT, note TEXT, checked_at TEXT DEFAULT (date('now')));
+
+-- Why an email failed to send (for troubleshooting)
+CREATE TABLE IF NOT EXISTS email_errors (id INTEGER PRIMARY KEY AUTOINCREMENT, to_email TEXT, subject TEXT, error TEXT, created_at TEXT DEFAULT (datetime('now')));
