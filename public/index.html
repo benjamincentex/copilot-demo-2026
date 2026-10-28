@@ -45,6 +45,10 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:16p
 .brand{display:flex;align-items:center;gap:10px;font-family:var(--display);font-size:22px;color:var(--ink);text-decoration:none}
 .brand svg{flex:none}
 nav.links{display:flex;gap:18px;flex-wrap:wrap}
+.sharebtn{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:14px;font-weight:600;color:var(--oak);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px;cursor:pointer}
+.sharebtn:hover{border-color:var(--oak)}
+.sharebtn.done{background:var(--oak);color:var(--bg);border-color:var(--oak)}
+@media (max-width:780px){header.top .sharebtn{order:2;margin-left:auto;padding:6px 10px}header.top nav.links{order:3}header.top .brand{font-size:19px}}
 nav.links a{color:var(--ink);text-decoration:none;font-weight:500;font-size:15px}
 nav.links a:hover{color:var(--oak)}
 .hero{padding-block:36px 28px;display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:32px;align-items:end}
@@ -475,6 +479,7 @@ html{scroll-behavior:smooth}
     <a href="/news">News</a>
     <a href="/jobs">Jobs/Tutors</a>
   </nav>
+  <button class="sharebtn" type="button" data-sharepage aria-label="Share this page"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg><span>Share</span></button>
 </header>
 
 <div class="hero" data-view="home">
@@ -1000,6 +1005,7 @@ html{scroll-behavior:smooth}
     <a href="/leaders.html" class="where">For schools, families &amp; teachers</a>
     <span>CenTex Homeschool Hub · Liberty Hill, Leander, Cedar Park, Round Rock, Pflugerville, Georgetown, Austin</span>
     <span>Listings marked "Unclaimed" come from public sources and haven't been confirmed by the group yet.</span>
+    <button class="sharebtn" type="button" data-sharepage>Share this site with a friend</button>
     <div data-social></div>
   </footer>
 <script src="/social.js"></script>
@@ -1849,6 +1855,14 @@ document.addEventListener("click",async e=>{const b=e.target.closest("[data-shar
   const url=b.dataset.share, text="A directory of Central Texas homeschool co-ops, classes and homeschool-friendly activities, plus a monthly newsletter. Thought you'd like it:";
   try{ if(navigator.share){ await navigator.share({title:"CenTex Homeschool Hub",text,url}); return; } }catch(err){ if(err&&err.name==="AbortError") return; }
   try{ await navigator.clipboard.writeText(url); b.textContent="Link copied. Paste it in a text or group chat!"; }catch(err){ b.outerHTML=`<span class="where">Share this link: ${esc(url)}</span>`; } });
+// Share / copy link for the page you're on (header and footer buttons)
+document.addEventListener("click",async e=>{const b=e.target.closest("[data-sharepage]"); if(!b) return;
+  const url=SITE+location.pathname.replace(/\/index\.html$/,"/")+location.hash, title=document.title;
+  const label=b.querySelector("span")||b, before=label.textContent;
+  const done=t=>{ label.textContent=t; b.classList.add("done"); setTimeout(()=>{ label.textContent=before; b.classList.remove("done"); },2200); };
+  try{ if(navigator.share&&matchMedia("(pointer:coarse)").matches){ await navigator.share({title,url}); return; } }catch(err){ if(err&&err.name==="AbortError") return; }
+  try{ await navigator.clipboard.writeText(url); done(b.closest("header")?"Copied!":"Link copied!"); }
+  catch(err){ try{ const t=document.createElement("textarea"); t.value=url; document.body.appendChild(t); t.select(); document.execCommand("copy"); t.remove(); done(b.closest("header")?"Copied!":"Link copied!"); }catch(e2){ prompt("Copy this link:",url); } } });
 async function api(path,data){
   if(path==="/api/subscribe"&&data&&REF&&!data.ref) data={...data,ref:REF};
   try{
