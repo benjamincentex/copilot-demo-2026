@@ -5,8 +5,8 @@
 // - Anyone: browse, take the quiz, sign up for the newsletter or alerts, suggest a listing.
 // - Group leaders: sign in with a one-time code sent to their email. Once the site owner
 //   approves their claim to a listing, they can update it themselves and changes go live.
-// - Site owner: /api/admin/* only answers for ADMIN_EMAIL, as verified by Cloudflare Access
-//   (the Cf-Access-Authenticated-User-Email header).
+// - Site owner: /api/admin/* only answers when the signed-in session (one-time code sent to
+//   that inbox) belongs to an address listed in ADMIN_EMAIL.
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
 const json = (data, status = 200, extra = {}) => new Response(JSON.stringify(data), { status, headers: { ...JSON_HEADERS, ...extra } });
@@ -36,8 +36,9 @@ function sixDigitCode() {
   return String(n).padStart(6, "0");
 }
 
-function adminEmail(request, env) {
-  const who = (request.headers.get("cf-access-authenticated-user-email") || "").toLowerCase();
+// Never trust a client-supplied header for this: only a real email-code session counts.
+async function adminEmail(request, env) {
+  const who = ((await leaderEmail(request, env)) || "").toLowerCase();
   const allowed = (env.ADMIN_EMAIL || "").toLowerCase().split(",").map((s) => s.trim()).filter(Boolean);
   return who && allowed.includes(who) ? who : null;
 }
@@ -938,7 +939,7 @@ const routes = {
   },
 
   // ---------- admin (owner only, via Cloudflare Access) ----------
-  "GET /api/admin/me": async (req, env) => json({ admin: !!adminEmail(req, env) }),
+  "GET /api/admin/me": async (req, env) => json({ admin: !!(await adminEmail(req, env)) }),
 
   "GET /api/admin/claims": async (req, env) => {
     const { results } = await env.DB.prepare("SELECT * FROM claims WHERE status='pending' ORDER BY id DESC LIMIT 200").all();
@@ -1266,7 +1267,7 @@ export default {
     }
     const handler = routes[`${request.method} ${url.pathname}`];
     if (!handler) return bad("Not found.", 404);
-    if (url.pathname.startsWith("/api/admin/") && url.pathname !== "/api/admin/me" && !adminEmail(request, env)) {
+    if (url.pathname.startsWith("/api/admin/") && url.pathname !== "/api/admin/me" && !(await adminEmail(request, env))) {
       return bad("Sign in as the site owner to use this.", 403);
     }
     if (request.method === "POST") {

@@ -236,7 +236,10 @@ html{scroll-behavior:smooth}
 
 <section style="padding-top:28px">
   <div class="intro"><span class="label">Only you can see this</span><h2>Owner tools</h2><p>Approve group leaders, remove posts that break the rules, see who's signing up, and spot towns where families can't find a fit.</p></div>
-  <div class="box" id="denied" hidden><h2>Owner sign-in required</h2><p class="where" style="margin:0">Open this page through Cloudflare Access with the email set as ADMIN_EMAIL on the Worker.</p></div>
+  <div class="box" id="denied" hidden><h2>Owner sign-in</h2><p class="where" style="margin:0 0 10px">Enter the owner email. We'll send a 6-digit code to that inbox.</p>
+    <form id="ownerSign" novalidate style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input id="os-email" type="email" autocomplete="email" placeholder="you@example.com" style="flex:1 1 220px;font:inherit;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)"><button class="btn sm" type="submit">Send code</button></form>
+    <form id="ownerCode" novalidate hidden style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px"><input id="os-code" inputmode="numeric" maxlength="6" placeholder="6-digit code" style="flex:0 1 160px;font:inherit;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)"><button class="btn sm" type="submit">Sign in</button></form>
+    <p class="status" id="osStatus" role="status" style="margin:8px 0 0"></p></div>
   <div id="tools" hidden>
     <div class="box"><h2>At a glance</h2><div class="stats4" id="stats"></div><p class="where" id="emailLine" style="margin:0"></p></div>
     <div class="box"><h2>Listing claims to review</h2><div id="claims" class="where">No claims waiting.</div></div>
@@ -314,7 +317,10 @@ async function loadActivity(){
 async function load(){
   loadNewsletters(); loadFlags(); loadActivity(); loadReferrals(); loadNewsAdmin();
   const me=await api("/api/admin/me");
-  if(!(me.ok&&me.admin)){$("denied").hidden=false;return;}
+  if(!(me.ok&&me.admin)){$("denied").hidden=false;
+    $("ownerSign").onsubmit=async e=>{e.preventDefault(); const st=$("osStatus"); st.textContent="Sending…"; const r=await api("/api/auth/request-code",{email:$("os-email").value.trim()}); st.textContent=r.ok?"Check your inbox for the code.":r.error; if(r.ok){$("ownerCode").hidden=false;$("os-code").focus();}};
+    $("ownerCode").onsubmit=async e=>{e.preventDefault(); const st=$("osStatus"); const r=await api("/api/auth/verify",{email:$("os-email").value.trim(),code:$("os-code").value.trim()}); if(!r.ok){st.textContent=r.error;return;} const m=await api("/api/admin/me"); if(m.ok&&m.admin) location.reload(); else st.textContent="Signed in, but that email isn't the site owner.";};
+    return;}
   $("tools").hidden=false;
   const [sum,cl]=await Promise.all([api("/api/admin/summary"),api("/api/admin/claims")]);
   if(sum.ok){
