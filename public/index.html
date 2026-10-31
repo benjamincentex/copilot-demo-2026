@@ -260,17 +260,17 @@ form.ask textarea{font:inherit;font-size:14px;padding:8px 10px;border:1px solid 
 .curric{margin-top:18px}
 .curric h4{font-size:18px;margin:0}
 .quizbox{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px;max-width:720px}
-.qprog{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-bottom:14px}
-.qprog i{display:block;height:100%;background:var(--oak);transition:width .25s}
-.qq{font-family:var(--display);font-size:21px;margin:0 0 12px}
-.qopts{display:grid;gap:8px}
-.qopt{font:inherit;text-align:left;padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
-.qopt:hover:not(:disabled){border-color:var(--oak)}
-.qopt.right{background:var(--oak-soft);border-color:var(--oak);font-weight:600}
-.qopt.wrong{background:var(--sun-soft);border-color:var(--sun)}
-.qexp{margin:12px 0 0;font-size:14.5px}
-.qnext{margin-top:12px}
-.qscore{font-family:var(--display);font-size:40px;color:var(--oak);margin:0}
+.quizbox .qprog{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-bottom:14px}
+.quizbox .qprog i{display:block;height:100%;background:var(--oak);transition:width .25s}
+.quizbox .qq{font-family:var(--display);font-size:21px;margin:0 0 12px}
+.quizbox .qopts{display:grid;gap:8px}
+.quizbox .qopt{font:inherit;text-align:left;padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.quizbox .qopt:hover:not(:disabled){border-color:var(--oak)}
+.quizbox .qopt.right{background:var(--oak-soft);border-color:var(--oak);font-weight:600}
+.quizbox .qopt.wrong{background:var(--sun-soft);border-color:var(--sun)}
+.quizbox .qexp{margin:12px 0 0;font-size:14.5px}
+.quizbox .qnext{margin-top:12px}
+.quizbox .qscore{font-family:var(--display);font-size:40px;color:var(--oak);margin:0}
 @media (max-width:640px){
   .flags{grid-template-columns:repeat(3,minmax(0,1fr))}
   .th-hero{padding:22px 16px 18px}
@@ -1118,7 +1118,7 @@ function card(x){
       <div class="nrow"><input type="email" placeholder="you@example.com" maxlength="160" aria-label="Email for alerts"><button class="btn" type="submit">Alert me</button></div>
       <span class="status" role="status"></span>
     </form>
-    ${x.site||x.phone?`<div class="contact">${x.site?`<a href="${esc(x.site)}" target="_blank" rel="noopener" data-site="${esc(sid(x))}">${/facebook\.com/i.test(x.site)?"Facebook page":"Visit website"} ↗</a>`:""}${x.phone?`<span>${esc(x.phone)}</span>`:""}</div>`:""}
+    <div class="contact">${x.site?`<a href="${esc(x.site)}" target="_blank" rel="noopener" data-site="${esc(sid(x))}">${/facebook\.com/i.test(x.site)?"Facebook page":"Visit website"} ↗</a>`:x.test?"":`<a href="https://www.google.com/search?q=${encodeURIComponent(x.n+" "+(x.town||"")+" TX")}" target="_blank" rel="noopener">Find them online ↗</a>`}${x.phone?`<span>${esc(x.phone)}</span>`:""}</div>
     ${qaBlock(x)}
     <div class="foot">${x.claimed?`<span class="claimed">${x.type==="tutor"?"Managed by the tutor":"Updated by the group"}</span>`:`<span>Unclaimed</span>`}<a class="linkbtn" href="/leaders.html#${esc(sid(x))}">${x.claimed?"Manage listing":"Is this yours? Claim it"}</a></div>
   </article>`;
