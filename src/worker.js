@@ -133,6 +133,28 @@ async function notifyOwner(env, subject, text) {
   catch (e) { console.error("owner notice failed", e.code, e.message); }
 }
 
+// Vendor/leader emails invite the recipient to the newsletter + Monday quotes (skipped if already subscribed).
+async function joinBlock(env, email) {
+  const e = String(email || "").toLowerCase(); if (!e) return "";
+  try {
+    const sub = await env.DB.prepare("SELECT 1 FROM subscribers WHERE email=? AND unsubscribed_at IS NULL").bind(e).first();
+    if (sub) return "";
+    const token = randomToken(16);
+    await env.DB.prepare("INSERT INTO join_tokens (token, email) VALUES (?,?)").bind(token, e).run();
+    const site = env.SITE_URL || "https://centexhomeschool.org";
+    return `Stay in the loop: our monthly newsletter covers open houses, deadlines, homeschool days and Texas law changes, and every Monday we send a short quote to encourage you on your homeschool journey.\n\nGet the newsletter + Monday quotes: ${site}/api/join?t=${token}\n\n`;
+  } catch (err) { console.error("joinBlock failed", err && err.message); return ""; }
+}
+function welcomeText(env, token, ref) {
+  const site = env.SITE_URL || "https://centexhomeschool.org";
+  return `Hi there,\n\nThanks for signing up for the CenTex Homeschool Hub newsletter. Once a month you'll get registration dates coming up, groups with open spots, new listings near you and public homeschool events around Central Texas. And every Monday, a short quote to encourage you on your homeschool journey.\n\n` +
+    `Your Texas Homeschool Starter Checklist: ${site}/checklist.html\n\nWhile you wait for the first issue:\n- Find co-ops and classes near you: ${site}/directory\n- Homeschool-friendly activities: ${site}/activities\n- Take the 5-question quiz to find your fit: ${site}/#fit\n- See open houses and deadlines: ${site}/calendar\n\n` +
+    `${shareLine(env, ref)}\n\nThanks,\nBenjamin\nCenTex Homeschool Hub\n\nDon't want these emails? Unsubscribe: ${site}/api/unsubscribe?t=${token}`;
+}
+function simplePage(title, msg, extra = "") {
+  return new Response(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${title} · CenTex Homeschool Hub</title><body style="font-family:system-ui,sans-serif;background:#F8F1E7;color:#2A2219;padding:48px 16px;text-align:center"><h1 style="font-family:Georgia,serif;font-weight:normal;max-width:620px;margin:0 auto 16px">${msg}</h1>${extra}<p><a href="/" style="color:#3546A8">Back to CenTex Homeschool Hub</a></p></body>`, { headers: { "content-type": "text/html; charset=utf-8" } });
+}
+
 function alertEmail(listing, town, avail, siteUrl) {
   const status = avail.s === "open" ? "has open spots" : `opens registration${avail.when ? " in " + avail.when : " soon"}`;
   return {
@@ -287,6 +309,14 @@ const routes = {
       AVAIL.has(b.availability) ? b.availability : "", clip(b.registrationOpens, 40)).run();
     await notifyOwner(env, `New request: ${clip(b.kind, 60) || "Suggestion"} — ${name}`,
       `${clip(b.kind, 60)}\nName: ${name}\nTown: ${clip(b.town, 60)}\nWebsite: ${clip(b.website, 300)}\nFrom: ${clip(b.contact, 80)} <${email}>\n\n${clip(b.details, 2000)}`);
+    // Let the submitter know we got it.
+    try {
+      const site = env.SITE_URL || "https://centexhomeschool.org";
+      await sendMail(env, email, `We got your listing for ${name}`,
+        `Hi ${clip(b.contact, 80) || "there"},\n\nThanks for adding ${name} to CenTex Homeschool Hub. Your listing is in our review queue. We review every listing by hand, usually within a couple of days, and we'll reach out if we have any questions.\n\n` +
+        `Once it's up, you can claim it to keep your details, availability and open house dates current. Families who tap "Notify me" get an email the moment you open spots.\n\nSee the directory: ${site}/directory\n\n` +
+        (await joinBlock(env, email)) + `Thanks,\nBenjamin\nCenTex Homeschool Hub`);
+    } catch (e) { console.error("submission receipt failed", e && e.message); }
     return json({ ok: true });
   },
 
@@ -306,12 +336,34 @@ const routes = {
     const referrer = by ? await env.DB.prepare("SELECT ref FROM subscribers WHERE ref=? LIMIT 1").bind(by).first() : null;
     await env.DB.prepare("INSERT INTO subscribers (email, source, answers, token, ref, referred_by) VALUES (?,?,?,?,?,?)")
       .bind(email, clip(b.source, 40) || "quiz", JSON.stringify(b.answers || {}).slice(0, 1000), token, ref, referrer ? referrer.ref : null).run();
-    const site = env.SITE_URL || "https://centexhomeschool.org";
-    await sendMail(env, email, "Welcome to CenTex Homeschool Hub",
-      `Hi there,\n\nThanks for signing up for the CenTex Homeschool Hub newsletter. Once a month you'll get registration dates coming up, groups with open spots, new listings near you and public homeschool events around Central Texas. And every Monday, a short quote to encourage you on your homeschool journey.\n\n` +
-      `Your Texas Homeschool Starter Checklist: ${site}/checklist.html\n\nWhile you wait for the first issue:\n- Find co-ops and classes near you: ${site}/directory\n- Homeschool-friendly activities: ${site}/activities\n- Take the 5-question quiz to find your fit: ${site}/#fit\n- See open houses and deadlines: ${site}/calendar\n\n` +
-      `${shareLine(env, ref)}\n\nThanks,\nBenjamin\nCenTex Homeschool Hub\n\nDon't want these emails? Unsubscribe: ${site}/api/unsubscribe?t=${token}`);
+    await sendMail(env, email, "Welcome to CenTex Homeschool Hub", welcomeText(env, token, ref));
     return json({ ok: true, ref });
+  },
+
+  // Newsletter invite links in vendor emails. GET shows a confirm button (so link scanners can't sign anyone up); POST subscribes.
+  "GET /api/join": async (req, env) => {
+    const t = clip(new URL(req.url).searchParams.get("t"), 64).replace(/[^a-f0-9]/gi, "");
+    const row = t ? await env.DB.prepare("SELECT email FROM join_tokens WHERE token=?").bind(t).first() : null;
+    if (!row) return simplePage("Join", "That link has expired. You can sign up on our home page anytime.");
+    const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+    return simplePage("Join", "Get the monthly newsletter and a Monday quote for your homeschool journey?",
+      `<p style="color:#76675A">We'll send them to <b>${esc(row.email)}</b>. Unsubscribe anytime.</p><form method="post" action="/api/join?t=${t}"><button style="font:inherit;font-weight:bold;background:#2F5A3D;color:#FFFBF5;border:0;border-radius:10px;padding:12px 22px;cursor:pointer">Yes, sign me up</button></form>`);
+  },
+  "POST /api/join": async (req, env) => {
+    const t = clip(new URL(req.url).searchParams.get("t"), 64).replace(/[^a-f0-9]/gi, "");
+    const row = t ? await env.DB.prepare("SELECT email FROM join_tokens WHERE token=?").bind(t).first() : null;
+    if (!row) return simplePage("Join", "That link has expired. You can sign up on our home page anytime.");
+    const email = row.email;
+    const existing = await env.DB.prepare("SELECT id FROM subscribers WHERE email=? ORDER BY id LIMIT 1").bind(email).first();
+    if (existing) {
+      await env.DB.prepare("UPDATE subscribers SET unsubscribed_at=NULL, weekly_quotes=1 WHERE email=?").bind(email).run();
+    } else {
+      const token = crypto.randomUUID().replace(/-/g, ""), ref = newRef();
+      await env.DB.prepare("INSERT INTO subscribers (email, source, answers, token, ref) VALUES (?,?,?,?,?)").bind(email, "vendor-email", "{}", token, ref).run();
+      await sendMail(env, email, "Welcome to CenTex Homeschool Hub", welcomeText(env, token, ref));
+    }
+    await env.DB.prepare("DELETE FROM join_tokens WHERE email=?").bind(email).run();
+    return simplePage("Welcome", "You're in! Watch for the monthly newsletter and a quote every Monday.");
   },
 
   // One-click unsubscribe from inbox providers (RFC 8058): POST to the same link.
@@ -516,6 +568,12 @@ const routes = {
         .bind(slug, clip(b.listing, 140), clip(b.town, 60), email, clip(b.name, 80), clip(b.role, 60), clip(b.note, 500), clip(b.type, 20)).run();
       await notifyOwner(env, `New listing claim: ${clip(b.listing, 140)}`,
         `${clip(b.name, 80)}${clip(b.role, 60) ? " (" + clip(b.role, 60) + ")" : ""} wants to manage ${clip(b.listing, 140)}.\nEmail: ${email}${clip(b.note, 500) ? "\nNote: " + clip(b.note, 500) : ""}`);
+      try {
+        await sendMail(env, email, `We got your request to manage ${clip(b.listing, 140)}`,
+          `Hi ${clip(b.name, 80) || "there"},\n\nThanks for claiming ${clip(b.listing, 140)} on CenTex Homeschool Hub. We're reviewing your request now and will email you as soon as it's approved, usually within a couple of days.\n\n` +
+          `Once approved, sign in with this email address to update your details, mark availability and add open houses to the community calendar.\n\n` +
+          (await joinBlock(env, email)) + `Thanks,\nBenjamin\nCenTex Homeschool Hub`);
+      } catch (e) { console.error("claim receipt failed", e && e.message); }
     }
     return json({ ok: true });
   },
@@ -1026,6 +1084,7 @@ const routes = {
         `Hi ${c.name || "there"},\n\nYour claim for ${c.listing} is approved. Sign in at ${env.SITE_URL || "https://centexhomeschool.org"}/leaders.html with this email address to update your details and availability anytime.\n\n` +
         `A few things that help families find you:\n- Mark your availability (open spots, waitlist or full)\n- Add your next open house or application deadline to the community calendar\n- Answer families' questions on your listing\n\n` +
         `When you mark open spots or post a registration date, families waiting on your group get an email right away.\n\n` +
+        (await joinBlock(env, c.email)) +
         (paid && paidOn(env) ? `P.S. Want families to enroll in one click? A Featured listing ($39/month) adds a highlighted banner, photos, a "Register" button straight to your registration page, an unlimited description (free listings get 75 characters), a newsletter spotlight twice a year, free job posts and a quarterly report on how your listing is performing. Details: ${env.SITE_URL || "https://centexhomeschool.org"}/leaders.html#plans\n\n` : "") +
         `Thanks,\nBenjamin\nCenTex Homeschool Hub`);
     } catch (e) { console.error("approval email failed", e.code, e.message); }
@@ -1130,7 +1189,7 @@ ${parts.join("\n\n")}
       `Something changed? Update it in a minute: ${site}/leaders.html
 Opening spots alerts every family who tapped "Notify me" on your listing.
 
-Thanks,
+` + (await joinBlock(env, email)) + `Thanks,
 Benjamin
 CenTex Homeschool Hub`);
     if (ok) sent++;
@@ -1156,7 +1215,7 @@ async function monthlyReports(env) {
       `Here's how your listing did from ${month}:\n\n` +
       `- Times families saw your listing: ${s.views}\n- Clicks to your website: ${s.website}\n- Clicks on your Register button: ${s.register}\n` +
       `- New families tapping "Notify me": ${s.alerts}\n- Families waiting on you now: ${waiting[f.slug] || 0}\n- Questions asked on your listing: ${s.questions}\n\n` +
-      `Tip: listings with current availability and an upcoming open house get the most attention. Update yours anytime: ${site}/leaders.html\n\nThanks for being a Featured listing,\nBenjamin\nCenTex Homeschool Hub`);
+      `Tip: listings with current availability and an upcoming open house get the most attention. Update yours anytime: ${site}/leaders.html\n\n` + (await joinBlock(env, f.email)) + `Thanks for being a Featured listing,\nBenjamin\nCenTex Homeschool Hub`);
   }
 }
 

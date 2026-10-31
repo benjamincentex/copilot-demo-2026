@@ -1896,7 +1896,7 @@ $("form").addEventListener("submit",async e=>{
   st.textContent="Sending…";
   const r=await api("/api/submissions",{kind:$("f-kind").value,name,town:$("f-town").value.trim(),website:$("f-site").value.trim(),
     contact:$("f-contact").value.trim(),email,details:$("f-details").value.trim()});
-  if(r.ok){e.target.reset(); st.className="status ok"; st.textContent="Thanks! It's in the review queue.";}
+  if(r.ok){e.target.reset(); st.className="status ok"; st.textContent="Thanks! It's in the review queue. We just emailed you a confirmation.";}
   else{st.className="status err";st.textContent=r.error;}
 });
 </script>

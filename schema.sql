@@ -67,3 +67,4 @@ CREATE TABLE IF NOT EXISTS email_errors (id INTEGER PRIMARY KEY AUTOINCREMENT, t
 -- Weekly inspirational quote emails
 ALTER TABLE subscribers ADD COLUMN weekly_quotes INTEGER DEFAULT 1;
 CREATE TABLE IF NOT EXISTS quote_sends (week TEXT NOT NULL, email TEXT NOT NULL, ok INTEGER, sent_at TEXT DEFAULT (datetime('now')), PRIMARY KEY (week, email));
+CREATE TABLE IF NOT EXISTS join_tokens (token TEXT PRIMARY KEY, email TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now')));
