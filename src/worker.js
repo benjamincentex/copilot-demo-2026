@@ -326,6 +326,23 @@ const routes = {
     return json({ ok: true });
   },
 
+  // Footer "Contact us": goes to the site owner, reply goes straight back to the sender.
+  "POST /api/contact": async (req, env) => {
+    const b = await body(req); if (!b) return bad("Invalid request.");
+    if (b.hp) return json({ ok: true }); // bot trap
+    const email = clip(b.email, 160).toLowerCase(), message = clip(b.message, 2000);
+    if (!EMAIL_RE.test(email)) return bad("Add a valid email address.");
+    if (message.length < 5) return bad("Write a short message.");
+    const ip = req.headers.get("cf-connecting-ip") || "";
+    const recent = await env.DB.prepare("SELECT COUNT(*) AS n FROM contact_messages WHERE (email=? OR ip=?) AND created_at > datetime('now','-1 hour')").bind(email, ip).first();
+    if (recent.n >= 5) return bad("Thanks! We've got your messages. We'll be in touch soon.");
+    await env.DB.prepare("INSERT INTO contact_messages (email, message, page, ip) VALUES (?,?,?,?)").bind(email, message, clip(b.page, 100), ip).run();
+    const to = (env.ADMIN_EMAIL || "").split(",")[0].trim();
+    if (to) { try { await sendMail(env, to, `Contact form: message from ${email}`,
+      `${email} wrote (from ${clip(b.page, 100) || "the site"}):\n\n${message}\n\nJust reply to this email to answer them.`, null, { replyTo: email }); } catch (e) { console.error("contact email failed", e && e.message); } }
+    return json({ ok: true });
+  },
+
   "POST /api/subscribe": async (req, env) => {
     const b = await body(req); if (!b) return bad("Invalid request.");
     const email = clip(b.email, 160).toLowerCase();

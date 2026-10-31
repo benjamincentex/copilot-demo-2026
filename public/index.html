@@ -397,6 +397,14 @@ section > .intro{max-width:62ch;margin-bottom:22px}
 section h2{font-size:clamp(28px,3.6vw,38px)}
 section .intro p{color:var(--muted);margin:10px 0 0}
 .quiz{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:24px;max-width:820px}
+.contactus{flex-basis:100%;font-size:13px}
+.contactus .linkbtn{font-size:13px}
+#contactForm{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start;margin-top:8px;max-width:620px}
+#contactForm[hidden]{display:none}
+#contactForm input,#contactForm textarea{font:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+#contactForm input{flex:1 1 180px}
+#contactForm textarea{flex:2 1 260px;min-height:34px;resize:vertical}
+#contactForm .status{flex-basis:100%;font-size:13px}
 .inline-acct{margin:8px 0}
 .inline-acct form.inline{display:flex;flex-direction:column;align-items:stretch;gap:10px}
 .inline-acct form.inline .field{width:100%;min-width:0;flex:none}
@@ -1017,6 +1025,8 @@ html{scroll-behavior:smooth}
     <span>Listings marked "Unclaimed" come from public sources and haven't been confirmed by the group yet.</span>
     <button class="sharebtn" type="button" data-sharepage>Share this site with a friend</button>
     <div data-social></div>
+    <div class="contactus"><button class="linkbtn" type="button" id="contactToggle" aria-expanded="false">Have suggestions or questions? Contact us</button>
+      <form id="contactForm" hidden novalidate><input id="ct-email" type="email" autocomplete="email" maxlength="160" placeholder="Your email" aria-label="Your email"><textarea id="ct-msg" maxlength="2000" rows="2" placeholder="Your message" aria-label="Your message"></textarea><input id="ct-hp" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px"><button class="btn sm" type="submit" style="margin-top:0">Send</button><span class="status" id="ctStatus" role="status"></span></form></div>
   </footer>
 <script src="/social.js"></script>
 </div>
@@ -1253,6 +1263,15 @@ $("townChips").innerHTML=TOWNS.map(t=>`<button class="chip" type="button" data-t
 const toggleTown=(list,t)=>t==="All"?[]:list.includes(t)?list.filter(x=>x!==t):list.concat(t);
 $("townChips").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;state.towns=toggleTown(state.towns,b.dataset.town);render();});
 $("q").addEventListener("input",e=>{state.q=e.target.value.trim();render();});
+$("contactToggle").onclick=()=>{const f=$("contactForm"); f.hidden=!f.hidden; $("contactToggle").setAttribute("aria-expanded",!f.hidden); if(!f.hidden) $("ct-email").focus();};
+$("contactForm").addEventListener("submit",async e=>{
+  e.preventDefault(); const st=$("ctStatus"), email=$("ct-email").value.trim(), message=$("ct-msg").value.trim();
+  if(!/^\S+@\S+\.\S+$/.test(email)){st.className="status err"; st.textContent="Add your email so we can reply."; return;}
+  if(message.length<5){st.className="status err"; st.textContent="Write a short message."; return;}
+  st.className="status"; st.textContent="Sending…";
+  const r=await api("/api/contact",{email,message,page:location.pathname,hp:$("ct-hp").value});
+  st.className="status "+(r.ok?"ok":"err"); st.textContent=r.ok?"Thanks! We'll get back to you by email.":r.error; if(r.ok) $("ct-msg").value="";
+});
 document.addEventListener("click",e=>{const a=e.target.closest("[data-crosssearch]"); if(!a) return; e.preventDefault(); history.pushState(null,"",a.getAttribute("href")); showView(true); $("q").value=state.q; render(); });
 $("typeSel").addEventListener("change",e=>{state.type=e.target.value;render();});
 $("approachSel").addEventListener("change",e=>{state.approach=e.target.value;render();});
