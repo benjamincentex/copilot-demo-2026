@@ -63,3 +63,7 @@ CREATE TABLE IF NOT EXISTS seen_avail (slug TEXT PRIMARY KEY, s TEXT NOT NULL, w
 
 -- Why an email failed to send (for troubleshooting)
 CREATE TABLE IF NOT EXISTS email_errors (id INTEGER PRIMARY KEY AUTOINCREMENT, to_email TEXT, subject TEXT, error TEXT, created_at TEXT DEFAULT (datetime('now')));
+
+-- Weekly inspirational quote emails
+ALTER TABLE subscribers ADD COLUMN weekly_quotes INTEGER DEFAULT 1;
+CREATE TABLE IF NOT EXISTS quote_sends (week TEXT NOT NULL, email TEXT NOT NULL, ok INTEGER, sent_at TEXT DEFAULT (datetime('now')), PRIMARY KEY (week, email));

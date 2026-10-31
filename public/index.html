@@ -366,6 +366,8 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .quoteband{margin:28px auto 4px;max-width:760px;text-align:center;padding:0 8px}
 .quoteband blockquote{margin:0;font-family:var(--display);font-size:clamp(22px,3vw,30px);line-height:1.35;color:var(--oak)}
 .quoteband figcaption{margin-top:10px;font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.quoteband .qweek{display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--sun);font-weight:700;margin-bottom:8px}
+.quoteband .qsub{display:inline-block;margin-top:10px;font-size:14px;font-weight:600;color:var(--oak)}
 .t-act{background:var(--sun-soft);color:var(--ink);border:1px solid var(--sun)}
 .dirtabs{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 0}
 .dirtabs button{font:inherit;font-size:15px;font-weight:600;padding:9px 16px;border-radius:999px;border:1px solid var(--oak);background:var(--surface);color:var(--oak);cursor:pointer}
@@ -537,8 +539,10 @@ html{scroll-behavior:smooth}
   </svg>
 </figure>
 <figure class="quoteband" data-view="home">
-  <blockquote>“It is the supreme art of the teacher to awaken joy in creative expression and knowledge.”</blockquote>
-  <figcaption>Albert Einstein</figcaption>
+  <span class="qweek" id="qWeek">This week's inspiration</span>
+  <blockquote id="qText">“It is the supreme art of the teacher to awaken joy in creative expression and knowledge.”</blockquote>
+  <figcaption id="qBy">Albert Einstein</figcaption>
+  <a class="qsub" href="#newsletter">Get a quote like this every Monday →</a>
 </figure>
   <section id="fit" data-view="home" style="padding-block:24px 8px">
     <div class="intro">
@@ -666,7 +670,7 @@ html{scroll-behavior:smooth}
       <form id="cEmailForm" novalidate class="inline">
         <div class="field"><label for="c-email">Your email</label><input id="c-email" type="email" autocomplete="email" maxlength="160" placeholder="you@example.com"></div>
         <button class="btn" type="submit" style="margin-top:0">Email me a sign-in code</button>
-        <label style="display:flex;gap:8px;align-items:center;font-size:14px;flex-basis:100%"><input type="checkbox" id="c-news" checked> Also send me the monthly newsletter</label>
+        <label style="display:flex;gap:8px;align-items:center;font-size:14px;flex-basis:100%"><input type="checkbox" id="c-news" checked> Also send me the monthly newsletter and weekly inspiration</label>
       </form>
       <form id="cCodeForm" novalidate class="inline" hidden>
         <div class="field"><label for="c-code">6-digit code</label><input id="c-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456"></div>
@@ -925,13 +929,13 @@ html{scroll-behavior:smooth}
   <section id="newsletter" data-view="home newsletter">
     <div class="newsband">
       <div class="newscopy">
-        <span class="label">The monthly newsletter</span>
-        <h2>What's new in Central Texas homeschooling, once a month</h2>
-        <p>One email at the start of each month: groups that opened spots, registration dates coming up, new listings near you, and a few things worth knowing. Short enough to read over coffee.</p>
+        <span class="label">Newsletter + weekly inspiration</span>
+        <h2>Homeschool news once a month, encouragement every Monday</h2>
+        <p>At the start of each month: groups that opened spots, registration dates coming up, new listings near you, and Texas homeschool law changes. Every Monday: one short quote to encourage you on your homeschool journey.</p>
         <ul class="newsperks">
           <li>Registration deadlines before they pass</li>
           <li>Openings at groups that are usually full</li>
-          <li>New co-ops, classes and public events by town</li>
+          <li>A weekly quote for your journey, matched to the season</li>
         </ul>
       </div>
       <form class="newsform" id="mainNewsForm" novalidate>
@@ -1355,8 +1359,8 @@ const BARS={
   directory:{t:"Get registration dates for groups near you",p:"Spring registration fills fast. One email a month with open spots, deadlines and new listings in your town.",src:"directory",btn:"Send me updates"},
   activities:{t:"New activities in your town, once a month",p:"Sports, music, swim, art and more with daytime and homeschool-friendly classes.",src:"activities",btn:"Send me updates"},
   calendar:{t:"Never miss a homeschool event",p:"Open houses, deadlines, homeschool days and activities near you, in one email a month.",src:"calendar",btn:"Send me events"},
-  newsletter:{t:"Get the CenTex Homeschool newsletter",p:"Once a month: open houses and deadlines, homeschool days, law and TEFA changes, and tips for your homeschool. Unsubscribe anytime.",src:"newsletter",btn:"Subscribe"},
-  news:{t:"Law changes and TEFA news, in your inbox",p:"Our monthly newsletter sums up what changed for Texas homeschoolers, plus events and tips.",src:"news",btn:"Keep me posted"},
+  newsletter:{t:"Join the CenTex Homeschool community",p:"A monthly newsletter with open houses, deadlines, homeschool days and law changes, plus a short Monday quote to encourage you on your homeschool journey.",src:"newsletter",btn:"Subscribe"},
+  news:{t:"Law changes and TEFA news, in your inbox",p:"Our monthly newsletter sums up what changed for Texas homeschoolers, plus events, tips and a weekly quote for your journey.",src:"news",btn:"Keep me posted"},
   checklist:{t:"Texas Homeschool Starter Checklist",p:"The law in plain terms, a sample withdrawal letter, curriculum, records and TEFA, on one printable page. We'll email it to you, plus our monthly newsletter.",src:"checklist",btn:"Email me the checklist"},
 };
 let SUBCOUNT=0;
@@ -1774,6 +1778,8 @@ document.addEventListener("click",e=>{ const b=e.target.closest("[data-qo]"); if
 });
 renderQuiz();
 })();
+// Weekly quote (changes every Monday)
+api("/api/quote").then(r=>{ const q=r.ok&&r.quote; if(!q) return; $("qText").textContent="“"+q.q+"”"; $("qBy").textContent=q.a; $("qWeek").textContent="This week's inspiration · "+q.t; });
 // News page
 const NTOPICS={law:"Law & policy",tefa:"TEFA & funding",trends:"Trends & research",local:"Central Texas"};
 let NEWS=[], newsRegion="", newsTopic="";

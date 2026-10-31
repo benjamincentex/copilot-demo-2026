@@ -1,3 +1,4 @@
+import { quoteForDate } from "./quotes.js";
 // CenTex Homeschool Hub — API for the directory site.
 // Static pages are served from /public; everything under /api/ runs here.
 //
@@ -56,15 +57,44 @@ async function leaderEmail(request, env) {
 
 // Sends through Cloudflare Email Service when the EMAIL binding is configured.
 // Returns true if sent, false if email sending isn't set up yet.
-// Plain-text email -> simple, readable HTML (inbox providers trust emails that have both versions).
+// ---- Email design: every email shares this branded frame (header picture, serif title, quote, footer) ----
+function emailShell(env, inner, preheader = "") {
+  const wq = quoteForDate(), QUOTE = [wq.q, wq.a];
+  const site = env.SITE_URL || "https://centexhomeschool.org";
+  const escH = (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const social = [["Facebook", env.FACEBOOK_URL], ["Instagram", env.INSTAGRAM_URL]].filter((x) => x[1]).map(([n, u]) => `<a href="${u}" style="color:#2F5A3D;font-weight:bold;text-decoration:none">${n}</a>`).join(" &nbsp;·&nbsp; ");
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only">
+<link href="https://fonts.googleapis.com/css2?family=Young+Serif&display=swap" rel="stylesheet"></head>
+<body style="margin:0;padding:0;background:#F8F1E7">${preheader ? `<div style="display:none;max-height:0;overflow:hidden">${escH(preheader)}</div>` : ""}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F8F1E7"><tr><td align="center" style="padding:24px 12px">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#FFFBF5;border:1px solid #EADCC9;border-radius:16px;overflow:hidden;font-family:Helvetica,Arial,sans-serif;color:#2A2219">
+<tr><td style="padding:0;line-height:0"><a href="${site}"><img src="${site}/email/header.jpg" width="600" alt="Families at a park day under a big live oak in the Texas Hill Country" style="display:block;width:100%;max-width:600px;height:auto;border:0"></a></td></tr>
+<tr><td style="padding:22px 30px 4px"><span style="font-family:'Young Serif',Georgia,'Times New Roman',serif;font-size:24px;color:#2F5A3D">CenTex Homeschool Hub</span><br><span style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#76675A;font-weight:bold">Homeschool begins here</span></td></tr>
+<tr><td style="padding:14px 30px 10px;font-size:16px;line-height:1.65">${inner}</td></tr>
+<tr><td style="padding:6px 30px 22px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#E3ECE2;border-radius:12px"><tr><td style="padding:16px 20px;font-family:'Young Serif',Georgia,serif;font-size:17px;line-height:1.5;color:#2F5A3D">&ldquo;${QUOTE[0]}&rdquo;<br><span style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#76675A">— ${QUOTE[1]}</span></td></tr></table></td></tr>
+<tr><td style="padding:14px 30px 22px;border-top:1px solid #EADCC9;font-size:12.5px;line-height:1.6;color:#76675A">
+<a href="${site}/directory" style="color:#2F5A3D;text-decoration:none;font-weight:bold">Directory</a> &nbsp;·&nbsp; <a href="${site}/calendar" style="color:#2F5A3D;text-decoration:none;font-weight:bold">Calendar</a> &nbsp;·&nbsp; <a href="${site}/texas-history" style="color:#2F5A3D;text-decoration:none;font-weight:bold">Texas History</a> &nbsp;·&nbsp; <a href="${site}/news" style="color:#2F5A3D;text-decoration:none;font-weight:bold">News</a>${social ? `<br>Follow us: ${social}` : ""}<br>CenTex Homeschool Hub · ${escH(env.MAILING_ADDRESS || "Central Texas")}</td></tr>
+</table></td></tr></table></body></html>`;
+}
+// Plain-text email -> designed HTML. "Label: https://link" lines become buttons; other links are styled.
 function textToHtml(env, text) {
   const escH = (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  const body = escH(text).split(/\n{2,}/).map((p) => `<p style="margin:0 0 14px">${p.replace(/\n/g, "<br>")}</p>`).join("")
-    .replace(/(https?:\/\/[^\s<]+[^\s<.,;:!?)])/g, '<a href="$1" style="color:#3546A8">$1</a>');
-  return `<!doctype html><html><body style="margin:0;padding:0;background:#F8F1E7"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F8F1E7"><tr><td align="center" style="padding:20px 12px">` +
-    `<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#FFFBF5;border:1px solid #EADCC9;border-radius:12px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#2A2219">` +
-    `<tr><td style="padding:18px 24px 4px;font-family:Georgia,serif;font-size:18px;color:#2F5A3D">CenTex Homeschool Hub</td></tr><tr><td style="padding:10px 24px 8px">${body}</td></tr>` +
-    `<tr><td style="padding:12px 24px 18px;border-top:1px solid #EADCC9;font-size:12px;color:#76675A">CenTex Homeschool Hub · ${escH(env.MAILING_ADDRESS || "Central Texas")} · <a href="${env.SITE_URL || "https://centexhomeschool.org"}" style="color:#76675A">centexhomeschool.org</a></td></tr></table></td></tr></table></body></html>`;
+  const link = (h) => h.replace(/(^|[^"])(https?:\/\/[^\s<"]+[^\s<.,;:!?)"])/g, '$1<a href="$2" style="color:#3546A8">$2</a>');
+  // "- Label: https://url" list lines -> the label becomes the link
+  const labelLinks = (h) => h.replace(/^(- )?([^\n:<]{3,70}):\s*(https?:\/\/[^\s<]+)$/gm, (m, dash, label, url) => `${dash ? "&bull; " : ""}<a href="${url}" style="color:#3546A8;font-weight:bold">${label}</a>`);
+  const paras = String(text).split(/\n{2,}/).map((p) => {
+    if (/unsubscribe/i.test(p) && /https?:\/\//.test(p)) {
+      const u = p.match(/https?:\/\/\S+/)[0];
+      return `<p style="margin:18px 0 0;font-size:12.5px;color:#76675A">${escH(p.replace(/\s*(Unsubscribe( from all emails)?)?:?\s*https?:\/\/\S+/i, "").trim())} <a href="${escH(u)}" style="color:#76675A">Unsubscribe</a></p>`;
+    }
+    const code = p.match(/code is (\d{6})/i);
+    if (code) return `<p style="margin:0 0 6px">Your sign-in code:</p><p style="margin:0 0 18px"><span style="display:inline-block;font-family:'Young Serif',Georgia,serif;font-size:34px;letter-spacing:.18em;color:#2F5A3D;background:#E3ECE2;border-radius:10px;padding:10px 18px">${code[1]}</span></p>`;
+    const btn = p.trim().match(/^([^\n:]{3,60}):\s*(https?:\/\/\S+)$/);
+    if (btn) return `<p style="margin:6px 0 18px"><a href="${escH(btn[2])}" style="display:inline-block;background:#2F5A3D;color:#FFFBF5;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:10px">${escH(btn[1])} &rarr;</a></p>`;
+    return `<p style="margin:0 0 14px">${link(labelLinks(escH(p))).replace(/\n/g, "<br>")}</p>`;
+  });
+  const first = String(text).split("\n").find((l) => l.trim() && !/^hi\b/i.test(l.trim())) || "";
+  return emailShell(env, paras.join(""), first.slice(0, 120));
 }
 
 async function sendMail(env, to, subject, text, html, opts = {}) {
@@ -278,7 +308,7 @@ const routes = {
       .bind(email, clip(b.source, 40) || "quiz", JSON.stringify(b.answers || {}).slice(0, 1000), token, ref, referrer ? referrer.ref : null).run();
     const site = env.SITE_URL || "https://centexhomeschool.org";
     await sendMail(env, email, "Welcome to CenTex Homeschool Hub",
-      `Hi there,\n\nThanks for signing up for the CenTex Homeschool Hub newsletter. Once a month you'll get registration dates coming up, groups with open spots, new listings near you and public homeschool events around Central Texas.\n\n` +
+      `Hi there,\n\nThanks for signing up for the CenTex Homeschool Hub newsletter. Once a month you'll get registration dates coming up, groups with open spots, new listings near you and public homeschool events around Central Texas. And every Monday, a short quote to encourage you on your homeschool journey.\n\n` +
       `Your Texas Homeschool Starter Checklist: ${site}/checklist.html\n\nWhile you wait for the first issue:\n- Find co-ops and classes near you: ${site}/directory\n- Homeschool-friendly activities: ${site}/activities\n- Take the 5-question quiz to find your fit: ${site}/#fit\n- See open houses and deadlines: ${site}/calendar\n\n` +
       `${shareLine(env, ref)}\n\nThanks,\nBenjamin\nCenTex Homeschool Hub\n\nDon't want these emails? Unsubscribe: ${site}/api/unsubscribe?t=${token}`);
     return json({ ok: true, ref });
@@ -291,12 +321,17 @@ const routes = {
     return json({ ok: true });
   },
   "GET /api/unsubscribe": async (req, env) => {
-    const t = clip(new URL(req.url).searchParams.get("t"), 64).replace(/[^a-f0-9]/gi, "");
+    const u = new URL(req.url), t = clip(u.searchParams.get("t"), 64).replace(/[^a-f0-9]/gi, ""), quotesOnly = u.searchParams.get("what") === "quotes";
     let ok = false;
-    if (t) { const r = await env.DB.prepare("UPDATE subscribers SET unsubscribed_at=datetime('now') WHERE token=? AND unsubscribed_at IS NULL").bind(t).run(); ok = true; }
-    const msg = ok ? "You're unsubscribed. You won't get the CenTex Homeschool Hub newsletter anymore." : "That unsubscribe link isn't valid. Reply to any of our emails and we'll take you off the list.";
+    if (t && quotesOnly) { await env.DB.prepare("UPDATE subscribers SET weekly_quotes=0 WHERE token=?").bind(t).run(); ok = true; }
+    else if (t) { const r = await env.DB.prepare("UPDATE subscribers SET unsubscribed_at=datetime('now') WHERE token=? AND unsubscribed_at IS NULL").bind(t).run(); ok = true; }
+    const msg = !ok ? "That unsubscribe link isn't valid. Reply to any of our emails and we'll take you off the list."
+      : quotesOnly ? "Done. You won't get the weekly quote anymore. You'll still get the monthly newsletter." : "You're unsubscribed. You won't get CenTex Homeschool Hub emails anymore.";
     return new Response(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Unsubscribe · CenTex Homeschool Hub</title><body style="font-family:system-ui,sans-serif;background:#F8F1E7;color:#2A2219;padding:48px 16px;text-align:center"><h1 style="font-family:Georgia,serif;font-weight:normal">${msg}</h1><p><a href="/" style="color:#3546A8">Back to CenTex Homeschool Hub</a></p></body>`, { headers: { "content-type": "text/html; charset=utf-8" } });
   },
+
+  // This week's inspirational quote (changes every Monday, Central Time).
+  "GET /api/quote": async () => json({ quote: quoteForDate() }),
 
   // Homeschool news: summaries written by us, each linking to the original article.
   // "Still accurate": the leader confirms availability without changing it.
@@ -1222,6 +1257,31 @@ async function dailyDigest(env) {
   await notifyOwner(env, "Your CenTex Homeschool Hub daily summary", "Here's what's new in the last 24 hours.\n\n" + lines.join("\n\n") + "\n\nRemove anything that breaks the rules from your owner page.");
 }
 
+// ---------- Weekly inspirational quote email (Mondays) ----------
+async function sendWeeklyQuote(env, force = false) {
+  const now = new Date(), ct = new Date(now.toLocaleString("en-US", { timeZone: "America/Chicago" }));
+  if (!force && ct.getDay() !== 1) return 0;
+  const wq = quoteForDate(now), site = env.SITE_URL || "https://centexhomeschool.org";
+  const { results } = await env.DB.prepare(
+    "SELECT s.email, MIN(s.token) AS token FROM subscribers s WHERE s.unsubscribed_at IS NULL AND COALESCE(s.weekly_quotes,1)=1 AND s.token IS NOT NULL AND NOT EXISTS (SELECT 1 FROM quote_sends q WHERE q.week=? AND q.email=s.email) GROUP BY s.email LIMIT 150").bind(wq.week).all();
+  const escH = (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  let sent = 0;
+  for (const r of results) {
+    const stopQ = `${site}/api/unsubscribe?t=${r.token}&what=quotes`, stopAll = `${site}/api/unsubscribe?t=${r.token}`;
+    const inner = `<p style="margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#76675A;font-weight:bold">This week · ${escH(wq.t)}</p>
+<p style="margin:0 0 10px;font-family:'Young Serif',Georgia,serif;font-size:26px;line-height:1.35;color:#2A2219">&ldquo;${escH(wq.q)}&rdquo;</p>
+<p style="margin:0 0 18px;color:#76675A">— ${escH(wq.a)}</p>
+<p style="margin:0 0 18px">${escH(wq.n)}</p>
+<p style="margin:0 0 18px"><a href="${site}/calendar" style="display:inline-block;background:#2F5A3D;color:#FFFBF5;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:10px">See what's happening this week &rarr;</a></p>
+<p style="margin:18px 0 0;font-size:12.5px;color:#76675A">You're getting this because you subscribed at centexhomeschool.org. <a href="${stopQ}" style="color:#76675A">Stop weekly quotes</a> · <a href="${stopAll}" style="color:#76675A">Unsubscribe from everything</a></p>`;
+    const text = `This week: ${wq.t}\n\n"${wq.q}"\n— ${wq.a}\n\n${wq.n}\n\nSee what's happening this week: ${site}/calendar\n\nStop weekly quotes: ${stopQ}\nUnsubscribe from everything: ${stopAll}`;
+    const ok = await sendMail(env, r.email, `Your weekly homeschool inspiration: ${wq.t}`, text, emailShell(env, inner, `"${wq.q.slice(0, 90)}" — ${wq.a}`).replace(/<tr><td style="padding:6px 30px 22px"><table[\s\S]*?<\/table><\/td><\/tr>/, ""));
+    await env.DB.prepare("INSERT OR IGNORE INTO quote_sends (week, email, ok) VALUES (?,?,?)").bind(wq.week, r.email, ok ? 1 : 0).run();
+    if (ok) sent++;
+  }
+  return sent;
+}
+
 // ---------- Website availability snapshots ----------
 // Every 10 minutes, read a few listing websites and keep the sentences that talk about enrollment,
 // waitlists or openings. These only feed a "per their website" placeholder for UNCLAIMED listings,
@@ -1276,7 +1336,7 @@ async function snapshotSites(env, batch = 12) {
 export default {
   async scheduled(event, env, ctx) {
     if (event.cron === "*/10 * * * *") ctx.waitUntil(snapshotSites(env));
-    if (event.cron === "0 13 * * *") { ctx.waitUntil(dailyDigest(env)); ctx.waitUntil(monthlyReports(env)); ctx.waitUntil(sendEventReminders(env)); ctx.waitUntil(availReminders(env)); }
+    if (event.cron === "0 13 * * *") { ctx.waitUntil(dailyDigest(env)); ctx.waitUntil(monthlyReports(env)); ctx.waitUntil(sendEventReminders(env)); ctx.waitUntil(availReminders(env)); ctx.waitUntil(sendWeeklyQuote(env)); }
     ctx.waitUntil(processNewsletters(env, 200));
   },
 
