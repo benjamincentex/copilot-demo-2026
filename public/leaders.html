@@ -494,7 +494,7 @@ async function load(){
 }
 async function loadQs(){
   const r=await api("/api/leader/questions"); const qs=(r.ok&&r.questions)||[];
-  $("qBox").hidden=!qs.length;
+  $("qBox").hidden=true; /* questions now arrive by email; replies go straight to the parent */
   $("qList").innerHTML=qs.map(q=>`<form class="rev" data-q="${q.id}" novalidate><b style="color:var(--ink)">${esc(q.listing||q.slug)}</b>
     <span>${esc(q.name||"A parent")} asked: "${esc(q.question)}"</span>
     <textarea maxlength="800" style="font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);min-height:60px" placeholder="Your answer">${esc(q.answer||"")}</textarea>

@@ -714,24 +714,35 @@ const routes = {
     return json({ questions: by });
   },
 
+  // Questions are private: emailed straight to the group (reply goes to the parent), never posted on the site.
   "POST /api/questions": async (req, env) => {
     const email = await leaderEmail(req, env); if (!email) return bad("Sign in first.", 401);
     const prof = await profileOf(env, email); if (!prof) return bad("Add your display name first.");
-    const b = await body(req); const question = clip(b && b.question, 300), slug = clip(b && b.slug, 120);
+    const b = await body(req); const question = clip(b && b.question, 1000), slug = clip(b && b.slug, 120), listing = clip(b && b.listing, 140);
     if (!slug) return bad("Missing listing.");
     if (question.length < 8) return bad("Write your question in a sentence or two.");
-    const problem = privacyProblem(question); if (problem) return bad(problem);
     const mod = await screenText(env, question);
     if (mod.action === "hold") { await recordFlag(env, "blocked", 0, mod, question, email, ""); return bad(blockMsg(mod)); }
     const ins = await env.DB.prepare("INSERT INTO questions (slug, listing, email, name, question, status) VALUES (?,?,?,?,?,?)")
-      .bind(slug, clip(b.listing, 140), email, prof.name, question, mod.action === "hold" ? "held" : "open").run();
+      .bind(slug, listing, email, prof.name, question, "private").run();
     await recordFlag(env, "question", ins.meta.last_row_id, mod, question, email, prof.name);
+    const site = env.SITE_URL || "https://centexhomeschool.org";
     const { results: owners } = await env.DB.prepare("SELECT email FROM listing_owners WHERE slug=?").bind(slug).all();
+    let sent = 0;
     for (const o of owners) {
-      try { await sendMail(env, o.email, `New question about ${clip(b.listing, 140)}`,
-        `A family asked:\n\n"${question}"\n\nAnswer it at ${env.SITE_URL || "https://centexhomeschool.org"}/leaders.html. Your answer will show on your listing so other families see it too.\n\nCenTex Homeschool Hub`); } catch (e) {}
+      try {
+        if (await sendMail(env, o.email, `A family has a question about ${listing}`,
+          `Hi there,\n\n${prof.name}${prof.town ? " from " + prof.town : ""} found ${listing} on CenTex Homeschool Hub and asked:\n\n"${question}"\n\nJust reply to this email to answer them directly. Your reply goes to their inbox, and nothing is posted on the site.\n\nManage your listing: ${site}/leaders.html\n\nThanks,\nBerkli\nCenTex Homeschool Hub`,
+          null, { replyTo: email })) sent++;
+      } catch (e) { console.error("question email failed", e && e.message); }
     }
-    return json({ ok: true, hasLeader: owners.length > 0 });
+    if (!owners.length) {
+      // Nobody has claimed this listing yet: send it to the site owner to pass along.
+      const to = (env.ADMIN_EMAIL || "").split(",")[0].trim();
+      if (to) { try { await sendMail(env, to, `Question for ${listing} (unclaimed listing)`,
+        `${prof.name} <${email}> asked about ${listing}, which nobody has claimed yet:\n\n"${question}"\n\nReply to this email to answer them, or forward it to the group.`, null, { replyTo: email }); } catch (e) {} }
+    }
+    return json({ ok: true, hasLeader: owners.length > 0, sent });
   },
 
   // Anyone signed in (school, parent or teacher) can answer a question on a listing.

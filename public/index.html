@@ -1343,15 +1343,10 @@ async function loadOverrides(){
 let acct={signedIn:false}, QA={};
 const fmtDate=d=>{const t=new Date(d+"T12:00:00");return {m:t.toLocaleString("en-US",{month:"short"}),d:t.getDate(),w:t.toLocaleString("en-US",{weekday:"long"})};};
 function qaBlock(x){
-  const list=QA[sid(x)]||[];
-  const ansHtml=a=>`<p class="a${a.school?" school":""}"><span class="who">${esc(a.school?x.n:(a.name||"A parent"))}</span>${a.school?`<span class="school-tag">School</span>`:""}: ${esc(a.answer)}</p>`;
-  return `<div class="qa">${list.slice(0,3).map(q=>{ const an=q.answers||[];
-      return `<div class="qitem"><p class="q"><b>Q:</b> ${esc(q.question)} <span class="meta">— ${esc(q.name||"A parent")}</span></p>
-      ${an.length?an.slice(0,4).map(ansHtml).join(""):`<p class="noans">No answers yet. Know the answer?</p>`}
-      <button class="linkbtn" type="button" data-answer="${q.id}" style="align-self:flex-start;font-size:13px">Answer</button>
-      <form class="ask" data-answerq="${q.id}" hidden novalidate><textarea maxlength="600" placeholder="Share what you know. Please don't include phone numbers or email addresses."></textarea><div class="nrow"><button class="btn sm" type="submit" style="margin-top:0">Post answer</button></div><span class="status" role="status"></span></form></div>`;}).join("")}
-    <button class="linkbtn" type="button" data-ask="${esc(sid(x))}" style="align-self:flex-start">Ask ${list.length?"another":"a"} question</button>
-    <form class="ask" data-for="${esc(sid(x))}" hidden novalidate><textarea maxlength="300" placeholder="e.g. Do you take mid-year families?"></textarea><div class="nrow"><button class="btn sm" type="submit" style="margin-top:0">Send question</button></div><span class="status" role="status"></span></form>
+  // Private question to the group: emailed to them, never shown on the site.
+  return `<div class="qa">
+    <button class="linkbtn" type="button" data-ask="${esc(sid(x))}" style="align-self:flex-start">Ask a question</button>
+    <form class="ask" data-for="${esc(sid(x))}" hidden novalidate><textarea maxlength="1000" placeholder="e.g. Do you take mid-year families? Is there a sibling discount?"></textarea><span class="where" style="font-size:13px">Sent privately to ${esc(x.n)}. They'll reply to your email.</span><div class="nrow"><button class="btn sm" type="submit" style="margin-top:0">Send question</button></div><span class="status" role="status"></span></form>
   </div>`;
 }
 function needSignIn(){ placeAcct(true); showSignIn(); }
@@ -1594,7 +1589,7 @@ document.addEventListener("submit",async e=>{
   if(f.dataset.answerq){ r=await api("/api/questions/answer",{id:Number(f.dataset.answerq),answer:text});
     if(r.ok){ st.className="status ok"; st.textContent="Posted. Thanks for helping."; await loadQuestions(); return; } }
   else if(f.dataset.for){ const x=L.find(v=>sid(v)===f.dataset.for); r=await api("/api/questions",{slug:f.dataset.for,listing:x?x.n:"",question:text});
-    if(r.ok){f.reset(); st.className="status ok"; st.textContent=r.hasLeader?"Posted. The group and other families can answer here, and we'll email you when they do.":"Posted. Other families can answer here, and we'll email you when someone does."; await loadQuestions(); return;} }
+    if(r.ok){f.reset(); st.className="status ok"; st.textContent=r.hasLeader?`Sent to ${x?x.n:"the group"}. They'll reply to your email.`:`Sent. ${x?x.n:"This group"} hasn't claimed their listing yet, so we'll pass your question along and they'll reply to your email.`; return;} }
   else { r=await api("/api/board/reply",{id:Number(f.dataset.post),message:text});
     if(r.ok){f.reset(); st.className="status ok"; st.textContent="Sent. They have your email now and can write back."; return;} }
   st.className="status err"; st.textContent=r.error;
