@@ -1191,17 +1191,17 @@ const QAGE={k:"age",q:"How old are your kids?",o:[["Little ones","Pre-K and kind
 const QSCHOOL=[
  {k:"want",q:"What kind of school or group?",o:[["Friends & community","Park days, field trips, support"],["A teaching co-op","Parents share the teaching"],["Classes & tutors","Drop-off classes, tutors and enrichment"],["More structure","Hybrid or microschool, 1–5 days a week"]]},
  {k:"faith",q:"Does faith matter in your group?",o:[["Christian","Faith-based community"],["Catholic","Catholic community"],["Secular","Inclusive, no religious content"],["No preference","Open to either"]]},
- {k:"interest",q:"Any learning approach you love?",o:[["Classical",""],["Nature & Charlotte Mason",""],["STEM & coding",""],["Arts & music",""],["Gifted / 2e",""],["Nothing specific",""]]}
+ {k:"interest",q:"Any special interest?",o:[["Classical",""],["Nature & Charlotte Mason",""],["STEM & coding",""],["Arts & music",""],["Sports & martial arts",""],["Gifted / 2e",""],["Nothing specific",""]]}
 ];
 const QACT=[
- {k:"kind",q:"What kind of activity?",o:[["Sports & movement","Gymnastics, swim, martial arts, team sports, climbing"],["Arts, music & theater","Lessons, art studios, theater, dance, cooking"],["STEM & making","Coding, robotics, chess"],["Field trips & nature","Museums, Texas history, zoos, parks, farms"],["Surprise me","Show the best fits of any kind"]]},
+ {k:"kind",q:"What kind of activity?",o:[["Sports & martial arts","Martial arts, gymnastics, swim, team sports, climbing"],["Arts, music & theater","Lessons, art studios, theater, dance, cooking"],["STEM & making","Coding, robotics, chess"],["Field trips & nature","Museums, Texas history, zoos, parks, farms"],["Surprise me","Show the best fits of any kind"]]},
  {k:"when",q:"When would you go?",o:[["During the school day","Weekday daytime classes and homeschool days"],["Any time works","Evenings and weekends too"]]}
 ];
 function quizQs(){ const p=ans.path; return [QPATH,QTOWN,QAGE].concat(p==="Activities & field trips"?QACT:p==="Both"?QSCHOOL.concat(QACT):p?QSCHOOL:[]); }
 const GRADE={"Little ones":[-1,0],"Elementary":[1,5],"Middle school":[6,8],"High school":[9,12]};
 const WANT={"Friends & community":["group","coop"],"A teaching co-op":["coop"],"Classes & tutors":["class","tutor"],"More structure":["micro"]};
 const INTEREST={"Classical":["Classical"],"Nature & Charlotte Mason":["Nature-based","Charlotte Mason"],"STEM & coding":["STEM"],"Arts & music":["Arts"],"Gifted / 2e":["Gifted / 2e"]};
-const KIND={"Sports & movement":["Gymnastics","Swim","Martial arts","Sports","Baseball","Soccer","Climbing","Skating","Dance","Horseback","Archery & fencing","Kid gyms & play","Bowling & mini golf"],
+const KIND={"Sports & martial arts":["Gymnastics","Swim","Martial arts","Sports","Baseball","Soccer","Climbing","Skating","Dance","Horseback","Archery & fencing","Kid gyms & play","Bowling & mini golf"],
  "Arts, music & theater":["Music","Art","Theater","Dance","Cooking"],"STEM & making":["Coding","Makerspace & robotics","Chess","Stargazing"],
  "Field trips & nature":["Museums","Texas history","Zoos & animals","Nature centers & gardens","State parks","Farms & living history","Caves","Stargazing","Libraries","Outdoor skills","Clubs & 4-H"]};
 const TOWNMAP={"Liberty Hill":["Liberty Hill","Leander","Cedar Park","Georgetown"],"Leander / Cedar Park":["Leander","Cedar Park","Liberty Hill"],"Round Rock / Pflugerville":["Round Rock","Pflugerville"],"Georgetown":["Georgetown"],"Austin":["Austin"]};
@@ -1236,6 +1236,8 @@ function scoreActivity(x){
   const isTrip=x.tags.some(v=>FIELD_TAGS.has(v));
   const why=[]; let s=scoreCommon(x,why,isTrip); if(s===null) return null;
   if(hit.length){ s+=3; why.push(hit[0]); }
+  const IA={"Sports & martial arts":KIND["Sports & martial arts"],"Arts & music":KIND["Arts, music & theater"],"STEM & coding":KIND["STEM & making"],"Nature & Charlotte Mason":["Nature centers & gardens","State parks","Outdoor skills","Farms & living history","Zoos & animals"]}[ans.interest];
+  if(IA&&x.tags.some(v=>IA.includes(v))){ s+=2; if(!hit.length) why.push(x.tags.find(v=>IA.includes(v))); }
   if(ans.when==="During the school day"){
     if(x.daytime){s+=4;why.push("Daytime classes");} else if(x.homeschool){s+=3;why.push("Homeschool program");} else if(isTrip){s+=2;why.push("Open weekdays");}
   } else if(x.homeschool||x.daytime) s+=1;
