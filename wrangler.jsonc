@@ -6,7 +6,7 @@
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
-    "run_worker_first": ["/api/*"],
+    "run_worker_first": ["/api/*", "/", "/directory", "/activities", "/calendar", "/resources", "/community", "/jobs", "/texas-history", "/news", "/newsletter"],
     "not_found_handling": "single-page-application"
   },
   // Serve the site on the real domain (Workers custom domains: Cloudflare manages these DNS records).

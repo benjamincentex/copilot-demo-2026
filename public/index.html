@@ -3,7 +3,6 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="robots" content="noindex, nofollow">
 <meta name="description" content="Homeschool begins here. Central Texas homeschool schools, co-ops, classes, tutors and homeschool-friendly activities from Liberty Hill to South Austin.">
 <title>CenTex Homeschool Hub</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1060,7 +1059,7 @@ function showView(noScroll){
   if(curView==="directory"){ const sec=location.pathname.replace(/\/+$/,"")==="/activities"?"activity":"learn"; if(state.section!==sec){ state.section=sec; render(); } }
   document.querySelectorAll("[data-view]").forEach(el=>{ el.hidden=!el.dataset.view.split(" ").includes(curView); });
   document.querySelectorAll("nav.links a").forEach(a=>{ if(viewOf(new URL(a.href).pathname)===curView&&curView!=="home") a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
-  document.title=curView==="home"?"CenTex Homeschool Hub":TITLES[curView]+" · CenTex Homeschool Hub";
+  document.title=curView==="home"?"Central Texas Homeschool Directory: Co-ops, Classes & Activities | CenTex Homeschool Hub":(location.pathname.replace(/\/+$/,"")==="/activities"?"Homeschool Activities & Field Trips":TITLES[curView])+" in Austin & Central Texas | CenTex Homeschool Hub";
   if(curView==="community"||curView==="jobs"||curView==="calendar") placeAcct(false);
   const fb=$("footBar"); if(fb){ fb.hidden=curView==="newsletter"||curView==="home"; /* these pages already have the full newsletter signup */ fb.dataset.signbar=({directory:"directory",calendar:"calendar",news:"news"})[curView]||"newsletter"; try{ renderBars(); }catch(e){} }
   if(noScroll) return;

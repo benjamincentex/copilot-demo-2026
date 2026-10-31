@@ -1686,6 +1686,36 @@ async function snapshotSites(env, batch = 12) {
   return todo.length;
 }
 
+// Each main page gets its own title, description and canonical link in the HTML itself, so search engines see them without running JavaScript.
+const SEO = {
+  "/": ["Central Texas Homeschool Directory: Co-ops, Classes & Activities | CenTex Homeschool Hub", "Homeschooling in Central Texas and Austin starts here: find homeschool co-ops, support groups, classes, microschools, tutors and homeschool-friendly activities from Liberty Hill and Leander to Cedar Park, Round Rock, Georgetown and Austin."],
+  "/directory": ["Austin & Central Texas Homeschool Co-ops, Groups & Microschools | CenTex Homeschool Hub", "Browse homeschool co-ops, support groups, classes, tutors and hybrid microschools in Austin, Leander, Cedar Park, Liberty Hill, Round Rock, Pflugerville and Georgetown. Filter by town, ages and approach."],
+  "/activities": ["Homeschool Activities & Field Trips in Austin and Central Texas | CenTex Homeschool Hub", "Homeschool-friendly sports, gymnastics, swim, martial arts, music, art, STEM, museums, nature centers and Texas history field trips around Austin and Central Texas, with daytime classes."],
+  "/calendar": ["Central Texas Homeschool Calendar: Open Houses, Deadlines & Events | CenTex Homeschool Hub", "Homeschool open houses, application deadlines, homeschool days and weekly classes across Austin and Central Texas, color-coded and searchable by town."],
+  "/resources": ["How to Homeschool in Texas: Law, Getting Started & TEFA | CenTex Homeschool Hub", "A plain-language guide to homeschooling in Texas: what the law requires, how to withdraw from public school, getting started, TEFA education savings accounts and answers to common questions."],
+  "/community": ["Central Texas Homeschool Community: Find Families & Groups | CenTex Homeschool Hub", "Connect with homeschool families in Austin and Central Texas. Post what you're looking for, share events and meet families nearby."],
+  "/jobs": ["Homeschool Tutors & Teaching Jobs in Austin and Central Texas | CenTex Homeschool Hub", "Find homeschool tutors, or co-op, microschool and enrichment teaching jobs, around Austin and Central Texas."],
+  "/texas-history": ["Texas History for Homeschoolers: Field Trips, Books, Classes & Printables | CenTex Homeschool Hub", "Teach Texas history at home: an interactive timeline, Central Texas field trips, classes, the best books, free printables, a quiz and a printable Texas history passport."],
+  "/news": ["Texas Homeschool News & Law Updates | CenTex Homeschool Hub", "Plain-language summaries of Texas and national homeschool news, law changes and TEFA updates that matter to Central Texas homeschool families."],
+  "/newsletter": ["Central Texas Homeschool Newsletter | CenTex Homeschool Hub", "A monthly newsletter with homeschool open houses, deadlines, new groups and law changes in Central Texas, plus a short Monday quote to inspire you."],
+};
+async function seoPage(request, env, url) {
+  const res = await env.ASSETS.fetch(request);
+  const meta = request.method === "GET" && SEO[url.pathname.replace(/\/+$/, "") || "/"];
+  if (!meta || !(res.headers.get("content-type") || "").includes("text/html")) return res;
+  const canon = "https://centexhomeschool.org" + (url.pathname.replace(/\/+$/, "") || "/");
+  const esc = (t) => t.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+  const ld = url.pathname === "/" ? `<script type="application/ld+json">${JSON.stringify({ "@context": "https://schema.org", "@graph": [
+    { "@type": "WebSite", name: "CenTex Homeschool Hub", url: "https://centexhomeschool.org/", potentialAction: { "@type": "SearchAction", target: "https://centexhomeschool.org/directory?q={search_term_string}", "query-input": "required name=search_term_string" } },
+    { "@type": "Organization", name: "CenTex Homeschool Hub", url: "https://centexhomeschool.org/", logo: "https://centexhomeschool.org/social/facebook-post.jpg", areaServed: ["Austin", "Leander", "Cedar Park", "Liberty Hill", "Round Rock", "Pflugerville", "Georgetown", "Central Texas"].map((n) => ({ "@type": "Place", name: n })) },
+  ] })}</script>` : "";
+  return new HTMLRewriter()
+    .on("title", { element(e) { e.setInnerContent(meta[0]); } })
+    .on('meta[name="description"]', { element(e) { e.setAttribute("content", meta[1]); } })
+    .on("head", { element(e) { e.append(`<link rel="canonical" href="${canon}"><meta property="og:type" content="website"><meta property="og:site_name" content="CenTex Homeschool Hub"><meta property="og:title" content="${esc(meta[0])}"><meta property="og:description" content="${esc(meta[1])}"><meta property="og:url" content="${canon}"><meta property="og:image" content="https://centexhomeschool.org/social/facebook-post.jpg"><meta name="twitter:card" content="summary_large_image">${ld}`, { html: true }); } })
+    .transform(res);
+}
+
 export default {
   async scheduled(event, env, ctx) {
     if (event.cron === "*/10 * * * *") ctx.waitUntil(snapshotSites(env));
@@ -1695,7 +1725,7 @@ export default {
 
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
+    if (!url.pathname.startsWith("/api/")) return seoPage(request, env, url);
     const pm = request.method === "GET" && url.pathname.match(/^\/api\/photo\/spotlight\/(\d+)$/);
     if (pm) {
       const row = await env.DB.prepare("SELECT photo_type, photo FROM spotlights WHERE id=? AND status!='removed'").bind(Number(pm[1])).first();

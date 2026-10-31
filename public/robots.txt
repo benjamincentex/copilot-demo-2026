@@ -1,2 +1,7 @@
 User-agent: *
-Disallow: /
+Allow: /
+Disallow: /admin.html
+Disallow: /leaders.html
+Disallow: /api/
+
+Sitemap: https://centexhomeschool.org/sitemap.xml
