@@ -344,6 +344,30 @@ const routes = {
     return json({ ok: true });
   },
 
+  // One click from the group's published contact address approves the claim.
+  "GET /api/claim/confirm": async (req, env) => {
+    const t = clip(new URL(req.url).searchParams.get("t"), 64).replace(/[^a-f0-9]/gi, "");
+    const { results } = t ? await env.DB.prepare("SELECT * FROM claims WHERE verify LIKE ? LIMIT 5").bind(`%"askToken":"${t}"%`).all() : { results: [] };
+    const c = results[0];
+    if (!c) return simplePage("Confirm", "That link has expired or was already used.");
+    const v = JSON.parse(c.verify); v.confirmedBy = v.askedTo; v.confirmedAt = new Date().toISOString(); v.level = "strong"; delete v.askToken;
+    await env.DB.prepare("UPDATE claims SET verify=? WHERE id=?").bind(JSON.stringify(v), c.id).run();
+    if (c.status === "pending") {
+      const stamp = new Date().toISOString();
+      await env.DB.batch([
+        env.DB.prepare("INSERT OR REPLACE INTO listing_owners (slug, email, name, role, approved_at) VALUES (?,?,?,?,?)").bind(c.slug, c.email, c.name, c.role, stamp),
+        env.DB.prepare("UPDATE claims SET status='approved', reviewed_at=? WHERE id=?").bind(stamp, c.id),
+      ]);
+      const prevRow = await env.DB.prepare("SELECT data FROM listing_overrides WHERE slug=?").bind(c.slug).first();
+      const prev = prevRow ? JSON.parse(prevRow.data) : {};
+      await env.DB.prepare("INSERT INTO listing_overrides (slug, data, updated_at, updated_by) VALUES (?,?,?,?) ON CONFLICT(slug) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at").bind(c.slug, JSON.stringify({ ...prev, claimed: true }), stamp, "contact-confirmed").run();
+      const site = env.SITE_URL || "https://centexhomeschool.org";
+      try { await sendMail(env, c.email, `You can now manage ${c.listing} on CenTex Homeschool Hub`, `Hi ${c.name || "there"},\n\n${v.confirmedBy} confirmed you're part of ${c.listing}, so your claim is approved. Sign in at ${site}/leaders.html with this email address to update your details and availability anytime.\n\n` + (await joinBlock(env, c.email)) + `Thanks,\nBerkli\nCenTex Homeschool Hub`); } catch {}
+      await notifyOwner(env, `Claim confirmed by the group: ${c.listing}`, `${v.confirmedBy} (from ${c.listing}'s website) confirmed ${c.email}, so the claim was approved automatically.`);
+    }
+    return simplePage("Confirmed", `Thanks! ${c.name || "They"} can now manage ${c.listing}'s listing.`);
+  },
+
   "POST /api/subscribe": async (req, env) => {
     const b = await body(req); if (!b) return bad("Invalid request.");
     const email = clip(b.email, 160).toLowerCase();
@@ -588,10 +612,11 @@ const routes = {
     if (owned) return json({ ok: true, already: true });
     const dup = await env.DB.prepare("SELECT 1 FROM claims WHERE slug=? AND email=? AND status='pending'").bind(slug, email).first();
     if (!dup) {
-      await env.DB.prepare("INSERT INTO claims (slug, listing, town, email, name, role, note, type) VALUES (?,?,?,?,?,?,?,?)")
-        .bind(slug, clip(b.listing, 140), clip(b.town, 60), email, clip(b.name, 80), clip(b.role, 60), clip(b.note, 500), clip(b.type, 20)).run();
+      let ver = null; try { ver = await verifyClaim(env, slug, email, normSite(b.proof)); } catch (e) { console.error("verify failed", e && e.message); }
+      await env.DB.prepare("INSERT INTO claims (slug, listing, town, email, name, role, note, type, verify) VALUES (?,?,?,?,?,?,?,?,?)")
+        .bind(slug, clip(b.listing, 140), clip(b.town, 60), email, clip(b.name, 80), clip(b.role, 60), clip(b.note, 500), clip(b.type, 20), ver ? JSON.stringify(ver) : null).run();
       await notifyOwner(env, `New listing claim: ${clip(b.listing, 140)}`,
-        `${clip(b.name, 80)}${clip(b.role, 60) ? " (" + clip(b.role, 60) + ")" : ""} wants to manage ${clip(b.listing, 140)}.\nEmail: ${email}${clip(b.note, 500) ? "\nNote: " + clip(b.note, 500) : ""}`);
+        `${clip(b.name, 80)}${clip(b.role, 60) ? " (" + clip(b.role, 60) + ")" : ""} wants to manage ${clip(b.listing, 140)}.\nEmail: ${email}${clip(b.note, 500) ? "\nNote: " + clip(b.note, 500) : ""}\n\nVerification: ${!ver ? "couldn't check" : ver.level === "strong" ? "STRONG MATCH (" + [ver.domainMatch && "email matches their website domain", ver.emailOnSite && "email is listed on their website", ver.proofChecked && "proof link mentions their email"].filter(Boolean).join(", ") + ")" : ver.freeEmail ? "personal email address, not linked to their website. Check before approving." : "no match found on their website. Check before approving."}`);
       try {
         await sendMail(env, email, `We got your request to manage ${clip(b.listing, 140)}`,
           `Hi ${clip(b.name, 80) || "there"},\n\nThanks for claiming ${clip(b.listing, 140)} on CenTex Homeschool Hub. We're reviewing your request now and will email you as soon as it's approved, usually within a couple of days.\n\n` +
@@ -1097,13 +1122,14 @@ const routes = {
 
   "GET /api/admin/claims": async (req, env) => {
     const { results } = await env.DB.prepare("SELECT * FROM claims WHERE status='pending' ORDER BY id DESC LIMIT 200").all();
-    return json({ claims: results });
+    const { results: recent } = await env.DB.prepare("SELECT id, slug, listing, email, name, role, status, reviewed_at, created_at FROM claims WHERE status!='pending' ORDER BY COALESCE(reviewed_at, created_at) DESC LIMIT 25").all();
+    return json({ claims: results, recent });
   },
 
   "POST /api/admin/claims/approve": async (req, env) => {
     const b = await body(req); const id = Number(b && b.id); if (!id) return bad("Missing id.");
-    const c = await env.DB.prepare("SELECT * FROM claims WHERE id=? AND status='pending'").bind(id).first();
-    if (!c) return bad("That claim was already handled.", 404);
+    const c = await env.DB.prepare("SELECT * FROM claims WHERE id=? AND status IN ('pending','rejected','revoked')").bind(id).first();
+    if (!c) return bad("That claim is already approved.", 404);
     const stamp = new Date().toISOString();
     await env.DB.batch([
       env.DB.prepare("INSERT OR REPLACE INTO listing_owners (slug, email, name, role, approved_at) VALUES (?,?,?,?,?)").bind(c.slug, c.email, c.name, c.role, stamp),
@@ -1127,6 +1153,40 @@ const routes = {
     return json({ ok: true });
   },
 
+  // Take management access away after approving (the listing goes back to unclaimed if nobody else manages it).
+  "POST /api/admin/claims/recheck": async (req, env) => {
+    const b = await body(req); const c = await env.DB.prepare("SELECT * FROM claims WHERE id=?").bind(Number(b && b.id)).first(); if (!c) return bad("Claim not found.", 404);
+    const prev = (() => { try { return JSON.parse(c.verify || "{}"); } catch { return {}; } })();
+    const v = await verifyClaim(env, c.slug, c.email, prev.proof || ""); if (prev.confirmedBy) v.confirmedBy = prev.confirmedBy;
+    await env.DB.prepare("UPDATE claims SET verify=? WHERE id=?").bind(JSON.stringify(v), c.id).run();
+    return json({ ok: true, verify: v });
+  },
+  // Email the contact address the group publishes on its own website and ask them to confirm the claim with one click.
+  "POST /api/admin/claims/ask-contact": async (req, env) => {
+    const b = await body(req); const c = await env.DB.prepare("SELECT * FROM claims WHERE id=?").bind(Number(b && b.id)).first(); if (!c) return bad("Claim not found.", 404);
+    const v = (() => { try { return JSON.parse(c.verify || "{}"); } catch { return {}; } })();
+    const to = clip(b.to, 160).toLowerCase(); if (!(v.siteEmails || []).includes(to)) return bad("Pick one of the addresses published on their website.");
+    const token = randomToken(16); v.askToken = token; v.askedTo = to; v.askedAt = new Date().toISOString();
+    await env.DB.prepare("UPDATE claims SET verify=? WHERE id=?").bind(JSON.stringify(v), c.id).run();
+    const site = env.SITE_URL || "https://centexhomeschool.org";
+    const ok = await sendMail(env, to, `Did ${c.name || "someone"} from ${c.listing} ask to manage your listing?`,
+      `Hello,\n\nWe found this address on ${c.listing}'s website. ${c.name || "Someone"}${c.role ? " (" + c.role + ")" : ""} using ${c.email} asked to manage ${c.listing}'s free listing on CenTex Homeschool Hub, a directory for Central Texas homeschool families.\n\nIf they're part of your team, confirm with one click: ${site}/api/claim/confirm?t=${token}\n\nIf you don't recognize them, just ignore this email and nothing will change.\n\nThanks,\nBerkli\nCenTex Homeschool Hub`);
+    return ok ? json({ ok: true }) : bad("The email didn't send.", 502);
+  },
+  "POST /api/admin/claims/revoke": async (req, env) => {
+    const b = await body(req); const id = Number(b && b.id); if (!id) return bad("Missing id.");
+    const c = await env.DB.prepare("SELECT * FROM claims WHERE id=?").bind(id).first(); if (!c) return bad("Claim not found.", 404);
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM listing_owners WHERE slug=? AND email=?").bind(c.slug, c.email),
+      env.DB.prepare("UPDATE claims SET status='revoked', reviewed_at=? WHERE id=?").bind(new Date().toISOString(), id),
+    ]);
+    const left = await env.DB.prepare("SELECT 1 FROM listing_owners WHERE slug=?").bind(c.slug).first();
+    if (!left) {
+      const row = await env.DB.prepare("SELECT data FROM listing_overrides WHERE slug=?").bind(c.slug).first();
+      if (row) { const d = JSON.parse(row.data); delete d.claimed; await env.DB.prepare("UPDATE listing_overrides SET data=? WHERE slug=?").bind(JSON.stringify(d), c.slug).run(); }
+    }
+    return json({ ok: true });
+  },
   "POST /api/admin/claims/reject": async (req, env) => {
     const b = await body(req); const id = Number(b && b.id); if (!id) return bad("Missing id.");
     await env.DB.prepare("UPDATE claims SET status='rejected', reviewed_at=? WHERE id=?").bind(new Date().toISOString(), id).run();
@@ -1540,6 +1600,46 @@ async function sendWeeklyQuote(env, force = false) {
 // waitlists or openings. These only feed a "per their website" placeholder for UNCLAIMED listings,
 // set after review; a group's own claimed status always wins.
 const AVAIL_WORDS_RE = /(wait\s?-?list|enrol(l)?(ment|ing)?|registration|register now|now accepting|accepting (new )?(students|families|applications)|applications? (are )?(open|closed|due)|open (spots|seats|enrollment|house)|spots? (left|available|remaining|open)|seats? (left|available|remaining)|currently full|is full|sold out|no openings|limited (spots|space|availability)|openings)/i;
+// ---- Claim verification: is the claimer really the group's contact? ----
+const FREE_MAIL = /@(gmail|googlemail|yahoo|ymail|hotmail|outlook|live|msn|aol|icloud|me|mac|proton|protonmail|gmx|mail|zoho)\.(com|net|me)$/i;
+const baseDomain = (h) => String(h || "").toLowerCase().replace(/^www\./, "").split(".").slice(-2).join(".");
+async function listingSiteFor(env, slug) {
+  const ov = await env.DB.prepare("SELECT data FROM listing_overrides WHERE slug=?").bind(slug).first();
+  try { const d = ov && JSON.parse(ov.data); if (d && d.site) return d.site; } catch {}
+  const ul = await env.DB.prepare("SELECT data FROM user_listings WHERE slug=?").bind(slug).first();
+  try { const d = ul && JSON.parse(ul.data); if (d && d.site) return d.site; } catch {}
+  const m = (await listingSites(env)).find((x) => x.slug === slug); return m ? m.url : "";
+}
+async function verifyClaim(env, slug, email, proof) {
+  const v = { site: "", siteDomain: "", emailDomain: email.split("@")[1] || "", freeEmail: FREE_MAIL.test(email), domainMatch: false, emailOnSite: false, siteEmails: [], facebook: "", proof: proof || "", proofChecked: false, checkedAt: new Date().toISOString() };
+  v.site = await listingSiteFor(env, slug);
+  const isFb = /facebook\.com/i.test(v.site);
+  if (isFb) v.facebook = v.site;
+  if (v.site && !isFb) {
+    try { v.siteDomain = baseDomain(new URL(v.site).hostname); } catch {}
+    if (v.siteDomain && baseDomain(v.emailDomain) === v.siteDomain) v.domainMatch = true;
+    // Read the home page plus a contact/about page and collect the email addresses the group publishes.
+    const pages = [v.site]; let found = new Set();
+    for (let i = 0; i < pages.length && i < 3; i++) {
+      try {
+        const r = await fetch(pages[i], { headers: { "user-agent": "CenTexHomeschoolHub/1.0 (+https://centexhomeschool.org)" }, redirect: "follow", signal: AbortSignal.timeout(7000) });
+        if (!r.ok) continue; const html = (await r.text()).slice(0, 500000);
+        for (const m of html.matchAll(/(?:mailto:)?([a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,})/gi)) { const e = m[1].toLowerCase(); if (!/\.(png|jpe?g|gif|webp|svg)$/.test(e) && !/sentry|wixpress|example\.com|domain\.com/.test(e)) found.add(e); }
+        if (!v.facebook) { const fb = html.match(/https?:\/\/(?:www\.)?facebook\.com\/[A-Za-z0-9.\-_/]+/); if (fb && !/sharer|plugins|tr\?/.test(fb[0])) v.facebook = fb[0]; }
+        if (i === 0) for (const h of [...html.matchAll(/href="([^"#]+)"/gi)].map((m) => m[1]).filter((h) => /contact|about|staff|team|leadership|board/i.test(h)).slice(0, 2)) { try { const u = new URL(h, v.site).toString(); if (!pages.includes(u)) pages.push(u); } catch {} }
+        if (proof && !v.proofChecked) {} // proof links are checked below
+      } catch {}
+    }
+    v.siteEmails = [...found].slice(0, 6);
+    v.emailOnSite = v.siteEmails.includes(email.toLowerCase());
+  }
+  // Optional proof link from the claimer (staff page, Facebook post): check that it mentions their email or name.
+  if (proof && /^https?:\/\//i.test(proof) && !/facebook\.com/i.test(proof)) {
+    try { const r = await fetch(proof, { headers: { "user-agent": "CenTexHomeschoolHub/1.0" }, signal: AbortSignal.timeout(7000) }); if (r.ok) { const t = (await r.text()).toLowerCase(); v.proofChecked = t.includes(email.toLowerCase()); } } catch {}
+  }
+  v.level = v.domainMatch || v.emailOnSite || v.proofChecked ? "strong" : v.freeEmail ? "weak" : "unknown";
+  return v;
+}
 async function listingSites(env) {
   const r = await env.ASSETS.fetch(new Request("https://assets.local/listings.js"));
   const txt = await r.text(), out = [];

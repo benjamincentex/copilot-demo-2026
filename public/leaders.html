@@ -314,14 +314,15 @@ html{scroll-behavior:smooth}
     <div class="box" id="pendingBox" hidden><h2>Waiting for approval</h2><div id="pendingList"></div></div>
     <div class="box">
       <h2>Claim a listing</h2>
-      <p class="where" style="margin:0">Pick your group. Don't see it? <a href="/directory#submit">Add it to the directory</a> first.</p>
+      <p class="where" style="margin:0">Pick your group. Don't see it? <a href="/directory#submit">Add it to the directory</a> first. To protect groups, we check every claim against the group's own website. You'll be approved fastest if you're signed in with an email at your group's web address (like you@yourcoop.org) or the email listed on your website.</p>
       <form id="claimForm" novalidate>
         <div class="field"><label for="c-listing">Listing</label><select id="c-listing"></select></div>
         <div class="row2" style="margin-top:12px">
           <div class="field"><label for="c-name">Your name</label><input id="c-name" maxlength="80"></div>
           <div class="field"><label for="c-role">Your role</label><input id="c-role" maxlength="60" placeholder="e.g. Co-op director"></div>
         </div>
-        <div class="field" style="margin-top:12px"><label for="c-note">Anything that helps us confirm (optional)</label><input id="c-note" maxlength="500" placeholder="e.g. I'm listed as contact on our website"></div>
+        <div class="field" style="margin-top:12px"><label for="c-proof">Link that shows you're with this group (optional)</label><input id="c-proof" type="text" inputmode="url" autocapitalize="off" maxlength="300" placeholder="e.g. your staff or contact page that lists your email"></div>
+        <div class="field" style="margin-top:12px"><label for="c-note">Anything else that helps us confirm (optional)</label><input id="c-note" maxlength="500" placeholder="e.g. I run our Facebook page"></div>
         <div class="formfoot" style="margin-top:12px"><button class="btn" type="submit" style="margin-top:0">Request to manage this listing</button><span class="status" id="claimStatus" role="status"></span></div>
       </form>
     </div>
@@ -477,7 +478,7 @@ $("claimForm").addEventListener("submit",async e=>{
   e.preventDefault(); const id=$("c-listing").value, x=bySlug()[id];
   if(!$("c-name").value.trim()){setStatus("claimStatus","err","Add your name so we can confirm you lead this group.");$("c-name").focus();return;}
   setStatus("claimStatus","","Sending…");
-  const r=await api("/api/leader/claim",{slug:id,listing:x.n,town:x.town,type:x.type,name:$("c-name").value.trim(),role:$("c-role").value.trim(),note:$("c-note").value.trim()});
+  const r=await api("/api/leader/claim",{slug:id,listing:x.n,town:x.town,type:x.type,name:$("c-name").value.trim(),role:$("c-role").value.trim(),note:$("c-note").value.trim(),proof:$("c-proof").value.trim()});
   if(!r.ok){setStatus("claimStatus","err",r.error);return;}
   setStatus("claimStatus","ok",r.already?"You already manage this listing.":"Request sent. We'll email you once it's approved.");
   load();

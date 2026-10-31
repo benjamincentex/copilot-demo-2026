@@ -69,3 +69,4 @@ ALTER TABLE subscribers ADD COLUMN weekly_quotes INTEGER DEFAULT 1;
 CREATE TABLE IF NOT EXISTS quote_sends (week TEXT NOT NULL, email TEXT NOT NULL, ok INTEGER, sent_at TEXT DEFAULT (datetime('now')), PRIMARY KEY (week, email));
 CREATE TABLE IF NOT EXISTS join_tokens (token TEXT PRIMARY KEY, email TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now')));
 CREATE TABLE IF NOT EXISTS contact_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT, message TEXT, page TEXT, ip TEXT, created_at TEXT DEFAULT (datetime('now')));
+ALTER TABLE claims ADD COLUMN verify TEXT;

@@ -221,6 +221,10 @@ html{scroll-behavior:smooth}
 .stats4 div{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px}
 .stats4 b{display:block;font-family:var(--display);font-size:28px;font-weight:400;font-variant-numeric:tabular-nums}
 .stats4 span{font-size:13px;color:var(--muted)}
+.vbox{display:flex;flex-direction:column;gap:3px;font-size:13.5px;padding:10px 12px;border-radius:8px;background:var(--bg);border:1px solid var(--line)}
+.vbox.vok{border-color:#9DC3A4}
+.vbox.vno{border-color:var(--sun)}
+.vgood{color:#2F5A3D}.vwarn{color:#8A5A12}
 .stats4 button{font:inherit;text-align:left;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;cursor:pointer;display:flex;flex-direction:column}
 .stats4 button:hover{border-color:var(--oak)}
 .stats4 button[aria-expanded="true"]{border-color:var(--oak);box-shadow:inset 0 0 0 1px var(--oak)}
@@ -275,7 +279,7 @@ html{scroll-behavior:smooth}
       <input id="hideName" type="search" placeholder="Search by name, town or type…" autocomplete="off" style="font:inherit;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)"><span class="status" id="hideStatus" role="status"></span><div id="hideResults"></div>
       <h3 style="margin:6px 0 0;font-size:18px">Unpublished</h3><div id="hiddenList" class="where">No unpublished listings.</div></div>
     <div class="box" id="requests"><h2>Listing requests to review</h2><p class="where" style="margin:0">Requests from the "Add a listing" form. Check the details, pick a type, then publish. The submitter gets an email when it's live.</p><div id="reqList" class="where">No requests waiting.</div></div>
-    <div class="box"><h2>Listing claims to review</h2><div id="claims" class="where">No claims waiting.</div></div>
+    <div class="box"><h2>Listing claims to review</h2><p class="where" style="margin:0">When someone claims a listing, approve it to let them manage it, or reject it. You can remove access later too.</p><div id="claims" class="where">No claims waiting.</div></div>
     <div class="box" id="activity"><h2>Listing activity (last 30 days)</h2><p class="where" style="margin:0">How families interact with each listing. Views count when a listing is on screen for a second (once per visit). Featured listings get a quarterly version of this by email (Jan 1, Apr 1, Jul 1, Oct 1).</p><div id="actTable" class="where" style="overflow-x:auto">No activity yet.</div></div>
     <div class="box" id="newsAdmin"><h2>News page</h2><p class="where" style="margin:0">Stories are added automatically each week with a short summary and a link to the source. Hide anything you don't want on the site.</p><div id="newsAdminList" class="where">No stories yet.</div></div>
     <div class="box" id="referrals"><h2>Top referrers</h2><p class="where" style="margin:0">Every subscriber gets a personal share link in their welcome email, each newsletter and event reminders. Signups through a link are credited here, so you can thank (or later reward) your best ambassadors.</p><div id="refList" class="where">No referred signups yet.</div></div>
@@ -372,7 +376,9 @@ async function loadRequests(){
   const r=await api("/api/admin/detail?what=submissions"); if(!r.ok) return;
   const open=r.rows.filter(x=>x.status==="new");
   const guess=x=>{const t=((x.name||"")+" "+(x.details||"")).toLowerCase(); return /co-?op/.test(t)?"coop":/microschool|hybrid|academy|university model/.test(t)?"micro":/tutor/.test(t)?"tutor":/support group|moms group|park day/.test(t)?"group":/karate|martial|gym|dance|sport|swim|museum|zoo|farm|art|music|theater|camp|lesson/.test(t)?"activity":/class/.test(t)?"class":"activity";};
-  $("reqList").innerHTML=open.length?open.map(x=>{
+  const done=r.rows.filter(x=>x.status!=="new").slice(0,15);
+  const doneHtml=done.length?`<h3 style="margin:14px 0 4px;font-size:16px">Recently handled</h3>`+done.map(x=>`<div class="rev"><b style="color:var(--ink)">${esc(x.kind||"Request")}: ${esc(x.name)}</b><span>${esc(x.email)} · <span class="pill">${esc({approved:"Published",dismissed:"Dismissed",handled:"Handled"}[x.status]||x.status)}</span> ${when(x.created_at)}</span><div class="row">${x.status==="approved"?`<span class="where" style="font-size:13px">To take it down, use Unpublish a listing above.</span>`:`<button class="btn ghost sm" type="button" data-reqst="${x.id}:new">Reopen for review</button>`}</div></div>`).join(""):"";
+  $("reqList").innerHTML=(open.length?open.map(x=>{
     const isAdd=!/claim|correct|event/i.test(x.kind||"");
     return `<div class="rev" data-req="${x.id}"><b style="color:var(--ink)">${esc(x.kind||"Request")}: ${esc(x.name)}</b>
     <span>${esc(x.contact?x.contact+" · ":"")}${esc(x.email)} · ${when(x.created_at)}${x.website?` · <a href="${esc(x.website)}" target="_blank" rel="noopener">website</a>`:""}</span>
@@ -387,7 +393,7 @@ async function loadRequests(){
       <label class="full">Description families will see<textarea name="d" maxlength="300" rows="2">${esc((x.details||"").slice(0,300))}</textarea></label>
       <label class="full" style="flex-direction:row;align-items:center;gap:8px;color:var(--ink)"><input type="checkbox" name="makeOwner" checked style="width:auto"> Let ${esc(x.email)} manage this listing</label>
     </div>`:""}
-    <div class="row">${isAdd?`<button class="btn sm" type="button" data-reqpub="${x.id}">Publish listing</button>`:`<button class="btn sm" type="button" data-reqst="${x.id}:handled">Mark handled</button>`}<button class="btn ghost sm" type="button" data-reqst="${x.id}:dismissed">Dismiss</button><span class="status" role="status"></span></div></div>`;}).join(""):"No requests waiting.";
+    <div class="row">${isAdd?`<button class="btn sm" type="button" data-reqpub="${x.id}">Publish listing</button>`:`<button class="btn sm" type="button" data-reqst="${x.id}:handled">Mark handled</button>`}<button class="btn ghost sm" type="button" data-reqst="${x.id}:dismissed">Dismiss</button><span class="status" role="status"></span></div></div>`;}).join(""):"No requests waiting.")+doneHtml;
 }
 document.addEventListener("click",async e=>{
   const p=e.target.closest("[data-reqpub]"), st=e.target.closest("[data-reqst]"); if(!p&&!st) return;
@@ -442,6 +448,26 @@ document.getElementById("addForm").addEventListener("submit",async e=>{
   addForce=false; st.className="status ok"; st.innerHTML=`Live: <a href="/directory" target="_blank" rel="noopener">${esc(v("n"))}</a>${v("manager")?(r.emailed?" · manager emailed":" · manager can sign in to manage it"):""}.`;
   f.reset(); f.elements.notify.checked=true; load();
 });
+function verifyHtml(c){
+  let v={}; try{ v=JSON.parse(c.verify||"{}"); }catch(e){}
+  if(!v.checkedAt) return `<span class="vbox vunk">Not verified yet. <button class="linkbtn" type="button" data-recheck="${c.id}">Check now</button></span>`;
+  const ok=[], warn=[];
+  if(v.confirmedBy) ok.push(`Confirmed by ${esc(v.confirmedBy)} from their website`);
+  if(v.domainMatch) ok.push(`Email domain matches their website (${esc(v.siteDomain)})`);
+  if(v.emailOnSite) ok.push("Their email is published on the group's website");
+  if(v.proofChecked) ok.push("Their proof link mentions their email");
+  if(v.freeEmail) warn.push("Personal email address (Gmail, Yahoo, etc.)");
+  if(!v.site) warn.push("This listing has no website to check against");
+  else if(!v.domainMatch&&!v.emailOnSite) warn.push("Their email doesn't appear on the group's website");
+  const head=ok.length?`<b class="vgood">✓ Strong match</b>`:`<b class="vwarn">Check before approving</b>`;
+  const links=[v.site&&`<a href="${esc(v.site)}" target="_blank" rel="noopener">Website</a>`, v.facebook&&`<a href="${esc(v.facebook)}" target="_blank" rel="noopener">Facebook page</a>`, v.proof&&`<a href="${esc(v.proof)}" target="_blank" rel="noopener">Their proof link</a>`].filter(Boolean).join(" · ");
+  const ask=!ok.length&&(v.siteEmails||[]).length?`<span>Ask the group to confirm: ${v.siteEmails.map(e=>`<button class="btn ghost sm" type="button" data-askc="${c.id}" data-to="${esc(e)}" style="margin:2px 4px 0 0">Email ${esc(e)}</button>`).join("")}${v.askedTo?`<span class="where" style="font-size:12px"> Asked ${esc(v.askedTo)} ${esc((v.askedAt||"").slice(0,10))}. Approves automatically when they click.</span>`:""}</span>`:"";
+  return `<div class="vbox ${ok.length?"vok":"vno"}">${head}${ok.map(x=>`<span>✓ ${x}</span>`).join("")}${warn.map(x=>`<span>• ${x}</span>`).join("")}${links?`<span>${links}</span>`:""}${ask}${!ok.length&&!(v.siteEmails||[]).length&&v.site?`<span class="where" style="font-size:12px">No public email found on their site. Message their Facebook page or call them to confirm.</span>`:""}</div>`;
+}
+document.addEventListener("click",async e=>{
+  const rc=e.target.closest("[data-recheck]"); if(rc){ rc.disabled=true; rc.textContent="Checking…"; await api("/api/admin/claims/recheck",{id:Number(rc.dataset.recheck)}); load(); return; }
+  const ak=e.target.closest("[data-askc]"); if(ak){ if(!confirm(`Email ${ak.dataset.to} and ask them to confirm this person?`)) return; ak.disabled=true; const r=await api("/api/admin/claims/ask-contact",{id:Number(ak.dataset.askc),to:ak.dataset.to}); ak.textContent=r.ok?"Sent ✓":r.error; if(r.ok) setTimeout(load,1200); }
+});
 async function load(){
   loadNewsletters(); loadRequests(); loadFlags(); loadActivity(); loadReferrals(); loadNewsAdmin();
   const me=await api("/api/admin/me");
@@ -485,8 +511,10 @@ async function load(){
     <div class="row">${j.status==="awaiting_payment"?`<button class="btn sm" type="button" data-job="${j.id}:activate">Mark paid and publish</button>`:""}<button class="btn ghost sm" type="button" data-job="${j.id}:remove">Remove</button></div></div>`).join(""):"No job posts yet."; }
   const items=(cl.ok&&cl.claims)||[];
   $("claims").innerHTML=items.length?items.map(c=>`<div class="rev"><b style="color:var(--ink)">${esc(c.listing||c.slug)}</b>
-    <span>${esc(c.name||"")}${c.role?", "+esc(c.role):""} · ${esc(c.email)}</span>${c.note?`<span>${esc(c.note)}</span>`:""}
-    <div class="row"><button class="btn sm" type="button" data-approve="${c.id}">Approve</button><button class="btn ghost sm" type="button" data-reject="${c.id}">Reject</button></div></div>`).join(""):"No claims waiting.";
+    <span>${esc(c.name||"")}${c.role?", "+esc(c.role):""} · ${esc(c.email)}</span>${c.note?`<span>${esc(c.note)}</span>`:""}${verifyHtml(c)}
+    <div class="row"><button class="btn sm" type="button" data-approve="${c.id}">Approve</button><button class="btn ghost sm" type="button" data-reject="${c.id}">Reject</button><button class="linkbtn" type="button" data-recheck="${c.id}">Re-check</button></div></div>`).join(""):"No claims waiting.";
+  const rec=(cl.ok&&cl.recent)||[], lbl={approved:"Approved",rejected:"Rejected",revoked:"Access removed"};
+  if(rec.length) $("claims").innerHTML+=`<h3 style="margin:14px 0 4px;font-size:16px">Recently handled</h3>`+rec.map(c=>`<div class="rev"><b style="color:var(--ink)">${esc(c.listing||c.slug)}</b><span>${esc(c.name||"")} · ${esc(c.email)} · <span class="pill">${esc(lbl[c.status]||c.status)}</span> ${esc((c.reviewed_at||c.created_at||"").slice(0,10))}</span><div class="row">${c.status==="approved"?`<button class="btn ghost sm" type="button" data-revoke="${c.id}">Remove their access</button>`:`<button class="btn ghost sm" type="button" data-approve="${c.id}">Approve after all</button>`}</div></div>`).join("");
 }
 document.addEventListener("click",async e=>{
   const tb=e.target.closest("[data-tutor]");
@@ -498,6 +526,7 @@ document.addEventListener("click",async e=>{
   const a=e.target.closest("[data-approve]"), r=e.target.closest("[data-reject]");
   if(a){a.disabled=true; const x=await api("/api/admin/claims/approve",{id:Number(a.dataset.approve)}); x.ok?load():(a.disabled=false);}
   if(r){r.disabled=true; const x=await api("/api/admin/claims/reject",{id:Number(r.dataset.reject)}); x.ok?load():(r.disabled=false);}
+  const rv=e.target.closest("[data-revoke]"); if(rv){ if(!confirm("Remove this person's access to manage the listing?")) return; rv.disabled=true; const x=await api("/api/admin/claims/revoke",{id:Number(rv.dataset.revoke)}); x.ok?load():(rv.disabled=false);}
 });
 $("planForm").addEventListener("submit",async e=>{
   e.preventDefault(); const st=$("planStatus"); st.className="status"; st.textContent="Saving…";
