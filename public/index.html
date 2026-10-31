@@ -1094,9 +1094,19 @@ function matches(x){
   if(state.type && x.type!==state.type) return false;
   if(state.approach && !x.tags.includes(state.approach)) return false;
   if(state.towns.length && !townsOf(x).some(t=>state.towns.includes(t))) return false;
-  if(state.q){const hay=[x.n,x.town,x.d,x.sched||"",x.tags.join(" "),TYPES[x.type][0]].join(" ").toLowerCase();
-    if(!state.q.toLowerCase().split(/\s+/).every(w=>hay.includes(w))) return false;}
+  if(state.q && qScore(x,state.q)<0) return false;
   return true;
+}
+// Search-as-you-type: every typed word must match the START of a word (so "k" finds Karate, "ced" finds Cedar Park).
+// Returns -1 for no match, otherwise a rank (higher = better: name matches first).
+const qEsc=w=>w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+function qScore(x,q){
+  const words=q.toLowerCase().replace(/[^a-z0-9&'\s-]/g," ").split(/\s+/).filter(Boolean); if(!words.length) return 0;
+  const name=x.n.toLowerCase(), hay=[x.n,townsOf(x).join(" "),x.d||"",x.sched||"",(x.tags||[]).join(" "),TYPES[x.type][0]].join(" ").toLowerCase();
+  let score=0;
+  for(const w of words){ const re=new RegExp("(^|[^a-z0-9])"+qEsc(w));
+    if(re.test(name)) score+=name.startsWith(w)?3:2; else if(re.test(hay)) score+=1; else return -1; }
+  return score;
 }
 const isFeat=x=>["featured","partner","enhanced"].includes(x.plan);
 // Descriptions: free listings show 75 characters; Featured listings show 75 with "Read more".
@@ -1134,6 +1144,11 @@ let showAll=false;
 function render(){
   const res=L.filter(matches);
   if(state.section==="activity") res.sort((a,b)=>((b.daytime?2:b.homeschool?1:0)-(a.daytime?2:a.homeschool?1:0))); // daytime classes first
+  if(state.q) res.sort((a,b)=>qScore(b,state.q)-qScore(a,state.q)); // best name matches first
+  // Matches in the other tab (schools vs activities), so a search never looks empty when the answer is next door.
+  const other=state.q?L.filter(x=>!x.test&&((state.section==="activity")!==(x.type==="activity"))&&qScore(x,state.q)>=0):[];
+  const otherNote=other.length?`<p class="where" style="margin:10px 0 0">${other.length} ${other.length===1?"match":"matches"} in <a href="${state.section==="activity"?"/directory":"/activities"}" data-crosssearch>${state.section==="activity"?"Schools & co-ops":"Activities"}</a>: ${other.slice(0,4).map(x=>esc(x.n)).join(", ")}${other.length>4?"…":""}</p>`:"";
+  const xs=$("crossNote")||(()=>{const d=document.createElement("div"); d.id="crossNote"; $("grid").after(d); return d;})(); xs.innerHTML=otherNote;
   const filtering=state.q||state.type||state.approach||state.towns.length||state.open;
   const shown=(filtering||showAll)?res:res.slice(0,12);
   // Keep the sign-in box alive if it was opened inside a card, and put it back after re-rendering.
@@ -1238,6 +1253,7 @@ $("townChips").innerHTML=TOWNS.map(t=>`<button class="chip" type="button" data-t
 const toggleTown=(list,t)=>t==="All"?[]:list.includes(t)?list.filter(x=>x!==t):list.concat(t);
 $("townChips").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;state.towns=toggleTown(state.towns,b.dataset.town);render();});
 $("q").addEventListener("input",e=>{state.q=e.target.value.trim();render();});
+document.addEventListener("click",e=>{const a=e.target.closest("[data-crosssearch]"); if(!a) return; e.preventDefault(); history.pushState(null,"",a.getAttribute("href")); showView(true); $("q").value=state.q; render(); });
 $("typeSel").addEventListener("change",e=>{state.type=e.target.value;render();});
 $("approachSel").addEventListener("change",e=>{state.approach=e.target.value;render();});
 $("openNow").addEventListener("click",()=>{state.open=!state.open;render();});
