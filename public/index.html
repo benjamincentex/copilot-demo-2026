@@ -418,6 +418,8 @@ section .intro p{color:var(--muted);margin:10px 0 0}
 .opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .opt{font:inherit;text-align:left;padding:14px 16px;border:1px solid var(--line);border-radius:var(--r);background:var(--bg);color:var(--ink);cursor:pointer;display:flex;flex-direction:column;gap:2px}
 .opt:hover{border-color:var(--oak)}
+.opt.picked{border-color:var(--oak);box-shadow:inset 0 0 0 1px var(--oak)}
+.msec{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:14px 0 6px;font-family:var(--body)}
 .opt b{font-weight:600}
 .opt span{font-size:13px;color:var(--muted)}
 .qnav{display:flex;justify-content:space-between;margin-top:16px}
@@ -561,8 +563,8 @@ html{scroll-behavior:smooth}
   <section id="fit" data-view="home" style="padding-block:24px 8px">
     <div class="intro">
       <span class="label">Find your fit</span>
-      <h2>Five questions to your best-matched groups</h2>
-      <p>Tell us a little about your family and we'll pick the co-ops, groups and classes that fit, out of every listing in the directory.</p>
+      <h2>A few quick questions to your best matches</h2>
+      <p>Looking for a school or group, activities and field trips, or both? Tell us a little about your family and we'll pick the best fits from every listing.</p>
     </div>
     <div class="quiz" id="quiz" aria-live="polite"></div>
   </section>
@@ -1183,16 +1185,26 @@ function render(){
   document.querySelectorAll("#townChips .chip").forEach(c=>c.setAttribute("aria-pressed",c.dataset.town==="All"?!state.towns.length:state.towns.includes(c.dataset.town)));
 }
 // ---- Find your fit quiz ----
-const QS=[
- {k:"town",q:"Where do you live?",o:[["Liberty Hill","Includes nearby Leander, Cedar Park and Georgetown"],["Leander / Cedar Park","Northwest suburbs"],["Round Rock / Pflugerville",""],["Georgetown",""],["Austin","Including South Austin"],["Anywhere nearby","We'll drive for the right fit"]]},
- {k:"age",q:"How old are your kids?",multi:false,o:[["Little ones","Pre-K and kindergarten"],["Elementary","Grades 1–5"],["Middle school","Grades 6–8"],["High school","Grades 9–12"]]},
+// Step 1 picks the path: schools & groups, activities & field trips, or both. Later questions only ask what applies.
+const QPATH={k:"path",q:"What are you looking for?",o:[["Schools & groups","Co-ops, support groups, classes, tutors and microschools"],["Activities & field trips","Sports, arts, STEM, museums, nature and Texas history outings"],["Both","Show me the best of each"]]};
+const QTOWN={k:"town",q:"Where do you live?",o:[["Liberty Hill","Includes nearby Leander, Cedar Park and Georgetown"],["Leander / Cedar Park","Northwest suburbs"],["Round Rock / Pflugerville",""],["Georgetown",""],["Austin","Including South Austin"],["Anywhere nearby","We'll drive for the right fit"]]};
+const QAGE={k:"age",q:"How old are your kids?",o:[["Little ones","Pre-K and kindergarten"],["Elementary","Grades 1–5"],["Middle school","Grades 6–8"],["High school","Grades 9–12"]]};
+const QSCHOOL=[
+ {k:"want",q:"What kind of school or group?",o:[["Friends & community","Park days, field trips, support"],["A teaching co-op","Parents share the teaching"],["Classes & tutors","Drop-off classes, tutors and enrichment"],["More structure","Hybrid or microschool, 1–5 days a week"]]},
  {k:"faith",q:"Does faith matter in your group?",o:[["Christian","Faith-based community"],["Catholic","Catholic community"],["Secular","Inclusive, no religious content"],["No preference","Open to either"]]},
- {k:"want",q:"What are you looking for most?",o:[["Friends & community","Park days, field trips, support"],["A teaching co-op","Parents share the teaching"],["Classes & enrichment","Classes, tutors and enrichment"],["More structure","Hybrid or microschool, 1–5 days"]]},
- {k:"interest",q:"Any special interest?",o:[["Classical",""],["Nature & outdoors",""],["STEM & coding",""],["Arts & music",""],["Gifted / 2e",""],["Nothing specific",""]]}
+ {k:"interest",q:"Any learning approach you love?",o:[["Classical",""],["Nature & Charlotte Mason",""],["STEM & coding",""],["Arts & music",""],["Gifted / 2e",""],["Nothing specific",""]]}
 ];
+const QACT=[
+ {k:"kind",q:"What kind of activity?",o:[["Sports & movement","Gymnastics, swim, martial arts, team sports, climbing"],["Arts, music & theater","Lessons, art studios, theater, dance, cooking"],["STEM & making","Coding, robotics, chess"],["Field trips & nature","Museums, Texas history, zoos, parks, farms"],["Surprise me","Show the best fits of any kind"]]},
+ {k:"when",q:"When would you go?",o:[["During the school day","Weekday daytime classes and homeschool days"],["Any time works","Evenings and weekends too"]]}
+];
+function quizQs(){ const p=ans.path; return [QPATH,QTOWN,QAGE].concat(p==="Activities & field trips"?QACT:p==="Both"?QSCHOOL.concat(QACT):p?QSCHOOL:[]); }
 const GRADE={"Little ones":[-1,0],"Elementary":[1,5],"Middle school":[6,8],"High school":[9,12]};
-const WANT={"Friends & community":["group","coop"],"A teaching co-op":["coop"],"Classes & enrichment":["class","tutor"],"More structure":["micro"]};
-const INTEREST={"Classical":["Classical"],"Nature & outdoors":["Nature-based","Charlotte Mason"],"STEM & coding":["STEM"],"Arts & music":["Arts"],"Gifted / 2e":["Gifted / 2e"]};
+const WANT={"Friends & community":["group","coop"],"A teaching co-op":["coop"],"Classes & tutors":["class","tutor"],"More structure":["micro"]};
+const INTEREST={"Classical":["Classical"],"Nature & Charlotte Mason":["Nature-based","Charlotte Mason"],"STEM & coding":["STEM"],"Arts & music":["Arts"],"Gifted / 2e":["Gifted / 2e"]};
+const KIND={"Sports & movement":["Gymnastics","Swim","Martial arts","Sports","Baseball","Soccer","Climbing","Skating","Dance","Horseback","Archery & fencing","Kid gyms & play","Bowling & mini golf"],
+ "Arts, music & theater":["Music","Art","Theater","Dance","Cooking"],"STEM & making":["Coding","Makerspace & robotics","Chess","Stargazing"],
+ "Field trips & nature":["Museums","Texas history","Zoos & animals","Nature centers & gardens","State parks","Farms & living history","Caves","Stargazing","Libraries","Outdoor skills","Clubs & 4-H"]};
 const TOWNMAP={"Liberty Hill":["Liberty Hill","Leander","Cedar Park","Georgetown"],"Leander / Cedar Park":["Leander","Cedar Park","Liberty Hill"],"Round Rock / Pflugerville":["Round Rock","Pflugerville"],"Georgetown":["Georgetown"],"Austin":["Austin"]};
 let qi=0, ans={};
 function gradeRange(x){
@@ -1200,15 +1212,17 @@ function gradeRange(x){
   const m=x.ages.match(/(Pre-K|K|\d+)\s*[–-]\s*(\d+)/); if(!m) return null;
   const lo=m[1]==="Pre-K"?-1:m[1]==="K"?0:+m[1]; return [lo,+m[2]];
 }
-function scoreOf(x){
-  if(x.type==="activity") return null;
-  let s=0, why=[];
-  const towns=TOWNMAP[ans.town];
-  if(towns){ if(townsOf(x).some(t=>towns.includes(t))){s+=4;why.push("Near you");} else s-=2; }
+function scoreCommon(x,why,isTrip){
+  let s=0; const towns=TOWNMAP[ans.town];
+  if(towns){ if(townsOf(x).some(t=>towns.includes(t))){s+=4;why.push("Near you");} else if(!isTrip) s-=2; }
   const g=GRADE[ans.age], r=gradeRange(x);
   if(g&&r){ if(r[1]<g[0]||r[0]>g[1]) return null; s+=1; why.push("Right ages"); }
-  const t=x.tags;
-  if(ans.age==="Little ones"&&t.includes("Littles welcome")){s+=2;why.push("Littles welcome");}
+  if(ans.age==="Little ones"&&x.tags.includes("Littles welcome")){s+=2;why.push("Littles welcome");}
+  return s;
+}
+function scoreSchool(x){
+  if(x.type==="activity") return null;
+  const why=[]; let s=scoreCommon(x,why,false); if(s===null) return null; const t=x.tags;
   if(ans.faith==="Secular"){ if(t.includes("Christian")||t.includes("Catholic")) return null; if(t.includes("Secular")){s+=3;why.push("Secular");} }
   else if(ans.faith==="Christian"){ if(t.includes("Secular")) return null; if(t.includes("Christian")){s+=3;why.push("Christian");} else if(t.includes("Catholic")) s+=1; }
   else if(ans.faith==="Catholic"){ if(t.includes("Secular")) return null; if(t.includes("Catholic")){s+=4;why.push("Catholic");} else if(t.includes("Christian")) s+=1; }
@@ -1216,22 +1230,42 @@ function scoreOf(x){
   const it=INTEREST[ans.interest]; if(it&&t.some(v=>it.includes(v))){s+=3;why.push(ans.interest);}
   return {x,s,why};
 }
+function scoreActivity(x){
+  if(x.type!=="activity") return null;
+  const kinds=KIND[ans.kind], hit=kinds?x.tags.filter(v=>kinds.includes(v)):[];
+  if(kinds&&!hit.length) return null; // they asked for a specific kind
+  const isTrip=x.tags.some(v=>FIELD_TAGS.has(v));
+  const why=[]; let s=scoreCommon(x,why,isTrip); if(s===null) return null;
+  if(hit.length){ s+=3; why.push(hit[0]); }
+  if(ans.when==="During the school day"){
+    if(x.daytime){s+=4;why.push("Daytime classes");} else if(x.homeschool){s+=3;why.push("Homeschool program");} else if(isTrip){s+=2;why.push("Open weekdays");}
+  } else if(x.homeschool||x.daytime) s+=1;
+  if(isTrip&&!why.includes("Near you")&&ans.town&&ans.town!=="Anywhere nearby") why.push("Day trip");
+  return {x,s:s+1,why};
+}
+const topFit=(fn,n)=>L.filter(x=>!x.test).map(fn).filter(r=>r&&r.s>0).sort((a,b)=>b.s-a.s||a.x.n.localeCompare(b.x.n)).slice(0,n);
+function matchList(res,act){
+  return `<div class="matches">${res.map((r,i)=>`<div class="match"><div class="rank">${i+1}</div><div><h4>${esc(r.x.n)}</h4><p>${esc(townsOf(r.x).join(" · "))}${r.x.d?" · "+esc(shortText(r.x.d)):""}</p><div class="why">${r.why.map(w=>`<span class="tag">${esc(w)}</span>`).join("")}</div></div><button type="button" class="linkbtn" data-see="${esc(r.x.n)}"${act?' data-act="1"':""}>See listing</button></div>`).join("")}</div>`;
+}
 function renderQuiz(){
-  const box=$("quiz");
+  const box=$("quiz"), QS=quizQs(), total=ans.path?QS.length:5;
   if(qi<QS.length){
     const Q=QS[qi];
-    box.innerHTML=`<div class="qprog"><span class="label">Question ${qi+1} of ${QS.length}</span><div class="bar"><i style="width:${(qi/QS.length)*100}%"></i></div></div>
+    box.innerHTML=`<div class="qprog"><span class="label">${ans.path?`Question ${qi+1} of ${total}`:"First question"}</span><div class="bar"><i style="width:${(qi/total)*100}%"></i></div></div>
       <h3>${Q.q}</h3>
-      <div class="opts">${Q.o.map(([l,s])=>`<button type="button" class="opt" data-a="${esc(l)}"><b>${esc(l)}</b>${s?`<span>${esc(s)}</span>`:""}</button>`).join("")}</div>
+      <div class="opts">${Q.o.map(([l,sub])=>`<button type="button" class="opt${ans[Q.k]===l?" picked":""}" data-a="${esc(l)}"><b>${esc(l)}</b>${sub?`<span>${esc(sub)}</span>`:""}</button>`).join("")}</div>
       <div class="qnav">${qi>0?`<button type="button" class="linkbtn" id="qBack">Back</button>`:"<span></span>"}</div>`;
     return;
   }
-  const res=L.filter(x=>!x.test).map(scoreOf).filter(r=>r&&r.s>0).sort((a,b)=>b.s-a.s).slice(0,5);
-  recordDemand(res);
+  const both=ans.path==="Both", wantS=ans.path!=="Activities & field trips", wantA=ans.path!=="Schools & groups";
+  const rs=wantS?topFit(scoreSchool,both?3:5):[], ra=wantA?topFit(scoreActivity,both?3:5):[];
+  recordDemand(rs.concat(ra));
+  const none=!rs.length&&!ra.length;
+  const sec=(title,res,act,empty)=>`${both?`<h4 class="msec">${title}</h4>`:""}${res.length?matchList(res,act):`<p class="where" style="margin:0 0 14px">${empty}</p>`}`;
   box.innerHTML=`<div class="qprog"><span class="label">Your matches</span><button type="button" class="linkbtn" id="qRetake">Start over</button></div>
-    <h3>${res.length?`Your top ${res.length} ${res.length===1?"match":"matches"}`:"No close matches yet"}</h3>
-    ${res.length?`<div class="matches">${res.map((r,i)=>`<div class="match"><div class="rank">${i+1}</div><div><h4>${esc(r.x.n)}</h4><p>${esc(townsOf(r.x).join(" · "))} · ${esc(shortText(r.x.d))}</p><div class="why">${r.why.map(w=>`<span class="tag">${esc(w)}</span>`).join("")}</div></div><button type="button" class="linkbtn" data-see="${esc(r.x.n)}">See listing</button></div>`).join("")}</div>`
-      :`<p class="where" style="margin-bottom:18px">We're still adding groups in your area. Get the monthly newsletter and we'll tell you when one that fits is listed.</p>`}
+    <h3>${none?"No close matches yet":both?"Your best matches":`Your top ${(rs.length||ra.length)} ${wantS?"schools & groups":"activities"}`}</h3>
+    ${wantS?sec("Schools & groups",rs,false,"No close school or group matches yet. We're adding more every month."):""}
+    ${wantA?sec("Activities & field trips",ra,true,"No close activity matches yet. Try “Surprise me” or “Any time works.”"):""}
     <form class="news" id="newsForm" novalidate>
       <h4>Get new matches once a month</h4>
       <p>New groups, open spots and events near you, in one email a month. Unsubscribe anytime.</p>
@@ -1241,11 +1275,11 @@ function renderQuiz(){
 }
 $("quiz").addEventListener("click",e=>{
   const o=e.target.closest(".opt");
-  if(o){ans[QS[qi].k]=o.dataset.a; qi++; renderQuiz(); $("quiz").querySelector("button")?.focus({preventScroll:true}); return;}
+  if(o){ const Q=quizQs()[qi]; if(Q.k==="path"&&ans.path!==o.dataset.a){ const keep={town:ans.town,age:ans.age}; ans={...keep}; demandSent=false; } ans[Q.k]=o.dataset.a; qi++; renderQuiz(); $("quiz").querySelector("button")?.focus({preventScroll:true}); return;}
   if(e.target.id==="qBack"){qi=Math.max(0,qi-1); renderQuiz(); return;}
-  if(e.target.id==="qRetake"){qi=0; ans={}; renderQuiz(); return;}
+  if(e.target.id==="qRetake"){qi=0; ans={}; demandSent=false; renderQuiz(); return;}
   const see=e.target.closest("[data-see]");
-  if(see){Object.assign(state,{q:see.dataset.see,type:"",approach:"",towns:[],open:false});$("q").value=see.dataset.see;$("typeSel").value="";$("approachSel").value="";render();go("/directory",true);const c=document.querySelector("#grid .card"); if(c){c.scrollIntoView({behavior:"smooth",block:"center"}); c.classList.add("flash"); setTimeout(()=>c.classList.remove("flash"),2200);}}
+  if(see){const act=!!see.dataset.act; Object.assign(state,{q:see.dataset.see,type:"",approach:"",towns:[],open:false});$("q").value=see.dataset.see;$("typeSel").value="";$("approachSel").value="";go(act?"/activities":"/directory",true);render();const c=document.querySelector("#grid .card"); if(c){c.scrollIntoView({behavior:"smooth",block:"center"}); c.classList.add("flash"); setTimeout(()=>c.classList.remove("flash"),2200);}}
 });
 $("quiz").addEventListener("submit",async e=>{
   if(e.target.id!=="newsForm") return;
