@@ -142,12 +142,12 @@ async function joinBlock(env, email) {
     const token = randomToken(16);
     await env.DB.prepare("INSERT INTO join_tokens (token, email) VALUES (?,?)").bind(token, e).run();
     const site = env.SITE_URL || "https://centexhomeschool.org";
-    return `Stay in the loop: our monthly newsletter covers open houses, deadlines, homeschool days and Texas law changes, and every Monday we send a short quote to encourage you on your homeschool journey.\n\nGet the newsletter + Monday quotes: ${site}/api/join?t=${token}\n\n`;
+    return `Stay in the loop: our monthly newsletter covers open houses, deadlines, homeschool days and Texas law changes, and every Monday we send a short quote to inspire you on your homeschool journey.\n\nGet the newsletter + Monday quotes: ${site}/api/join?t=${token}\n\n`;
   } catch (err) { console.error("joinBlock failed", err && err.message); return ""; }
 }
 function welcomeText(env, token, ref) {
   const site = env.SITE_URL || "https://centexhomeschool.org";
-  return `Hi there,\n\nThanks for signing up for the CenTex Homeschool Hub newsletter. Once a month you'll get registration dates coming up, groups with open spots, new listings near you and public homeschool events around Central Texas. And every Monday, a short quote to encourage you on your homeschool journey.\n\n` +
+  return `Hi there,\n\nThanks for signing up for the CenTex Homeschool Hub newsletter. Once a month you'll get registration dates coming up, groups with open spots, new listings near you and public homeschool events around Central Texas. And every Monday, a short quote to inspire you on your homeschool journey.\n\n` +
     `Your Texas Homeschool Starter Checklist: ${site}/checklist.html\n\nWhile you wait for the first issue:\n- Find co-ops and classes near you: ${site}/directory\n- Homeschool-friendly activities: ${site}/activities\n- Take the 5-question quiz to find your fit: ${site}/#fit\n- See open houses and deadlines: ${site}/calendar\n\n` +
     `${shareLine(env, ref)}\n\nThanks,\nBerkli\nCenTex Homeschool Hub\n\nDon't want these emails? Unsubscribe: ${site}/api/unsubscribe?t=${token}`;
 }
