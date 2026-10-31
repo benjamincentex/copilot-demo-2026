@@ -256,6 +256,20 @@ html{scroll-behavior:smooth}
     <p class="status" id="osStatus" role="status" style="margin:8px 0 0"></p></div>
   <div id="tools" hidden>
     <div class="box"><h2>At a glance</h2><div class="stats4" id="stats"></div><div class="drill" id="drill" hidden></div><p class="where" id="emailLine" style="margin:0"></p></div>
+    <div class="box" id="addListing"><h2>Add a listing</h2><p class="where" style="margin:0">Goes live in the directory right away, no review needed. Add a manager email to let a group leader update it themselves.</p>
+      <form id="addForm" class="reqform" novalidate>
+        <label>Name<input name="n" maxlength="140" required></label>
+        <label>Type<select name="type"><option value="">Pick a type</option><option value="coop">Co-op</option><option value="group">Support group</option><option value="class">Class</option><option value="micro">Microschool / hybrid</option><option value="tutor">Tutor</option><option value="activity">Activity</option></select></label>
+        <label>Town<input name="town" maxlength="60" placeholder="e.g. Leander"></label>
+        <label>Website<input name="site" maxlength="300" placeholder="https://"></label>
+        <label>Ages<input name="ages" maxlength="40" placeholder="e.g. 5–12"></label>
+        <label>Schedule<input name="sched" maxlength="120" placeholder="e.g. Tuesdays 9–12"></label>
+        <label class="full">Tags (comma separated)<input name="tags" maxlength="120" placeholder="e.g. Christian, Classical, Texas history"></label>
+        <label class="full">Description families will see<textarea name="d" maxlength="300" rows="2"></textarea></label>
+        <label>Manager email (optional)<input name="manager" type="email" maxlength="160" placeholder="leader@example.com"></label>
+        <label style="flex-direction:row;align-items:center;gap:8px;color:var(--ink);align-self:end"><input type="checkbox" name="notify" checked style="width:auto"> Email them that it's live</label>
+        <div class="full" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn sm" type="submit">Publish listing</button><span class="status" id="addStatus" role="status"></span></div>
+      </form></div>
     <div class="box" id="requests"><h2>Listing requests to review</h2><p class="where" style="margin:0">Requests from the "Add a listing" form. Check the details, pick a type, then publish. The submitter gets an email when it's live.</p><div id="reqList" class="where">No requests waiting.</div></div>
     <div class="box"><h2>Listing claims to review</h2><div id="claims" class="where">No claims waiting.</div></div>
     <div class="box" id="activity"><h2>Listing activity (last 30 days)</h2><p class="where" style="margin:0">How families interact with each listing. Views count when a listing is on screen for a second (once per visit). Featured listings get a quarterly version of this by email (Jan 1, Apr 1, Jul 1, Oct 1).</p><div id="actTable" class="where" style="overflow-x:auto">No activity yet.</div></div>
@@ -382,6 +396,18 @@ document.addEventListener("click",async e=>{
     setTimeout(load,1400); return; }
   const [id,status]=st.dataset.reqst.split(":"); st.disabled=true;
   const r=await api("/api/admin/submissions/status",{id:Number(id),status}); r.ok?load():(st.disabled=false);
+});
+let addForce=false;
+document.getElementById("addForm").addEventListener("input",()=>{addForce=false;});
+document.getElementById("addForm").addEventListener("submit",async e=>{
+  e.preventDefault(); const f=e.target, v=n=>f.elements[n].value.trim(), st=$("addStatus");
+  if(!v("n")||!v("type")||!v("town")){st.className="status err"; st.textContent="Add a name, type and town."; return;}
+  if(!addForce&&(window.L||[]).some(x=>x.n.toLowerCase()===v("n").toLowerCase())){addForce=true; st.className="status err"; st.textContent="That name is already in the directory. Click again to add it anyway."; return;}
+  st.className="status"; st.textContent="Publishing…";
+  const r=await api("/api/admin/listings/create",{n:v("n"),type:v("type"),town:v("town"),site:v("site"),ages:v("ages"),sched:v("sched"),tags:v("tags"),d:v("d"),manager:v("manager"),notify:f.elements.notify.checked,force:addForce});
+  if(!r.ok){ if(r.status===409) addForce=true; st.className="status err"; st.textContent=r.error; return; }
+  addForce=false; st.className="status ok"; st.innerHTML=`Live: <a href="/directory" target="_blank" rel="noopener">${esc(v("n"))}</a>${v("manager")?(r.emailed?" · manager emailed":" · manager can sign in to manage it"):""}.`;
+  f.reset(); f.elements.notify.checked=true; load();
 });
 async function load(){
   loadNewsletters(); loadRequests(); loadFlags(); loadActivity(); loadReferrals(); loadNewsAdmin();

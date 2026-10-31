@@ -1149,6 +1149,39 @@ const routes = {
     } catch (e) { console.error("live email failed", e && e.message); }
     return json({ ok: true, slug, emailed });
   },
+  // Owner adds a listing directly: live immediately, no review.
+  "POST /api/admin/listings/create": async (req, env) => {
+    const b = await body(req) || {};
+    const n = clip(b.n, 140), town = clip(b.town, 60);
+    const type = ["coop", "group", "class", "micro", "tutor", "activity"].includes(b.type) ? b.type : "";
+    if (!n || !town || !type) return bad("Add a name, town and type.");
+    const site = clip(b.site, 300); if (site && !/^https?:\/\//i.test(site)) return bad("The website should start with https://");
+    const manager = clip(b.manager, 160).toLowerCase();
+    if (manager && !EMAIL_RE.test(manager)) return bad("The manager email doesn't look right.");
+    const dupe = await env.DB.prepare("SELECT 1 FROM user_listings WHERE status='live' AND lower(json_extract(data,'$.n'))=lower(?)").bind(n).first();
+    if (dupe && !b.force) return bad("A listing with that name is already live. Click again to add it anyway.", 409);
+    const slug = (n.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "listing") + "-" + randomToken(2);
+    const tags = String(b.tags || "").split(",").map((t) => t.trim()).filter(Boolean).slice(0, 6);
+    const data = { n, town, type, tags, days: [], d: clip(b.d, 300), site, ages: clip(b.ages, 40), sched: clip(b.sched, 120) };
+    const owner = await adminEmail(req, env), stamp = new Date().toISOString();
+    const stmts = [env.DB.prepare("INSERT INTO user_listings (slug, email, data) VALUES (?,?,?)").bind(slug, manager || owner, JSON.stringify(data))];
+    if (manager) {
+      stmts.push(env.DB.prepare("INSERT OR REPLACE INTO listing_owners (slug, email, name, role, approved_at) VALUES (?,?,?,?,?)").bind(slug, manager, "", "manager", stamp));
+      stmts.push(env.DB.prepare("INSERT INTO listing_overrides (slug, data, updated_at, updated_by) VALUES (?,?,?,?) ON CONFLICT(slug) DO NOTHING").bind(slug, JSON.stringify({ claimed: true }), stamp, "owner"));
+    }
+    await env.DB.batch(stmts);
+    let emailed = false;
+    if (manager && b.notify) {
+      const site0 = env.SITE_URL || "https://centexhomeschool.org";
+      try {
+        emailed = await sendMail(env, manager, `${n} is now listed on CenTex Homeschool Hub`,
+          `Hi there,\n\n${n} is now listed in the CenTex Homeschool Hub directory, where Central Texas families look for co-ops, classes and activities. You're set up to manage it.\n\n` +
+          `Sign in with this email address to update your details, mark availability and add open houses to the community calendar. Families who tap "Notify me" get an email the moment you open spots.\n\nManage your listing: ${site0}/leaders.html\n\n` +
+          (await joinBlock(env, manager)) + `Thanks,\nBenjamin\nCenTex Homeschool Hub`);
+      } catch (e) { console.error("manager email failed", e && e.message); }
+    }
+    return json({ ok: true, slug, emailed });
+  },
   "POST /api/admin/submissions/status": async (req, env) => {
     const b = await body(req) || {}; const id = Number(b.id);
     const status = ["handled", "dismissed", "new"].includes(b.status) ? b.status : null;
