@@ -711,7 +711,7 @@ html{scroll-behavior:smooth}
     </div>
     <div class="colhead"><span>Hiring a teacher, or are you a tutor for hire? <a href="/leaders.html">Tutors can create a listing.</a></span><button class="btn sm" type="button" id="newJobBtn" style="margin-top:0">Post a job or tutor request</button></div>
     <form class="box2" id="jobForm" novalidate hidden>
-      <div class="field"><label for="j-kind">I'm</label><select id="j-kind"><option value="hiring">Hiring for a co-op, school or business ($39 for 30 days, free with a Featured listing)</option><option value="seeking">A parent looking for a tutor (free)</option></select></div>
+      <div class="field"><label for="j-kind">I'm</label><select id="j-kind"><option value="hiring">Hiring for a co-op, school or business ($39 for 30 days, free with a Featured listing)</option><option value="seeking">A parent looking for a tutor</option></select></div>
       <div class="row2">
         <div class="field"><label for="j-title">Headline</label><input id="j-title" maxlength="100" placeholder="e.g. Part-time science teacher, grades 6–8"></div>
         <div class="field" id="j-org-wrap"><label for="j-org">Organization</label><input id="j-org" maxlength="100" placeholder="Co-op, school or business name"></div>
@@ -1569,7 +1569,7 @@ $("jobForm").addEventListener("submit",async e=>{
 });
 function jobCard(j){
   const meta=[j.org,j.town,j.schedule,j.pay].filter(Boolean).map(esc).join(" · ");
-  const act=j.mine?`<button class="linkbtn" type="button" data-jremove="${j.id}" style="align-self:flex-start">Remove my post</button>`
+  const act=j.mine?`<span class="meta" style="color:var(--oak)">This is your post. ${j.kind==="hiring"?"Applicants'":"Tutors'"} replies are emailed to you, with their email so you can write back.</span><button class="linkbtn" type="button" data-jremove="${j.id}" style="align-self:flex-start">Remove my post</button>`
     :`${j.apply_link?`<a href="${esc(j.apply_link)}" target="_blank" rel="noopener" style="font-weight:600">Apply ↗</a>`:""}<button class="linkbtn" type="button" data-jreply="${j.id}" style="align-self:flex-start">${j.kind==="hiring"?"Send a message":"Offer to help"}</button>
       <form class="ask" data-job="${j.id}" hidden novalidate><textarea maxlength="1200" placeholder="${j.kind==="hiring"?"Introduce yourself and your experience.":"Introduce yourself, what you teach and your rate."} We'll send it with your email address."></textarea><div class="nrow"><button class="btn sm" type="submit" style="margin-top:0">Send</button></div><span class="status" role="status"></span></form>`;
   return `<div class="post"><b>${esc(j.title)}</b>${meta?`<span class="meta">${meta}</span>`:""}<p>${esc(j.details)}</p><span class="meta">${esc(j.name||"")} · ${new Date(j.created_at+"Z").toLocaleDateString("en-US",{month:"short",day:"numeric"})}</span>${act}</div>`;
