@@ -200,11 +200,17 @@ const paidOn = (env) => env.PAID_PLANS === "1";
 const DESC_FREE = 75, DESC_FEATURED = 2000;
 const SPOTLIGHT_MONTHS = 6; // Featured perk: a newsletter spotlight twice a year
 const FREE_EVENT_LIMIT = 2; // upcoming calendar events per free listing (Featured: unlimited)
+// "www.example.com" or "example.com/page" -> "https://www.example.com". Returns "" if it isn't a usable web address.
+function normSite(v) {
+  let u = String(v || "").trim(); if (!u) return "";
+  if (!/^https?:\/\//i.test(u)) u = "https://" + u.replace(/^\/+/, "");
+  return /^https?:\/\/[^\s\/.]+\.[^\s]+$/i.test(u) ? u.slice(0, 300) : "";
+}
 function cleanFields(f, dMax = DESC_FREE) {
   f = f || {};
   const fields = {};
   for (const [k, n] of [["d", dMax], ["ages", 40], ["sched", 80], ["cost", 80], ["site", 300], ["members", 120]]) { const v = clip(f[k], n); if (v) fields[k] = v; }
-  if (fields.site && !/^https?:\/\//i.test(fields.site)) delete fields.site;
+  if (fields.site) { fields.site = normSite(fields.site); if (!fields.site) delete fields.site; }
   if (typeof f.littles === "boolean") fields.littles = f.littles;
   const a = f.avail || {};
   fields.avail = { s: AVAIL.has(a.s) ? a.s : "unknown", when: clip(a.when, 40) };
@@ -586,6 +592,7 @@ const routes = {
     const ovRow = await env.DB.prepare("SELECT data FROM listing_overrides WHERE slug=?").bind(slug).first();
     const plan = ovRow ? (JSON.parse(ovRow.data).plan || "") : "";
     const dMax = ["featured", "partner", "enhanced"].includes(plan) ? DESC_FEATURED : DESC_FREE;
+    if (b.fields && clip(b.fields.site, 300) && !normSite(b.fields.site)) return bad("That website doesn't look like a web address, e.g. www.example.com");
     const alerted = await publishListing(env, slug, clip(b.listing, 140), clip(b.town, 60), cleanFields(b.fields, dMax), email);
     return json({ ok: true, alerted });
   },
@@ -1013,7 +1020,7 @@ const routes = {
     if (!town) return bad("Add the town you're based in.");
     if (!subjects) return bad("List the subjects you teach.");
     if (d.length < 20) return bad("Add a short description (up to 75 characters).");
-    const site = clip(b.site, 300); if (site && !/^https?:\/\//i.test(site)) return bad("The website should start with https://");
+    const site = normSite(b.site); if (clip(b.site, 300) && !site) return bad("That website doesn't look like a web address, e.g. www.example.com");
     const problem = privacyProblem(d + " " + n); if (problem) return bad(problem);
     const mod = await screenText(env, n + "\n" + d + "\n" + subjects);
     if (mod.action === "hold") { await recordFlag(env, "tutor listing", 0, mod, n + " — " + d, email, n); return bad(blockMsg(mod)); }
@@ -1122,7 +1129,7 @@ const routes = {
     const n = clip(b.n || sub.name, 140), town = clip(b.town || sub.town, 60);
     const type = ["coop", "group", "class", "micro", "tutor", "activity"].includes(b.type) ? b.type : "";
     if (!n || !town || !type) return bad("Add a name, town and type before publishing.");
-    const site = clip(b.site ?? sub.website, 300); if (site && !/^https?:\/\//i.test(site)) return bad("The website should start with https://");
+    const site = normSite(b.site ?? sub.website); if (clip(b.site ?? sub.website, 300) && !site) return bad("That website doesn't look like a web address, e.g. www.example.com");
     const d = clip(b.d ?? sub.details, 300);
     const tags = String(b.tags || "").split(",").map((t) => t.trim()).filter(Boolean).slice(0, 6);
     const slug = (n.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "listing") + "-" + randomToken(2);
@@ -1155,7 +1162,7 @@ const routes = {
     const n = clip(b.n, 140), town = clip(b.town, 60);
     const type = ["coop", "group", "class", "micro", "tutor", "activity"].includes(b.type) ? b.type : "";
     if (!n || !town || !type) return bad("Add a name, town and type.");
-    const site = clip(b.site, 300); if (site && !/^https?:\/\//i.test(site)) return bad("The website should start with https://");
+    const site = normSite(b.site); if (clip(b.site, 300) && !site) return bad("That website doesn't look like a web address, e.g. www.example.com");
     const manager = clip(b.manager, 160).toLowerCase();
     if (manager && !EMAIL_RE.test(manager)) return bad("The manager email doesn't look right.");
     const dupe = await env.DB.prepare("SELECT 1 FROM user_listings WHERE status='live' AND lower(json_extract(data,'$.n'))=lower(?)").bind(n).first();

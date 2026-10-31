@@ -305,7 +305,7 @@ html{scroll-behavior:smooth}
           <div class="field"><label for="t-rate">Rate</label><input id="t-rate" maxlength="60" placeholder="e.g. $45/hour"></div>
           <div class="field"><label for="t-format">Format</label><select id="t-format"><option>In person</option><option>Online</option><option>In person or online</option></select></div>
         </div>
-        <div class="field" style="margin-top:12px"><label for="t-site">Website (optional)</label><input id="t-site" type="url" maxlength="300" placeholder="https://"></div>
+        <div class="field" style="margin-top:12px"><label for="t-site">Website (optional)</label><input id="t-site" type="text" inputmode="url" autocapitalize="off" maxlength="300" placeholder="https://"></div>
         <div class="field" style="margin-top:12px"><label for="t-desc">About you</label><textarea id="t-desc" maxlength="75" data-count placeholder="e.g. Certified math teacher, grades 6–12, small groups or one-on-one"></textarea><span class="where" style="font-size:13px"><span data-left></span> characters left.</span></div>
         <div class="formfoot" style="margin-top:12px"><button class="btn" type="submit" style="margin-top:0">Publish my listing</button><span class="status" id="tutorStatus" role="status"></span></div>
         <p class="where" style="margin:8px 0 0;font-size:13px">Please don't include your phone number or home address. Families contact you through your website or by asking a question on your listing.</p>
@@ -424,7 +424,7 @@ function editor(x){
       <div class="field"><label>Ages or grades</label><input name="ages" maxlength="40" value="${esc(c.ages||"")}"></div>
       <div class="field"><label>When you meet</label><input name="sched" maxlength="80" value="${esc(c.sched||"")}"></div>
       <div class="field"><label>Cost</label><input name="cost" maxlength="80" value="${esc(c.cost||"")}"></div>
-      <div class="field"><label>Website or Facebook page</label><input name="site" type="url" maxlength="300" value="${esc(c.site||"")}"></div>
+      <div class="field"><label>Website or Facebook page</label><input name="site" type="text" inputmode="url" autocapitalize="off" placeholder="www.example.com" maxlength="300" value="${esc(c.site||"")}"></div>
       <div class="field" style="grid-column:1/-1"><label>Members-only activities (optional, no dates or places)</label><input name="members" maxlength="120" placeholder="e.g. Weekly park days, monthly field trips, spring play" value="${esc(c.members||"")}"></div>
     </div>
     ${(()=>{const feat=["featured","partner","enhanced"].includes(c.plan);const mx=feat?2000:75;return `<div class="field"><label>Description</label><textarea name="d" maxlength="${mx}" data-count>${esc(feat?(c.d||""):(c.d||"").slice(0,75))}</textarea><span class="where" style="font-size:13px"><span data-left></span> ${feat?"characters left. Featured listings show a Read more link for longer descriptions.":(PAID_PLANS?"characters left. Free listings get 75 characters; <a href=\"#plans\">Featured listings</a> get unlimited, with a Read more link.":"characters left.")}</span></div>`;})()}
