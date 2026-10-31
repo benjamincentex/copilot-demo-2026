@@ -563,7 +563,7 @@ html{scroll-behavior:smooth}
     <div class="intro">
       <span class="label">Find your fit</span>
       <h2>A few quick questions to your best matches</h2>
-      <p>Looking for a school or group, activities and field trips, or both? Tell us a little about your family and we'll pick the best fits from every listing.</p>
+      <p>Looking for a school or group, or for activities and field trips? Pick one, answer a few questions, and we'll find your five best fits.</p>
     </div>
     <div class="quiz" id="quiz" aria-live="polite"></div>
   </section>
@@ -589,6 +589,7 @@ html{scroll-behavior:smooth}
   <div class="dirtabs" role="tablist" aria-label="Directory sections">
     <button type="button" role="tab" id="tabLearn" aria-selected="true">Schools, co-ops &amp; classes</button>
     <button type="button" role="tab" id="tabAct" aria-selected="false">Activities &amp; field trips</button>
+    <button type="button" role="tab" id="tabBoth" aria-selected="false">Both</button>
   </div>
 </div>
 <div class="dirwrap" data-view="directory">
@@ -605,6 +606,7 @@ html{scroll-behavior:smooth}
         <option value="class">Classes &amp; enrichment</option>
         <option value="micro">Microschools &amp; hybrids</option>
         <option value="tutor">Tutors</option>
+        <option value="activity" hidden>Activities &amp; field trips</option>
       </select>
       <select id="actSel" aria-label="Activity type" hidden><option value="">All activities</option></select>
       <select id="approachSel" aria-label="Approach">
@@ -1056,7 +1058,7 @@ function placeAcct(scroll){
 }
 function showView(noScroll){
   curView=viewOf(location.pathname);
-  if(curView==="directory"){ const sec=location.pathname.replace(/\/+$/,"")==="/activities"?"activity":"learn"; if(state.section!==sec){ state.section=sec; render(); } }
+  if(curView==="directory"){ const sec=location.pathname.replace(/\/+$/,"")==="/activities"?"activity":/[?&]show=all/.test(location.search)?"all":"learn"; if(state.section!==sec){ state.section=sec; render(); } }
   document.querySelectorAll("[data-view]").forEach(el=>{ el.hidden=!el.dataset.view.split(" ").includes(curView); });
   document.querySelectorAll("nav.links a").forEach(a=>{ if(viewOf(new URL(a.href).pathname)===curView&&curView!=="home") a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
   document.title=curView==="home"?"Central Texas Homeschool Directory: Co-ops, Classes & Activities | CenTex Homeschool Hub":(location.pathname.replace(/\/+$/,"")==="/activities"?"Homeschool Activities & Field Trips":TITLES[curView])+" in Austin & Central Texas | CenTex Homeschool Hub";
@@ -1100,7 +1102,7 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"
 function townsOf(x){return [x.town].concat(x.also||[])}
 function matches(x){
   if(x.test) return false;
-  if((state.section==="activity")!==(x.type==="activity")) return false;
+  if(state.section!=="all"&&(state.section==="activity")!==(x.type==="activity")) return false;
   if(state.open && x.avail.s!=="open") return false;
   if(state.type && x.type!==state.type) return false;
   if(state.approach && !x.tags.includes(state.approach)) return false;
@@ -1157,7 +1159,7 @@ function render(){
   if(state.section==="activity") res.sort((a,b)=>((b.daytime?2:b.homeschool?1:0)-(a.daytime?2:a.homeschool?1:0))); // daytime classes first
   if(state.q) res.sort((a,b)=>qScore(b,state.q)-qScore(a,state.q)); // best name matches first
   // Matches in the other tab (schools vs activities), so a search never looks empty when the answer is next door.
-  const other=state.q?L.filter(x=>!x.test&&((state.section==="activity")!==(x.type==="activity"))&&qScore(x,state.q)>=0):[];
+  const other=state.q&&state.section!=="all"?L.filter(x=>!x.test&&((state.section==="activity")!==(x.type==="activity"))&&qScore(x,state.q)>=0):[];
   const otherNote=other.length?`<p class="where" style="margin:10px 0 0">${other.length} ${other.length===1?"match":"matches"} in <a href="${state.section==="activity"?"/directory":"/activities"}" data-crosssearch>${state.section==="activity"?"Schools & co-ops":"Activities"}</a>: ${other.slice(0,4).map(x=>esc(x.n)).join(", ")}${other.length>4?"…":""}</p>`:"";
   const xs=$("crossNote")||(()=>{const d=document.createElement("div"); d.id="crossNote"; $("grid").after(d); return d;})(); xs.innerHTML=otherNote;
   const filtering=state.q||state.type||state.approach||state.towns.length||state.open;
@@ -1174,30 +1176,31 @@ function render(){
     ?'No groups have confirmed open spots yet. As leaders claim their listings and post availability, they\'ll show up here. Turn off "Open now" to see everyone, and use "Notify me" on any group you like.'
     :'No listings match yet. Try another town, or <a href="#submit">add the school you know about</a>.';
   $("openNow").setAttribute("aria-pressed",state.open);
-  const inSection=L.filter(x=>!x.test&&((state.section==="activity")===(x.type==="activity"))).length;
+  const inSection=L.filter(x=>!x.test&&(state.section==="all"||(state.section==="activity")===(x.type==="activity"))).length;
   $("count").textContent=`${res.length} of ${inSection} ${state.section==="activity"?"activities":"listings"}`;
   $("showAll").textContent=`Show all ${res.length} ${state.section==="activity"?"activities":"listings"}`;
   renderBars();
-  $("tabLearn").setAttribute("aria-selected",state.section!=="activity"); $("tabAct").setAttribute("aria-selected",state.section==="activity");
-  $("typeSel").hidden=state.section==="activity"; $("approachSel").hidden=state.section==="activity"; $("actSel").hidden=state.section!=="activity";
-  $("dirIntro").textContent=state.section==="activity"?"Sports, gymnastics, swim, martial arts, music and more with daytime or homeschool-friendly classes. Always confirm current class times with the provider.":"Co-ops, support groups, classes, tutors and microschools from Liberty Hill to South Austin. Filter by town, type and approach.";
+  $("tabLearn").setAttribute("aria-selected",state.section==="learn"); $("tabAct").setAttribute("aria-selected",state.section==="activity"); $("tabBoth").setAttribute("aria-selected",state.section==="all");
+  $("typeSel").hidden=state.section==="activity"; $("approachSel").hidden=state.section!=="learn"; $("actSel").hidden=state.section!=="activity";
+  const actOpt=$("typeSel").querySelector('option[value="activity"]'); if(actOpt) actOpt.hidden=state.section!=="all";
+  $("dirIntro").textContent=state.section==="all"?"Everything in one place: schools, co-ops, classes, tutors and microschools plus homeschool-friendly activities and field trips.":state.section==="activity"?"Sports, gymnastics, swim, martial arts, music and more with daytime or homeschool-friendly classes. Always confirm current class times with the provider.":"Co-ops, support groups, classes, tutors and microschools from Liberty Hill to South Austin. Filter by town, type and approach.";
   document.querySelectorAll("#townChips .chip").forEach(c=>c.setAttribute("aria-pressed",c.dataset.town==="All"?!state.towns.length:state.towns.includes(c.dataset.town)));
 }
 // ---- Find your fit quiz ----
 // Step 1 picks the path: schools & groups, activities & field trips, or both. Later questions only ask what applies.
-const QPATH={k:"path",q:"What are you looking for?",o:[["Schools & groups","Co-ops, support groups, classes, tutors and microschools"],["Activities & field trips","Sports, arts, STEM, museums, nature and Texas history outings"],["Both","Show me the best of each"]]};
+const QPATH={k:"path",q:"What are you looking for?",o:[["Schools & groups","Co-ops, support groups, classes, tutors and microschools"],["Activities & field trips","Sports, arts, STEM, museums, nature and Texas history outings"]]};
 const QTOWN={k:"town",q:"Where do you live?",o:[["Liberty Hill","Includes nearby Leander, Cedar Park and Georgetown"],["Leander / Cedar Park","Northwest suburbs"],["Round Rock / Pflugerville",""],["Georgetown",""],["Austin","Including South Austin"],["Anywhere nearby","We'll drive for the right fit"]]};
 const QAGE={k:"age",q:"How old are your kids?",o:[["Little ones","Pre-K and kindergarten"],["Elementary","Grades 1–5"],["Middle school","Grades 6–8"],["High school","Grades 9–12"]]};
 const QSCHOOL=[
  {k:"want",q:"What kind of school or group?",o:[["Friends & community","Park days, field trips, support"],["A teaching co-op","Parents share the teaching"],["Classes & tutors","Drop-off classes, tutors and enrichment"],["More structure","Hybrid or microschool, 1–5 days a week"]]},
  {k:"faith",q:"Does faith matter in your group?",o:[["Christian","Faith-based community"],["Catholic","Catholic community"],["Secular","Inclusive, no religious content"],["No preference","Open to either"]]},
- {k:"interest",q:"Any special interest?",o:[["Classical",""],["Nature & Charlotte Mason",""],["STEM & coding",""],["Arts & music",""],["Sports & martial arts",""],["Gifted / 2e",""],["Nothing specific",""]]}
+ {k:"interest",q:"Any learning approach you love?",o:[["Classical",""],["Nature & Charlotte Mason",""],["STEM & coding",""],["Arts & music",""],["Gifted / 2e",""],["Nothing specific",""]]}
 ];
 const QACT=[
  {k:"kind",q:"What kind of activity?",o:[["Sports & martial arts","Martial arts, gymnastics, swim, team sports, climbing"],["Arts, music & theater","Lessons, art studios, theater, dance, cooking"],["STEM & making","Coding, robotics, chess"],["Field trips & nature","Museums, Texas history, zoos, parks, farms"],["Surprise me","Show the best fits of any kind"]]},
  {k:"when",q:"When would you go?",o:[["During the school day","Weekday daytime classes and homeschool days"],["Any time works","Evenings and weekends too"]]}
 ];
-function quizQs(){ const p=ans.path; return [QPATH,QTOWN,QAGE].concat(p==="Activities & field trips"?QACT:p==="Both"?QSCHOOL.concat(QACT):p?QSCHOOL:[]); }
+function quizQs(){ const p=ans.path; return [QPATH,QTOWN,QAGE].concat(p==="Activities & field trips"?QACT:p?QSCHOOL:[]); }
 const GRADE={"Little ones":[-1,0],"Elementary":[1,5],"Middle school":[6,8],"High school":[9,12]};
 const WANT={"Friends & community":["group","coop"],"A teaching co-op":["coop"],"Classes & tutors":["class","tutor"],"More structure":["micro"]};
 const INTEREST={"Classical":["Classical"],"Nature & Charlotte Mason":["Nature-based","Charlotte Mason"],"STEM & coding":["STEM"],"Arts & music":["Arts"],"Gifted / 2e":["Gifted / 2e"]};
@@ -1311,13 +1314,14 @@ document.addEventListener("click",e=>{const a=e.target.closest("[data-crosssearc
 $("typeSel").addEventListener("change",e=>{state.type=e.target.value;render();});
 $("approachSel").addEventListener("change",e=>{state.approach=e.target.value;render();});
 $("openNow").addEventListener("click",()=>{state.open=!state.open;render();});
-const setSection=sec=>{ state.section=sec; state.type=""; state.approach=""; $("typeSel").value=""; $("approachSel").value=""; $("actSel").value=""; showAll=false; render(); if(curView==="directory"){ const want=sec==="activity"?"/activities":"/directory"; if(location.pathname!==want) history.replaceState(null,"",want); } };
+const setSection=sec=>{ state.section=sec; state.type=""; state.approach=""; $("typeSel").value=""; $("approachSel").value=""; $("actSel").value=""; showAll=false; render(); if(curView==="directory"){ const want=sec==="activity"?"/activities":sec==="all"?"/directory?show=all":"/directory"; if(location.pathname+location.search!==want) history.replaceState(null,"",want); } };
 $("tabLearn").addEventListener("click",()=>setSection("learn"));
 (()=>{ const tags=[...new Set(L.filter(x=>x.type==="activity").flatMap(x=>x.tags))].sort();
   const grp=(label,xs)=>xs.length?`<optgroup label="${label}">${xs.map(t=>`<option>${esc(t)}</option>`).join("")}</optgroup>`:"";
   $("actSel").innerHTML='<option value="">All activities &amp; field trips</option>'+grp("Field trips",tags.filter(t=>FIELD_TAGS.has(t)))+grp("Classes, sports &amp; play",tags.filter(t=>!FIELD_TAGS.has(t))); })();
 $("actSel").addEventListener("change",e=>{state.approach=e.target.value;render();});
 $("tabAct").addEventListener("click",()=>setSection("activity"));
+$("tabBoth").addEventListener("click",()=>setSection("all"));
 $("clearBtn").addEventListener("click",()=>{Object.assign(state,{q:"",type:"",approach:"",towns:[],open:false});$("q").value="";$("typeSel").value="";$("approachSel").value="";$("actSel").value="";render();});
 
 function goForm(kind,name){
