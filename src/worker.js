@@ -56,17 +56,35 @@ async function leaderEmail(request, env) {
 
 // Sends through Cloudflare Email Service when the EMAIL binding is configured.
 // Returns true if sent, false if email sending isn't set up yet.
-async function sendMail(env, to, subject, text, html) {
+// Plain-text email -> simple, readable HTML (inbox providers trust emails that have both versions).
+function textToHtml(env, text) {
+  const escH = (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const body = escH(text).split(/\n{2,}/).map((p) => `<p style="margin:0 0 14px">${p.replace(/\n/g, "<br>")}</p>`).join("")
+    .replace(/(https?:\/\/[^\s<]+[^\s<.,;:!?)])/g, '<a href="$1" style="color:#3546A8">$1</a>');
+  return `<!doctype html><html><body style="margin:0;padding:0;background:#F8F1E7"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F8F1E7"><tr><td align="center" style="padding:20px 12px">` +
+    `<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#FFFBF5;border:1px solid #EADCC9;border-radius:12px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#2A2219">` +
+    `<tr><td style="padding:18px 24px 4px;font-family:Georgia,serif;font-size:18px;color:#2F5A3D">CenTex Homeschool Hub</td></tr><tr><td style="padding:10px 24px 8px">${body}</td></tr>` +
+    `<tr><td style="padding:12px 24px 18px;border-top:1px solid #EADCC9;font-size:12px;color:#76675A">CenTex Homeschool Hub · ${escH(env.MAILING_ADDRESS || "Central Texas")} · <a href="${env.SITE_URL || "https://centexhomeschool.org"}" style="color:#76675A">centexhomeschool.org</a></td></tr></table></td></tr></table></body></html>`;
+}
+
+async function sendMail(env, to, subject, text, html, opts = {}) {
   // Local testing only: with EMAIL_DEBUG=1 and no email binding, print the email to the dev console.
   if (env.EMAIL_DEBUG === "1" && !env.EMAIL) { console.log(`[email to ${to}] ${subject}\n${text}`); return true; }
   if (!env.EMAIL || typeof env.EMAIL.send !== "function") return false;
   try {
+    const owner = (env.ADMIN_EMAIL || "").split(",")[0].trim();
+    // Emails that carry a personal unsubscribe link get one-click unsubscribe headers (Gmail/Yahoo look for these).
+    const unsub = String(text + (html || "")).match(/https?:\/\/[^\s"<>]+\/api\/unsubscribe\?t=[a-f0-9]+/i);
+    const headers = unsub ? { "List-Unsubscribe": `<${unsub[0]}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } : undefined;
     await env.EMAIL.send({
       to,
       from: { email: env.MAIL_FROM || "hello@centexhomeschool.org", name: "CenTex Homeschool Hub" },
+      // Replies go to a real person: the other parent for reply emails, otherwise the owner's inbox.
+      ...((opts.replyTo || owner) ? { replyTo: opts.replyTo || owner } : {}),
       subject,
       text,
-      ...(html ? { html } : {}),
+      html: html || textToHtml(env, text),
+      ...(headers ? { headers } : {}),
     });
     return true;
   } catch (e) {
@@ -266,6 +284,12 @@ const routes = {
     return json({ ok: true, ref });
   },
 
+  // One-click unsubscribe from inbox providers (RFC 8058): POST to the same link.
+  "POST /api/unsubscribe": async (req, env) => {
+    const t = clip(new URL(req.url).searchParams.get("t"), 64).replace(/[^a-f0-9]/gi, "");
+    if (t) await env.DB.prepare("UPDATE subscribers SET unsubscribed_at=datetime('now') WHERE token=? AND unsubscribed_at IS NULL").bind(t).run();
+    return json({ ok: true });
+  },
   "GET /api/unsubscribe": async (req, env) => {
     const t = clip(new URL(req.url).searchParams.get("t"), 64).replace(/[^a-f0-9]/gi, "");
     let ok = false;
@@ -536,7 +560,7 @@ const routes = {
     let sent = false;
     try {
       sent = await sendMail(env, post.email, `${prof.name} replied to your post on CenTex Homeschool Hub`,
-        `${prof.name}${prof.town ? " (" + prof.town + ")" : ""} replied to your "Looking for" post:\n\n"${message}"\n\nYour post: "${post.details}"\n\nTo write back, email ${email}. They chose to share it by replying.\n\nCenTex Homeschool Hub`);
+        `${prof.name}${prof.town ? " (" + prof.town + ")" : ""} replied to your "Looking for" post:\n\n"${message}"\n\nYour post: "${post.details}"\n\nTo write back, just reply to this email (it goes to ${email}). They chose to share it by replying.\n\nCenTex Homeschool Hub`, null, { replyTo: email });
     } catch (e) { console.error("reply send failed", e.code, e.message); }
     if (!sent) return bad("Replies aren't switched on yet. Please check back soon.", 503);
     return json({ ok: true });
@@ -862,7 +886,7 @@ const routes = {
     let sent = false;
     try {
       sent = await sendMail(env, job.email, `${prof.name} responded to "${job.title}" on CenTex Homeschool Hub`,
-        `${prof.name}${prof.town ? " (" + prof.town + ")" : ""} responded to your post "${job.title}":\n\n"${message}"\n\nTo write back, email ${email}. They chose to share it by responding.\n\nCenTex Homeschool Hub`);
+        `${prof.name}${prof.town ? " (" + prof.town + ")" : ""} responded to your post "${job.title}":\n\n"${message}"\n\nTo write back, just reply to this email (it goes to ${email}). They chose to share it by responding.\n\nCenTex Homeschool Hub`, null, { replyTo: email });
     } catch (e) { console.error("job reply failed", e.code, e.message); }
     if (!sent) return bad("Responses aren't switched on yet. Please check back soon.", 503);
     return json({ ok: true });
