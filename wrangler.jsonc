@@ -28,7 +28,7 @@
     "INSTAGRAM_URL": "",
     // Comma-separated emails allowed into the owner tools. Set this to your own email
     // in the Cloudflare dashboard (Worker > Settings > Variables) or here.
-    "ADMIN_EMAIL": "benjamin@centexhomeschool.org",
+    "ADMIN_EMAIL": "berkli@centexhomeschool.org",
     // Printed in every newsletter footer (required by law). A P.O. box works.
     "MAILING_ADDRESS": "3202 Saint Genevieve Dr, Leander, TX 78641"
   },
