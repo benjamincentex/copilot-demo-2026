@@ -1097,6 +1097,66 @@ const routes = {
     return json({ ok: true });
   },
 
+  // Drill-down behind each "At a glance" number.
+  "GET /api/admin/detail": async (req, env) => {
+    const what = new URL(req.url).searchParams.get("what") || "";
+    const all = async (sql) => (await env.DB.prepare(sql).all()).results;
+    const Q = {
+      subscribers: "SELECT email, source, created_at, COALESCE(weekly_quotes,1) AS quotes, referred_by FROM subscribers WHERE unsubscribed_at IS NULL GROUP BY email ORDER BY created_at DESC LIMIT 500",
+      alerts: "SELECT email, listing, town, status_at_signup, created_at FROM alerts ORDER BY created_at DESC LIMIT 500",
+      claimed: "SELECT w.slug, w.email, w.name, w.role, w.approved_at, COALESCE((SELECT c.listing FROM claims c WHERE c.slug=w.slug ORDER BY c.id DESC LIMIT 1), (SELECT json_extract(u.data,'$.n') FROM user_listings u WHERE u.slug=w.slug)) AS listing FROM listing_owners w ORDER BY w.approved_at DESC LIMIT 500",
+      quizzes: "SELECT town, age, faith, want, interest, matches, local_matches, created_at FROM demand ORDER BY created_at DESC LIMIT 500",
+      submissions: "SELECT id, kind, name, town, website, contact, email, details, availability, registration_opens, status, created_at FROM submissions ORDER BY (status='new') DESC, created_at DESC LIMIT 200",
+      outbox: "SELECT to_email, listing, kind, subject, status, created_at FROM outbox WHERE status='queued' ORDER BY created_at DESC LIMIT 500",
+    };
+    if (!Q[what]) return bad("Unknown list.");
+    return json({ what, rows: await all(Q[what]) });
+  },
+
+  // Publish a "Add a listing" request as a live directory listing, and tell the submitter.
+  "POST /api/admin/submissions/approve": async (req, env) => {
+    const b = await body(req) || {}; const id = Number(b.id); if (!id) return bad("Missing id.");
+    const sub = await env.DB.prepare("SELECT * FROM submissions WHERE id=?").bind(id).first();
+    if (!sub) return bad("That request is gone.", 404);
+    if (sub.status !== "new") return bad("That request was already handled.");
+    const n = clip(b.n || sub.name, 140), town = clip(b.town || sub.town, 60);
+    const type = ["coop", "group", "class", "micro", "tutor", "activity"].includes(b.type) ? b.type : "";
+    if (!n || !town || !type) return bad("Add a name, town and type before publishing.");
+    const site = clip(b.site ?? sub.website, 300); if (site && !/^https?:\/\//i.test(site)) return bad("The website should start with https://");
+    const d = clip(b.d ?? sub.details, 300);
+    const tags = String(b.tags || "").split(",").map((t) => t.trim()).filter(Boolean).slice(0, 6);
+    const slug = (n.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "listing") + "-" + randomToken(2);
+    const data = { n, town, type, tags, days: [], d, site, ages: clip(b.ages, 40) };
+    const stamp = new Date().toISOString();
+    const stmts = [
+      env.DB.prepare("INSERT INTO user_listings (slug, email, data) VALUES (?,?,?)").bind(slug, sub.email, JSON.stringify(data)),
+      env.DB.prepare("UPDATE submissions SET status='approved' WHERE id=?").bind(id),
+    ];
+    if (b.makeOwner) {
+      stmts.push(env.DB.prepare("INSERT OR REPLACE INTO listing_owners (slug, email, name, role, approved_at) VALUES (?,?,?,?,?)").bind(slug, sub.email, sub.contact || "", "submitter", stamp));
+      stmts.push(env.DB.prepare("INSERT INTO listing_overrides (slug, data, updated_at, updated_by) VALUES (?,?,?,?) ON CONFLICT(slug) DO NOTHING").bind(slug, JSON.stringify({ claimed: true }), stamp, "owner"));
+    }
+    await env.DB.batch(stmts);
+    const site0 = env.SITE_URL || "https://centexhomeschool.org";
+    let emailed = false;
+    try {
+      emailed = await sendMail(env, sub.email, `${n} is now live on CenTex Homeschool Hub`,
+        `Hi ${sub.contact || "there"},\n\nGood news: ${n} is now listed in the CenTex Homeschool Hub directory, where Central Texas families look for co-ops, classes and activities.\n\n` +
+        (b.makeOwner
+          ? `You can manage it yourself. Sign in with this email address to update your details, mark availability and add open houses to the community calendar. Families who tap "Notify me" get an email the moment you open spots.\n\nManage your listing: ${site0}/leaders.html\n\n`
+          : `Want to keep it up to date yourself? Claim it with this email address and you can update details, mark availability and add open houses to the community calendar.\n\nClaim your listing: ${site0}/leaders.html\n\n`) +
+        `See it in the directory: ${site0}/directory\n\n` + (await joinBlock(env, sub.email)) + `Thanks,\nBenjamin\nCenTex Homeschool Hub`);
+    } catch (e) { console.error("live email failed", e && e.message); }
+    return json({ ok: true, slug, emailed });
+  },
+  "POST /api/admin/submissions/status": async (req, env) => {
+    const b = await body(req) || {}; const id = Number(b.id);
+    const status = ["handled", "dismissed", "new"].includes(b.status) ? b.status : null;
+    if (!id || !status) return bad("Missing id or status.");
+    await env.DB.prepare("UPDATE submissions SET status=? WHERE id=?").bind(status, id).run();
+    return json({ ok: true });
+  },
+
   "GET /api/admin/summary": async (req, env) => {
     const one = (sql) => env.DB.prepare(sql).first();
     const [subs, alerts, subm, outbox, quizzes, owners] = await Promise.all([

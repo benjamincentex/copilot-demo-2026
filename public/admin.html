@@ -221,6 +221,20 @@ html{scroll-behavior:smooth}
 .stats4 div{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px}
 .stats4 b{display:block;font-family:var(--display);font-size:28px;font-weight:400;font-variant-numeric:tabular-nums}
 .stats4 span{font-size:13px;color:var(--muted)}
+.stats4 button{font:inherit;text-align:left;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;cursor:pointer;display:flex;flex-direction:column}
+.stats4 button:hover{border-color:var(--oak)}
+.stats4 button[aria-expanded="true"]{border-color:var(--oak);box-shadow:inset 0 0 0 1px var(--oak)}
+.stats4 button span:last-child{font-size:12px;color:var(--oak);font-weight:600;margin-top:4px}
+.drill{border-top:1px solid var(--line);padding-top:12px}
+.drill table{width:100%;border-collapse:collapse;font-size:14px}
+.drill th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);padding:6px 8px 6px 0}
+.drill td{border-top:1px solid var(--line);padding:7px 8px 7px 0;vertical-align:top}
+.drill .scroll{overflow-x:auto;max-height:480px;overflow-y:auto}
+.reqform{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:6px}
+.reqform label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+.reqform input,.reqform select,.reqform textarea{font:inherit;font-size:14px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+.reqform .full{grid-column:1/-1}
+@media (max-width:640px){.reqform{grid-template-columns:1fr}}
 @media (max-width:640px){.row2{grid-template-columns:1fr}}
 </style>
 </head>
@@ -241,7 +255,8 @@ html{scroll-behavior:smooth}
     <form id="ownerCode" novalidate hidden style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px"><input id="os-code" inputmode="numeric" maxlength="6" placeholder="6-digit code" style="flex:0 1 160px;font:inherit;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)"><button class="btn sm" type="submit">Sign in</button></form>
     <p class="status" id="osStatus" role="status" style="margin:8px 0 0"></p></div>
   <div id="tools" hidden>
-    <div class="box"><h2>At a glance</h2><div class="stats4" id="stats"></div><p class="where" id="emailLine" style="margin:0"></p></div>
+    <div class="box"><h2>At a glance</h2><div class="stats4" id="stats"></div><div class="drill" id="drill" hidden></div><p class="where" id="emailLine" style="margin:0"></p></div>
+    <div class="box" id="requests"><h2>Listing requests to review</h2><p class="where" style="margin:0">Requests from the "Add a listing" form. Check the details, pick a type, then publish. The submitter gets an email when it's live.</p><div id="reqList" class="where">No requests waiting.</div></div>
     <div class="box"><h2>Listing claims to review</h2><div id="claims" class="where">No claims waiting.</div></div>
     <div class="box" id="activity"><h2>Listing activity (last 30 days)</h2><p class="where" style="margin:0">How families interact with each listing. Views count when a listing is on screen for a second (once per visit). Featured listings get a quarterly version of this by email (Jan 1, Apr 1, Jul 1, Oct 1).</p><div id="actTable" class="where" style="overflow-x:auto">No activity yet.</div></div>
     <div class="box" id="newsAdmin"><h2>News page</h2><p class="where" style="margin:0">Stories are added automatically each week with a short summary and a link to the source. Hide anything you don't want on the site.</p><div id="newsAdminList" class="where">No stories yet.</div></div>
@@ -255,7 +270,7 @@ html{scroll-behavior:smooth}
         <div class="field"><label for="pl-plan">Plan</label><select id="pl-plan"><option value="">Basic (free)</option><option value="featured">Featured ($39)</option></select></div>
         <button class="btn sm" type="submit">Save plan</button><span class="status" id="planStatus" role="status"></span>
       </form><div id="planList" class="where"></div></div>
-    <div class="box"><h2>Tutor listings</h2><p class="where" style="margin:0">Listings tutors created themselves. They go live right away.</p><div id="mTutors" class="where">No tutor listings yet.</div></div>
+    <div class="box"><h2>Listings added through the site</h2><p class="where" style="margin:0">Tutor listings and listing requests you published. Remove any that shouldn't be up.</p><div id="mTutors" class="where">No tutor listings yet.</div></div>
     <div class="box"><h2>Job posts</h2><p class="where" style="margin:0">Posting is free for now, so every job post goes live right away. Remove anything that breaks the rules.</p><div id="mJobs" class="where">No job posts yet.</div></div>
     <div class="box"><h2>Live events</h2><div id="mEvents" class="where">No events yet.</div></div>
     <div class="box"><h2>Recent listing questions</h2><p class="where" style="margin:0">Questions go to the group's leader, and anyone signed in can answer. Hide anything inappropriate.</p><div id="mQs" class="where"></div></div>
@@ -314,8 +329,62 @@ async function loadActivity(){
   const rows=r.listings.filter(x=>x.slug);
   $("actTable").innerHTML=rows.length?`<table style="width:100%;border-collapse:collapse;font-size:14px"><tr style="text-align:left"><th>Listing</th><th>Views</th><th>Website</th><th>Register</th><th>Notify me</th><th>Questions</th></tr>${rows.slice(0,60).map(x=>`<tr style="border-top:1px solid var(--line)"><td>${esc(name(x.slug))}</td><td>${x.views}</td><td>${x.website}</td><td>${x.register}</td><td>${x.alerts}</td><td>${x.questions}</td></tr>`).join("")}</table>`:"No activity yet.";
 }
+const TYPES={coop:"Co-op",group:"Support group",class:"Class",micro:"Microschool / hybrid",tutor:"Tutor",activity:"Activity"};
+const when=t=>t?esc(String(t).replace("T"," ").slice(0,16))+" UTC":"";
+const tbl=(heads,rows)=>rows.length?`<div class="scroll"><table><tr>${heads.map(h=>`<th>${esc(h)}</th>`).join("")}</tr>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join("")}</tr>`).join("")}</table></div>`:"<p class='where' style='margin:0'>Nothing here yet.</p>";
+const DRILL={
+  subscribers:{title:"Newsletter subscribers",render:r=>tbl(["Email","Signed up","From","Monday quotes"],r.map(x=>[esc(x.email),when(x.created_at),esc(x.source||"")+(x.referred_by?" · referred":""),x.quotes?"Yes":"No"]))},
+  alerts:{title:"Opening-alert sign-ups",render:r=>tbl(["Email","Listing","Town","Status then","Signed up"],r.map(x=>[esc(x.email),esc(x.listing||""),esc(x.town||""),esc(x.status_at_signup||""),when(x.created_at)]))},
+  claimed:{title:"Claimed listings and their managers",render:r=>tbl(["Listing","Manager","Role","Approved"],r.map(x=>[esc(x.listing||x.slug),esc(x.name?x.name+" · ":"")+esc(x.email),esc(x.role||""),when(x.approved_at)]))},
+  quizzes:{title:"Quiz answers",render:r=>tbl(["Town","Ages","Faith","Looking for","Matches (local)","When"],r.map(x=>[esc(x.town||""),esc(x.age||""),esc(x.faith||""),esc([x.want,x.interest].filter(Boolean).join(" · ")),`${x.matches??""} (${x.local_matches??""})`,when(x.created_at)]))},
+  submissions:{title:"All form submissions",render:r=>tbl(["Request","Name","From","Status","When"],r.map(x=>[esc(x.kind||""),esc(x.name)+(x.town?` · ${esc(x.town)}`:"")+(x.details?`<br><span class="where">${esc(x.details)}</span>`:""),esc(x.contact?x.contact+" · ":"")+esc(x.email),esc(x.status),when(x.created_at)]))},
+  outbox:{title:"Alert emails waiting to send",render:r=>tbl(["To","Listing","Subject","Queued"],r.map(x=>[esc(x.to_email),esc(x.listing||""),esc(x.subject||""),when(x.created_at)]))},
+};
+let openDrill="";
+document.addEventListener("click",async e=>{
+  const b=e.target.closest("[data-drill]"); if(!b) return;
+  const k=b.dataset.drill, box=$("drill");
+  document.querySelectorAll("[data-drill]").forEach(x=>x.setAttribute("aria-expanded","false"));
+  if(openDrill===k){openDrill=""; box.hidden=true; return;}
+  openDrill=k; b.setAttribute("aria-expanded","true"); box.hidden=false; box.innerHTML="<p class='where'>Loading…</p>";
+  const r=await api("/api/admin/detail?what="+k);
+  box.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px"><h3 style="margin:0;font-size:18px">${esc(DRILL[k].title)}${r.ok?` <span class="where" style="font-size:14px">(${r.rows.length})</span>`:""}</h3><button class="linkbtn" type="button" data-drill="${k}">Close</button></div>`+(r.ok?DRILL[k].render(r.rows):`<p class="status err">${esc(r.error)}</p>`)+(k==="submissions"?`<p class="where" style="margin:8px 0 0"><a href="#requests">Review new listing requests ›</a></p>`:"");
+});
+async function loadRequests(){
+  const r=await api("/api/admin/detail?what=submissions"); if(!r.ok) return;
+  const open=r.rows.filter(x=>x.status==="new");
+  const guess=x=>{const t=((x.name||"")+" "+(x.details||"")).toLowerCase(); return /co-?op/.test(t)?"coop":/microschool|hybrid|academy|university model/.test(t)?"micro":/tutor/.test(t)?"tutor":/support group|moms group|park day/.test(t)?"group":/karate|martial|gym|dance|sport|swim|museum|zoo|farm|art|music|theater|camp|lesson/.test(t)?"activity":/class/.test(t)?"class":"activity";};
+  $("reqList").innerHTML=open.length?open.map(x=>{
+    const isAdd=!/claim|correct|event/i.test(x.kind||"");
+    return `<div class="rev" data-req="${x.id}"><b style="color:var(--ink)">${esc(x.kind||"Request")}: ${esc(x.name)}</b>
+    <span>${esc(x.contact?x.contact+" · ":"")}${esc(x.email)} · ${when(x.created_at)}${x.website?` · <a href="${esc(x.website)}" target="_blank" rel="noopener">website</a>`:""}</span>
+    ${x.details?`<span>${esc(x.details)}</span>`:""}
+    ${isAdd?`<div class="reqform">
+      <label>Name<input name="n" value="${esc(x.name||"")}" maxlength="140"></label>
+      <label>Type<select name="type">${Object.entries(TYPES).map(([k,v])=>`<option value="${k}"${k===guess(x)?" selected":""}>${v}</option>`).join("")}</select></label>
+      <label>Town<input name="town" value="${esc(x.town||"")}" maxlength="60" placeholder="e.g. Leander"></label>
+      <label>Website<input name="site" value="${esc(x.website||"")}" maxlength="300" placeholder="https://"></label>
+      <label>Ages<input name="ages" maxlength="40" placeholder="e.g. 5–12"></label>
+      <label>Tags (comma separated)<input name="tags" maxlength="120" placeholder="e.g. Christian, Classical"></label>
+      <label class="full">Description families will see<textarea name="d" maxlength="300" rows="2">${esc((x.details||"").slice(0,300))}</textarea></label>
+      <label class="full" style="flex-direction:row;align-items:center;gap:8px;color:var(--ink)"><input type="checkbox" name="makeOwner" checked style="width:auto"> Let ${esc(x.email)} manage this listing</label>
+    </div>`:""}
+    <div class="row">${isAdd?`<button class="btn sm" type="button" data-reqpub="${x.id}">Publish listing</button>`:`<button class="btn sm" type="button" data-reqst="${x.id}:handled">Mark handled</button>`}<button class="btn ghost sm" type="button" data-reqst="${x.id}:dismissed">Dismiss</button><span class="status" role="status"></span></div></div>`;}).join(""):"No requests waiting.";
+}
+document.addEventListener("click",async e=>{
+  const p=e.target.closest("[data-reqpub]"), st=e.target.closest("[data-reqst]"); if(!p&&!st) return;
+  const card=(p||st).closest("[data-req]"), msg=card.querySelector(".status");
+  if(p){ const f=n=>card.querySelector(`[name="${n}"]`);
+    p.disabled=true; msg.className="status"; msg.textContent="Publishing…";
+    const r=await api("/api/admin/submissions/approve",{id:Number(p.dataset.reqpub),n:f("n").value.trim(),type:f("type").value,town:f("town").value.trim(),site:f("site").value.trim(),ages:f("ages").value.trim(),tags:f("tags").value,d:f("d").value.trim(),makeOwner:f("makeOwner").checked});
+    if(!r.ok){p.disabled=false; msg.className="status err"; msg.textContent=r.error; return;}
+    msg.className="status ok"; msg.textContent=r.emailed?"Live, and the submitter was emailed.":"Live. (The email to the submitter didn't send.)";
+    setTimeout(load,1400); return; }
+  const [id,status]=st.dataset.reqst.split(":"); st.disabled=true;
+  const r=await api("/api/admin/submissions/status",{id:Number(id),status}); r.ok?load():(st.disabled=false);
+});
 async function load(){
-  loadNewsletters(); loadFlags(); loadActivity(); loadReferrals(); loadNewsAdmin();
+  loadNewsletters(); loadRequests(); loadFlags(); loadActivity(); loadReferrals(); loadNewsAdmin();
   const me=await api("/api/admin/me");
   if(!(me.ok&&me.admin)){$("denied").hidden=false;
     $("ownerSign").onsubmit=async e=>{e.preventDefault(); const st=$("osStatus"); st.textContent="Sending…"; const r=await api("/api/auth/request-code",{email:$("os-email").value.trim()}); st.textContent=r.ok?"Check your inbox for the code.":r.error; if(r.ok){$("ownerCode").hidden=false;$("os-code").focus();}};
@@ -324,7 +393,7 @@ async function load(){
   $("tools").hidden=false;
   const [sum,cl]=await Promise.all([api("/api/admin/summary"),api("/api/admin/claims")]);
   if(sum.ok){
-    $("stats").innerHTML=[["Newsletter subscribers",sum.subscribers],["Alert sign-ups",sum.alerts],["Claimed listings",sum.claimedListings],["Quizzes finished",sum.quizzes],["New form submissions",sum.newSubmissions],["Alert emails waiting",sum.queuedEmails]].map(([l,n])=>`<div><b>${n}</b><span>${l}</span></div>`).join("");
+    $("stats").innerHTML=[["subscribers","Newsletter subscribers",sum.subscribers],["alerts","Alert sign-ups",sum.alerts],["claimed","Claimed listings",sum.claimedListings],["quizzes","Quizzes finished",sum.quizzes],["submissions","New form submissions",sum.newSubmissions],["outbox","Alert emails waiting",sum.queuedEmails]].map(([k,l,n])=>`<button type="button" data-drill="${k}" aria-expanded="false"><b>${n}</b><span>${l}</span><span>See list ›</span></button>`).join("");
     $("emailLine").textContent=sum.emailEnabled?"Email sending is on: sign-in codes and alerts go out automatically.":"Email sending is off until the domain is verified for sending. Leaders can't sign in yet, and alerts wait in the queue.";
     $("gaps").innerHTML=sum.gaps.length?`<table><thead><tr><th>Looking for (town · faith · type)</th><th style="text-align:right">Families</th></tr></thead><tbody>${sum.gaps.map(g=>`<tr><td>${esc([g.town,g.faith,g.want].filter(Boolean).join(" · "))}</td><td class="n">${g.n}</td></tr>`).join("")}</tbody></table>`:"<p class='where'>No gaps yet.</p>";
   }
