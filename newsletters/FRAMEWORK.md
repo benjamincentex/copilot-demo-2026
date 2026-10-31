@@ -1,6 +1,6 @@
 # CenTex Homeschool Hub — monthly newsletter framework
 
-One issue a month, sent at the start of the month after Benjamin approves the draft on the owner page (/admin.html#newsletter).
+One issue a month, sent at the start of the month after the owner approves the draft on the owner page (/admin.html#newsletter).
 Draft is written by the 25th of the prior month. Reading time: about 4 minutes.
 
 ## Sections, in this order
@@ -31,7 +31,7 @@ Draft is written by the 25th of the prior month. Reading time: about 4 minutes.
    or send them your personal link" with `{{referral_url}}` as the link (filled in per subscriber; signups through it
    are credited to them).
 10. **For schools & teachers** — a short note inviting groups to claim their free listing (/leaders.html).
-11. **Sign-off** — Benjamin, plus "hit reply and tell me about a group we're missing."
+11. **Sign-off** — Berkli, plus "hit reply and tell me about a group we're missing."
 
 ## Rules
 - Original writing only; no copied paragraphs. Facts and dates must come from a source checked that month.
