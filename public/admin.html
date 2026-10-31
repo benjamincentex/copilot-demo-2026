@@ -257,6 +257,7 @@ html{scroll-behavior:smooth}
   <div id="tools" hidden>
     <div class="box"><h2>At a glance</h2><div class="stats4" id="stats"></div><div class="drill" id="drill" hidden></div><p class="where" id="emailLine" style="margin:0"></p></div>
     <div class="box" id="addListing"><h2>Add a listing</h2><p class="where" style="margin:0">Goes live in the directory right away, no review needed. Add a manager email to let a group leader update it themselves.</p>
+      <form id="fromLink" novalidate style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input id="fl-url" type="text" inputmode="url" autocapitalize="off" placeholder="Paste a website or Facebook page to fill this in automatically" style="flex:1 1 300px;font:inherit;font-size:14px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)"><button class="btn sm" type="submit">Create from link</button><span class="status" id="flStatus" role="status" style="flex-basis:100%"></span></form>
       <form id="addForm" class="reqform" novalidate>
         <label>Name<input name="n" maxlength="140" required></label>
         <label>Type<select name="type"><option value="">Pick a type</option><option value="coop">Co-op</option><option value="group">Support group</option><option value="class">Class</option><option value="micro">Microschool / hybrid</option><option value="tutor">Tutor</option><option value="activity">Activity</option></select></label>
@@ -418,6 +419,17 @@ document.addEventListener("click",async e=>{
   st.className="status "+(r.ok?"ok":"err"); st.textContent=r.ok?`"${m.n}" is off the directory.`:r.error; if(r.ok) load(); else b.disabled=false;
 });
 document.addEventListener("click",async e=>{const b=e.target.closest("[data-unhide]"); if(!b) return; b.disabled=true; const r=await api("/api/admin/listings/visibility",{slug:b.dataset.unhide,hidden:false}); r.ok?load():(b.disabled=false);});
+document.getElementById("fromLink").addEventListener("submit",async e=>{
+  e.preventDefault(); const st=$("flStatus"), url=$("fl-url").value.trim(); if(!url){st.className="status err"; st.textContent="Paste a link first."; return;}
+  st.className="status"; st.textContent="Reading the page and drafting the listing…";
+  const r=await api("/api/admin/listings/draft",{url}); if(!r.ok){st.className="status err"; st.textContent=r.error; return;}
+  const f=$("addForm"), d=r.draft; f.elements.n.value=d.n||""; f.elements.type.value=d.type||""; f.elements.town.value=d.town||""; f.elements.site.value=d.site||""; f.elements.ages.value=d.ages||""; f.elements.sched.value=d.sched||""; f.elements.tags.value=(d.tags||[]).join(", "); f.elements.d.value=d.d||"";
+  const known=(window.L||[]).some(x=>x.n.toLowerCase()===String(d.n).toLowerCase())||r.dupe;
+  const miss=[!d.type&&"type",!d.town&&"town"].filter(Boolean);
+  st.className="status "+(known||miss.length||r.thin?"err":"ok");
+  st.textContent=(known?`"${d.n}" may already be in the directory. `:"")+(r.thin?"That page shared very little (Facebook often hides details), so check everything. ":"")+(miss.length?`Pick the ${miss.join(" and ")}, then publish.`:"Drafted below. Give it a quick check, then click Publish listing.");
+  f.scrollIntoView({behavior:"smooth",block:"start"});
+});
 let addForce=false;
 document.getElementById("addForm").addEventListener("input",()=>{addForce=false;});
 document.getElementById("addForm").addEventListener("submit",async e=>{

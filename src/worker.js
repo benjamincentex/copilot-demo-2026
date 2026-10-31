@@ -115,6 +115,7 @@ async function sendMail(env, to, subject, text, html, opts = {}) {
       text,
       html: html || textToHtml(env, text),
       ...(headers ? { headers } : {}),
+      ...(opts.attachments ? { attachments: opts.attachments } : {}),
     });
     return true;
   } catch (e) {
@@ -1227,6 +1228,60 @@ const routes = {
     await env.DB.prepare("INSERT INTO listing_overrides (slug, data, updated_at, updated_by) VALUES (?,?,?,?) ON CONFLICT(slug) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at, updated_by=excluded.updated_by")
       .bind(slug, JSON.stringify(prev), new Date().toISOString(), "owner").run();
     return json({ ok: true });
+  },
+  // Paste a website or Facebook page: read it and draft a listing for the owner to check and publish.
+  "POST /api/admin/listings/draft": async (req, env) => {
+    const b = await body(req) || {}; const url = normSite(b.url);
+    if (!url) return bad("Paste a website or Facebook page link.");
+    let html = "";
+    try {
+      const r = await fetch(url, { redirect: "follow", headers: { "user-agent": "Mozilla/5.0 (compatible; CenTexHomeschoolHub/1.0; +https://centexhomeschool.org)", accept: "text/html" }, signal: AbortSignal.timeout(12000) });
+      html = (await r.text()).slice(0, 400000);
+    } catch (e) { return bad("Couldn't open that page. Check the link, or fill in the form by hand."); }
+    const meta = (prop) => { const m = html.match(new RegExp(`<meta[^>]+(?:property|name)=["']${prop}["'][^>]*content=["']([^"']*)["']`, "i")) || html.match(new RegExp(`<meta[^>]+content=["']([^"']*)["'][^>]*(?:property|name)=["']${prop}["']`, "i")); return m ? m[1] : ""; };
+    const dec = (t) => String(t || "").replace(/&amp;/g, "&").replace(/&#0?39;|&apos;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&nbsp;/g, " ").replace(/&#(\d+);/g, (m, n) => String.fromCharCode(+n));
+    const title = dec(meta("og:title") || (html.match(/<title[^>]*>([^<]*)<\/title>/i) || [])[1] || "").trim();
+    const desc = dec(meta("og:description") || meta("description")).trim();
+    const site = dec(meta("og:site_name")).trim();
+    const locality = (html.match(/"addressLocality"\s*:\s*"([^"]+)"/) || [])[1] || "";
+    const text = dec(html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<noscript[\s\S]*?<\/noscript>/gi, " ").replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim().slice(0, 5000);
+    const TOWNS = ["Liberty Hill", "Leander", "Cedar Park", "Round Rock", "Pflugerville", "Georgetown", "Austin", "Bastrop area"];
+    const TAGS = ["Christian", "Catholic", "Secular", "Classical", "Charlotte Mason", "Nature-based", "STEM", "Arts", "Gifted / 2e", "Littles welcome",
+      "Gymnastics", "Swim", "Martial arts", "Sports", "Baseball", "Soccer", "Climbing", "Skating", "Dance", "Horseback", "Archery & fencing", "Kid gyms & play", "Bowling & mini golf",
+      "Music", "Art", "Theater", "Cooking", "Coding", "Makerspace & robotics", "Chess", "Museums", "Texas history", "Zoos & animals", "Nature centers & gardens", "State parks", "Farms & living history", "Caves", "Stargazing", "Libraries", "Outdoor skills", "Clubs & 4-H"];
+    let d = { n: (site || title.split(/\s[|–—-]\s/)[0] || "").slice(0, 140), type: "", town: TOWNS.find((t) => locality.includes(t) || text.includes(t)) || "", d: desc.slice(0, 200), tags: [], ages: "", sched: "" };
+    if (env.AI && typeof env.AI.run === "function" && (text.length > 80 || desc)) {
+      try {
+        const schema = { type: "object", properties: {
+          n: { type: "string" }, type: { type: "string", enum: ["coop", "group", "class", "micro", "tutor", "activity"] },
+          town: { type: "string", enum: TOWNS.concat([""]) }, d: { type: "string" }, tags: { type: "array", items: { type: "string", enum: TAGS } },
+          ages: { type: "string" }, sched: { type: "string" } }, required: ["n", "type", "town", "d", "tags", "ages", "sched"] };
+        const out = await env.AI.run(MOD_MODEL, {
+          messages: [{ role: "system", content: "You turn a homeschool-related business or group's web page into a directory listing for Central Texas families. Use only facts on the page; never invent. n: the organization's name. type: coop (parents share teaching), group (support group, park days), class (drop-off classes/enrichment for homeschoolers), micro (microschool, hybrid or university-model school), tutor, or activity (sports, arts, museums, parks, gyms, field trips and other businesses kids attend). town: the listed town it is in or nearest of the allowed towns (suburbs like Bee Cave, Lakeway, Dripping Springs, Manor map to Austin; Hutto to Round Rock; Elgin/Smithville to Bastrop); empty if unknown or outside Central Texas. d: one plain sentence, max 140 characters, in your own words, saying what it offers families (mention homeschool programs or daytime classes if the page does). tags: up to 4 from the allowed list that clearly apply. ages: like '5–12' or 'K–8' only if stated, else ''. sched: meeting days/times if stated (e.g. 'Tuesdays 9–12'), else ''." },
+            { role: "user", content: `URL: ${url}\nTitle: ${title}\nSite name: ${site}\nDescription: ${desc}\nLocality: ${locality}\nPage text: ${text}` }],
+          response_format: { type: "json_schema", json_schema: schema }, max_tokens: 400, temperature: 0,
+        });
+        let r = out && out.response; if (typeof r === "string") r = JSON.parse(r);
+        if (r && r.n) d = { n: clip(r.n, 140), type: r.type || "", town: TOWNS.includes(r.town) ? r.town : d.town, d: clip(r.d, 300), tags: (r.tags || []).filter((t) => TAGS.includes(t)).slice(0, 6), ages: clip(r.ages, 40), sched: clip(r.sched, 120) };
+      } catch (e) { console.error("draft AI failed", e && e.message); }
+    }
+    if (!d.n) return bad("That page didn't give us enough to go on. Fill in the form by hand.");
+    const dupe = await env.DB.prepare("SELECT 1 FROM user_listings WHERE status='live' AND lower(json_extract(data,'$.n'))=lower(?)").bind(d.n).first();
+    return json({ ok: true, draft: { ...d, site: url }, thin: text.length < 300 && !desc, dupe: !!dupe });
+  },
+  // Email the site's park-day artwork (sized for Facebook) to the owner's inbox.
+  "POST /api/admin/email-social": async (req, env) => {
+    const to = (env.ADMIN_EMAIL || "").split(",")[0].trim(); if (!to) return bad("No owner email set.");
+    const site = env.SITE_URL || "https://centexhomeschool.org";
+    const files = [["facebook-cover.jpg", "Facebook cover photo (1640 × 624)"], ["facebook-post.jpg", "Link/post image (1200 × 630)"]];
+    const attachments = [];
+    for (const [f] of files) {
+      const r = await env.ASSETS.fetch(new Request(`${site}/social/${f}`));
+      if (r.ok) attachments.push({ content: await r.arrayBuffer(), filename: `centex-homeschool-hub-${f}`, type: "image/jpeg", disposition: "attachment" });
+    }
+    const ok = await sendMail(env, to, "CenTex Homeschool Hub pictures for Facebook",
+      `Hi Berkli,\n\nHere's our live oak park-day picture from the website, sized for Facebook. Both are attached:\n\n- Cover photo (1640 × 624): use as the page's cover photo. On phones Facebook trims the sides, and your profile picture sits over the bottom left.\n- Post image (1200 × 630): the right size for posts and link previews.\n\nDownload links, in case attachments don't come through:\n- Cover photo: ${site}/social/facebook-cover.jpg\n- Post image: ${site}/social/facebook-post.jpg\n\nCenTex Homeschool Hub`, null, { attachments });
+    return ok ? json({ ok: true, to, attached: attachments.length }) : bad("The email didn't send.", 502);
   },
   "POST /api/admin/submissions/status": async (req, env) => {
     const b = await body(req) || {}; const id = Number(b.id);
