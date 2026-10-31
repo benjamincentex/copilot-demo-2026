@@ -1343,6 +1343,45 @@ const routes = {
       `Hi Berkli,\n\nHere's our live oak park-day picture from the website, sized for Facebook. Both are attached:\n\n- Cover photo (1640 × 624): use as the page's cover photo. On phones Facebook trims the sides, and your profile picture sits over the bottom left.\n- Post image (1200 × 630): the right size for posts and link previews.\n\nDownload links, in case attachments don't come through:\n- Cover photo: ${site}/social/facebook-cover.jpg\n- Post image: ${site}/social/facebook-post.jpg\n\nCenTex Homeschool Hub`, null, { attachments });
     return ok ? json({ ok: true, to, attached: attachments.length }) : bad("The email didn't send.", 502);
   },
+  // Two emails to the owner: every listing's Facebook page to follow, and each group's publicly published contact.
+  "POST /api/admin/outreach-emails": async (req, env) => {
+    const to = (env.ADMIN_EMAIL || "").split(",")[0].trim(); if (!to) return bad("No owner email set.");
+    const items = (await listingSites(env)).map((x) => ({ name: x.name, site: x.url, type: x.type }));
+    const { results: ul } = await env.DB.prepare("SELECT data FROM user_listings WHERE status='live'").all();
+    for (const r of ul) { try { const d = JSON.parse(r.data); if (d.site) items.push({ name: d.n, site: d.site, type: d.type }); } catch {} }
+    const { results: hid } = await env.DB.prepare("SELECT data FROM listing_overrides WHERE data LIKE '%\"hidden\":true%'").all();
+    const hiddenNames = new Set(hid.map((h) => { try { return JSON.parse(h.data).hiddenName; } catch { return ""; } }));
+    const list = items.filter((x) => !hiddenNames.has(x.name));
+    const out = [];
+    const work = async (x) => {
+      const o = { ...x, fb: "", emails: [], contact: "" };
+      if (/facebook\.com/i.test(x.site)) { o.fb = x.site; out.push(o); return; }
+      try {
+        const r = await fetch(x.site, { headers: { "user-agent": "Mozilla/5.0 (compatible; CenTexHomeschoolHub/1.0; +https://centexhomeschool.org)" }, redirect: "follow", signal: AbortSignal.timeout(8000) });
+        if (r.ok) {
+          const html = (await r.text()).slice(0, 600000);
+          const fb = [...html.matchAll(/https?:\/\/(?:www\.|m\.)?facebook\.com\/(?!sharer|share|plugins|tr\b|dialog|login|policies|privacy|help|events\/|hashtag)[A-Za-z0-9.\-_/?=]+/gi)].map((m) => m[0].replace(/[?#].*$/, "").replace(/\/+$/, ""));
+          o.fb = fb.find((u) => !/facebook\.com\/(groups\/)?$/.test(u)) || "";
+          const em = new Set(); for (const m of html.matchAll(/mailto:([a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,})/gi)) em.add(m[1].toLowerCase());
+          if (!em.size) for (const m of html.matchAll(/\b([a-z0-9._%+-]+@[a-z0-9.-]+\.(?:com|org|net|edu|us|co|school|academy))\b/gi)) { const e = m[1].toLowerCase(); if (!/sentry|wixpress|example|domain\.com|\.(png|jpg)$/.test(e)) em.add(e); }
+          o.emails = [...em].slice(0, 2);
+          const c = (html.match(/href="([^"#]*contact[^"#]*)"/i) || [])[1]; if (c) { try { o.contact = new URL(c, x.site).toString(); } catch {} }
+        }
+      } catch {}
+      out.push(o);
+    };
+    for (let i = 0; i < list.length; i += 10) await Promise.all(list.slice(i, i + 10).map(work));
+    out.sort((a, b) => a.name.localeCompare(b.name));
+    const esc = (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    const grp = (rows, f) => { const s = rows.filter((r) => r.type !== "activity"), a = rows.filter((r) => r.type === "activity"); return [["Schools, co-ops & groups", s], ["Activities & field trips", a]].filter((g) => g[1].length).map(([t, rs]) => `<h3 style="font-family:Georgia,serif;font-weight:normal;color:#2F5A3D;margin:22px 0 8px">${t} (${rs.length})</h3><ol style="padding-left:20px;margin:0">${rs.map(f).join("")}</ol>`).join(""); };
+    const fbRows = out.filter((r) => r.fb);
+    const html1 = `<p>Here are the Facebook pages for ${fbRows.length} of our ${out.length} listings. Tip: switch to the CenTex Homeschool Hub page (your profile picture, then the page) before you click Follow, so the page follows them, not your personal profile.</p>` + grp(fbRows, (r) => `<li style="margin:0 0 6px"><a href="${esc(r.fb)}" style="color:#3546A8;font-weight:bold">${esc(r.name)}</a></li>`) + `<p style="margin-top:18px;color:#76675A;font-size:13px">Listings without a Facebook page we could find: ${out.length - fbRows.length}.</p>`;
+    const ctRows = out.filter((r) => r.emails.length || r.contact || r.fb);
+    const html2 = `<p>Here's the publicly published contact for each group, from its own website. This is usually the director or founder, and the right place to invite them to claim their free listing. Where there's no email, use their contact page or message their Facebook page.</p>` + grp(ctRows, (r) => `<li style="margin:0 0 8px"><b>${esc(r.name)}</b><br>${r.emails.map((e) => `<a href="mailto:${esc(e)}" style="color:#3546A8">${esc(e)}</a>`).join(" · ")}${r.emails.length && (r.contact || r.fb) ? " · " : ""}${r.contact ? `<a href="${esc(r.contact)}" style="color:#3546A8">Contact page</a>` : ""}${r.contact && r.fb ? " · " : ""}${r.fb ? `<a href="${esc(r.fb)}" style="color:#3546A8">Message on Facebook</a>` : ""}${!r.emails.length && !r.contact && !r.fb ? `<a href="${esc(r.site)}" style="color:#3546A8">Website</a>` : ""}</li>`);
+    const ok1 = await sendMail(env, to, `Facebook pages to follow: ${fbRows.length} CenTex Homeschool Hub listings`, `Facebook pages for ${fbRows.length} of our listings are in this email. Open it in an email app that shows HTML to click the links.`, emailShell(env, html1, "Every listing's Facebook page, ready to follow"));
+    const ok2 = await sendMail(env, to, `Group contacts: ${ctRows.length} CenTex Homeschool Hub listings`, `Published contacts for ${ctRows.length} of our listings are in this email. Open it in an email app that shows HTML to click the links.`, emailShell(env, html2, "Each group's published contact, to invite them to claim their listing"));
+    return json({ ok: ok1 && ok2, listings: out.length, facebook: fbRows.length, contacts: ctRows.length, withEmail: out.filter((r) => r.emails.length).length });
+  },
   "POST /api/admin/submissions/status": async (req, env) => {
     const b = await body(req) || {}; const id = Number(b.id);
     const status = ["handled", "dismissed", "new"].includes(b.status) ? b.status : null;
