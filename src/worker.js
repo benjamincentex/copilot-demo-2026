@@ -749,7 +749,7 @@ const routes = {
     for (const o of owners) {
       try {
         if (await sendMail(env, o.email, `A family has a question about ${listing}`,
-          `Hi there,\n\n${prof.name}${prof.town ? " from " + prof.town : ""} found ${listing} on CenTex Homeschool Hub and asked:\n\n"${question}"\n\nJust reply to this email to answer them directly. Your reply goes to their inbox, and nothing is posted on the site.\n\nManage your listing: ${site}/leaders.html\n\nThanks,\nBerkli\nCenTex Homeschool Hub`,
+          `Hi there,\n\n${prof.name}${prof.town ? " from " + prof.town : ""} found ${listing} on CenTex Homeschool Hub and asked:\n\n"${question}"\n\nJust reply to this email to answer them directly (it goes to ${email}). Nothing is posted on the site.\n\nManage your listing: ${site}/leaders.html\n\nThanks,\nBerkli\nCenTex Homeschool Hub`,
           null, { replyTo: email })) sent++;
       } catch (e) { console.error("question email failed", e && e.message); }
     }
