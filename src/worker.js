@@ -1182,6 +1182,17 @@ const routes = {
     }
     return json({ ok: true, slug, emailed });
   },
+  // Unpublish / republish any directory listing (built-in or added). Hidden listings stay in the data so they can come back.
+  "POST /api/admin/listings/visibility": async (req, env) => {
+    const b = await body(req) || {}; const slug = clip(b.slug, 140); if (!slug) return bad("Pick a listing.");
+    const prevRow = await env.DB.prepare("SELECT data FROM listing_overrides WHERE slug=?").bind(slug).first();
+    const prev = prevRow ? JSON.parse(prevRow.data) : {};
+    if (b.hidden) { prev.hidden = true; prev.hiddenAt = new Date().toISOString(); prev.hiddenName = clip(b.name, 140); }
+    else { delete prev.hidden; delete prev.hiddenAt; delete prev.hiddenName; }
+    await env.DB.prepare("INSERT INTO listing_overrides (slug, data, updated_at, updated_by) VALUES (?,?,?,?) ON CONFLICT(slug) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at, updated_by=excluded.updated_by")
+      .bind(slug, JSON.stringify(prev), new Date().toISOString(), "owner").run();
+    return json({ ok: true });
+  },
   "POST /api/admin/submissions/status": async (req, env) => {
     const b = await body(req) || {}; const id = Number(b.id);
     const status = ["handled", "dismissed", "new"].includes(b.status) ? b.status : null;

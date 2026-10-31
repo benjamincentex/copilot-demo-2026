@@ -270,6 +270,9 @@ html{scroll-behavior:smooth}
         <label style="flex-direction:row;align-items:center;gap:8px;color:var(--ink);align-self:end"><input type="checkbox" name="notify" checked style="width:auto"> Email them that it's live</label>
         <div class="full" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn sm" type="submit">Publish listing</button><span class="status" id="addStatus" role="status"></span></div>
       </form></div>
+    <div class="box" id="unpublish"><h2>Unpublish a listing</h2><p class="where" style="margin:0">Takes any listing off the directory, calendar and search right away. Nothing is deleted, so you can put it back anytime.</p>
+      <input id="hideName" type="search" placeholder="Search by name, town or type…" autocomplete="off" style="font:inherit;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)"><span class="status" id="hideStatus" role="status"></span><div id="hideResults"></div>
+      <h3 style="margin:6px 0 0;font-size:18px">Unpublished</h3><div id="hiddenList" class="where">No unpublished listings.</div></div>
     <div class="box" id="requests"><h2>Listing requests to review</h2><p class="where" style="margin:0">Requests from the "Add a listing" form. Check the details, pick a type, then publish. The submitter gets an email when it's live.</p><div id="reqList" class="where">No requests waiting.</div></div>
     <div class="box"><h2>Listing claims to review</h2><div id="claims" class="where">No claims waiting.</div></div>
     <div class="box" id="activity"><h2>Listing activity (last 30 days)</h2><p class="where" style="margin:0">How families interact with each listing. Views count when a listing is on screen for a second (once per visit). Featured listings get a quarterly version of this by email (Jan 1, Apr 1, Jul 1, Oct 1).</p><div id="actTable" class="where" style="overflow-x:auto">No activity yet.</div></div>
@@ -397,6 +400,24 @@ document.addEventListener("click",async e=>{
   const [id,status]=st.dataset.reqst.split(":"); st.disabled=true;
   const r=await api("/api/admin/submissions/status",{id:Number(id),status}); r.ok?load():(st.disabled=false);
 });
+let HIDE_INDEX=[];
+const TYPE_LABEL={coop:"Co-op",group:"Support group",class:"Class",micro:"Microschool / hybrid",tutor:"Tutor",activity:"Activity"};
+function showHideResults(){
+  const q=$("hideName").value.trim().toLowerCase(), box=$("hideResults");
+  if(!q){box.innerHTML=`<p class="where" style="margin:0">${HIDE_INDEX.length} listings in the directory. Type to find one.</p>`; return;}
+  const words=q.split(/\s+/), hits=HIDE_INDEX.filter(x=>words.every(w=>x.hay.includes(w)));
+  box.innerHTML=hits.length?`<div class="drill" style="border:0;padding:0"><div class="scroll" style="max-height:360px"><table>${hits.slice(0,40).map(x=>`<tr><td><b>${esc(x.n)}</b><br><span class="where">${esc(x.town)} · ${esc(TYPE_LABEL[x.type]||x.type)}</span></td><td style="text-align:right;white-space:nowrap"><button class="btn ghost sm" type="button" data-hide="${esc(x.slug)}">Unpublish</button></td></tr>`).join("")}</table></div>${hits.length>40?`<p class="where" style="margin:6px 0 0">Showing 40 of ${hits.length}. Keep typing to narrow it down.</p>`:""}</div>`:"<p class='where' style='margin:0'>No listings match.</p>";
+}
+document.getElementById("hideName").addEventListener("input",showHideResults);
+document.addEventListener("click",async e=>{
+  const b=e.target.closest("[data-hide]"); if(!b) return;
+  const m=HIDE_INDEX.find(x=>x.slug===b.dataset.hide); if(!m) return;
+  if(!confirm(`Unpublish "${m.n}"? Families won't see it until you republish it.`)) return;
+  b.disabled=true; const st=$("hideStatus");
+  const r=await api("/api/admin/listings/visibility",{slug:m.slug,hidden:true,name:m.n});
+  st.className="status "+(r.ok?"ok":"err"); st.textContent=r.ok?`"${m.n}" is off the directory.`:r.error; if(r.ok) load(); else b.disabled=false;
+});
+document.addEventListener("click",async e=>{const b=e.target.closest("[data-unhide]"); if(!b) return; b.disabled=true; const r=await api("/api/admin/listings/visibility",{slug:b.dataset.unhide,hidden:false}); r.ok?load():(b.disabled=false);});
 let addForce=false;
 document.getElementById("addForm").addEventListener("input",()=>{addForce=false;});
 document.getElementById("addForm").addEventListener("submit",async e=>{
@@ -434,6 +455,11 @@ async function load(){
   const lo=await api("/api/listings");
   if(lo.ok){
     const all=L.concat(lo.custom||[]); const sid=x=>x.slug||slug(x.n);
+    const ov=lo.overrides||{}, isHidden=x=>ov[sid(x)]&&ov[sid(x)].hidden;
+    HIDE_INDEX=all.filter(x=>!isHidden(x)).map(x=>({slug:sid(x),n:x.n,town:x.town||"",type:x.type||"",hay:[x.n,x.town,(x.also||[]).join(" "),x.type,TYPE_LABEL[x.type]||"",(x.tags||[]).join(" ")].join(" ").toLowerCase()}));
+    showHideResults();
+    const hid=Object.entries(ov).filter(([k,o])=>o.hidden);
+    $("hiddenList").innerHTML=hid.length?hid.map(([k,o])=>{const x=all.find(v=>sid(v)===k); return `<div class="rev"><b style="color:var(--ink)">${esc(x?x.n:(o.hiddenName||k))}</b><span>Unpublished ${esc((o.hiddenAt||"").slice(0,10))}</span><button class="linkbtn" type="button" data-unhide="${esc(k)}" style="align-self:flex-start">Republish</button></div>`;}).join(""):"No unpublished listings.";
     $("pl-listing").innerHTML=all.slice().sort((a,b)=>a.n.localeCompare(b.n)).map(x=>`<option value="${esc(sid(x))}">${esc(x.n)}${x.test?" (demo)":""}</option>`).join("");
     const paid=Object.entries(lo.overrides||{}).filter(([k,o])=>o.plan);
     $("planList").innerHTML=paid.length?paid.map(([k,o])=>{const x=all.find(v=>sid(v)===k); return `<p style="margin:4px 0"><span class="pill">Featured</span> ${esc(x?x.n:k)}</p>`;}).join(""):"No paid plans yet.";

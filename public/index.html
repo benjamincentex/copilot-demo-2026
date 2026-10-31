@@ -1296,6 +1296,8 @@ const slug=n=>n.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").sl
 async function loadOverrides(){
   const r=await api("/api/listings"); if(!r.ok||!r.overrides) return;
   (r.custom||[]).forEach(c=>{ if(!L.some(x=>x.slug===c.slug)) L.push({...c,avail:{s:"unknown"}}); });
+  // Listings the owner unpublished
+  for(let i=L.length-1;i>=0;i--){ const o=r.overrides[sid(L[i])]; if(o&&o.hidden) L.splice(i,1); }
   $("statListings").textContent=L.filter(x=>!x.test&&x.type!=="activity").length; $("statActivities").textContent=L.filter(x=>!x.test&&x.type==="activity").length;
   $("statTowns").textContent=new Set(L.filter(x=>!x.test).flatMap(townsOf)).size;
   Object.entries(r.overrides).forEach(([id,o])=>{const x=L.find(v=>sid(v)===id); if(!x) return;
@@ -1307,6 +1309,7 @@ async function loadOverrides(){
   Object.entries(r.seen||{}).forEach(([id,v])=>{const x=L.find(y=>sid(y)===id); if(!x||x.claimed||!AV[v.s]||v.s==="unknown") return;
     x.avail={s:v.s,when:v.when||""}; x.seen=v; });
   render(); renderRegistration();
+  if(typeof curView!=="undefined"&&curView==="calendar"){ try{ renderCalendar(); }catch(e){} }
 }
 
 // ---- Community: account, "Looking for" board, events, listing questions ----
