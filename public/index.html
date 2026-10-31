@@ -397,6 +397,12 @@ section > .intro{max-width:62ch;margin-bottom:22px}
 section h2{font-size:clamp(28px,3.6vw,38px)}
 section .intro p{color:var(--muted);margin:10px 0 0}
 .quiz{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:24px;max-width:820px}
+.inline-acct{margin:8px 0}
+.inline-acct form.inline{display:flex;flex-direction:column;align-items:stretch;gap:10px}
+.inline-acct form.inline .field{width:100%;min-width:0;flex:none}
+.inline-acct form.inline .btn{align-self:flex-start}
+.inline-acct input[type=checkbox]{flex:none}
+.inline-acct .box2{padding:14px}
 .qprog{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
 .bar{flex:1;height:6px;background:var(--line);border-radius:999px;overflow:hidden;max-width:220px}
 .bar i{display:block;height:100%;background:var(--oak);transition:width .25s}
@@ -1033,6 +1039,7 @@ let curView="home";
 function viewOf(path){ path=path.replace(/\/index\.html$/,"/").replace(/(.)\/+$/,"$1"); return VIEWS[path]||"home"; }
 function placeAcct(scroll){
   const blk=$("acctBlock"); if(!blk) return;
+  blk.classList.remove("inline-acct"); $("acctBar").hidden=false;
   const host=curView==="directory"?$("acctSlotDir"):document.querySelector(`#${curView} > .intro`);
   if(host){ curView==="directory"?host.appendChild(blk):host.after(blk); if(scroll) blk.scrollIntoView({behavior:"smooth",block:"center"}); }
 }
@@ -1129,7 +1136,11 @@ function render(){
   if(state.section==="activity") res.sort((a,b)=>((b.daytime?2:b.homeschool?1:0)-(a.daytime?2:a.homeschool?1:0))); // daytime classes first
   const filtering=state.q||state.type||state.approach||state.towns.length||state.open;
   const shown=(filtering||showAll)?res:res.slice(0,12);
+  // Keep the sign-in box alive if it was opened inside a card, and put it back after re-rendering.
+  const blk=$("acctBlock"), inCard=blk&&$("grid").contains(blk)?blk.closest("article.card"):null, inSlug=inCard&&inCard.dataset.slug;
+  if(inCard) $("acctSlotDir").appendChild(blk);
   $("grid").innerHTML=shown.map(card).join("");
+  if(inSlug){ const c=$("grid").querySelector(`article.card[data-slug="${CSS.escape(inSlug)}"] [data-ask]`); if(c) c.after(blk); }
   $("showAll").hidden=shown.length>=res.length;
   $("showAll").textContent=`Show all ${res.length} listings`;
   $("empty").hidden=res.length>0;
@@ -1337,7 +1348,17 @@ function renderAcct(){
   $("editProf").onclick=()=>{$("profilePanel").hidden=false; if(acct.profile){$("p-name").value=acct.profile.name;$("p-town").value=acct.profile.town||"";}};
   $("signOut").onclick=async()=>{await api("/api/auth/logout",{}); acct={signedIn:false}; renderAcct(); loadBoard();};
 }
-function ready(){ if(!acct.signedIn){needSignIn();return false;} if(!acct.profile){$("profilePanel").hidden=false;$("p-name").focus();return false;} return true; }
+// anchor: when given (e.g. a listing card), the sign-in / name box opens right there instead of elsewhere on the page.
+function ready(anchor){
+  if(acct.signedIn&&acct.profile) return true;
+  const blk=$("acctBlock");
+  if(anchor&&blk){ anchor.after(blk); blk.classList.add("inline-acct"); }
+  else placeAcct(false);
+  if(!acct.signedIn){ showSignIn(); $("acctBar").hidden=!!anchor; }
+  else { $("profilePanel").hidden=false; setTimeout(()=>$("p-name").focus({preventScroll:true}),300); }
+  blk&&blk.scrollIntoView({behavior:"smooth",block:"center"});
+  return false;
+}
 async function loadAcct(){ const r=await api("/api/account/me"); acct=r.ok?r:{signedIn:false}; renderAcct(); }
 $("cEmailForm").addEventListener("submit",async e=>{
   e.preventDefault(); const email=$("c-email").value.trim();
@@ -1350,12 +1371,16 @@ $("cCodeForm").addEventListener("submit",async e=>{
   e.preventDefault(); const r=await api("/api/auth/verify",{email:$("c-email").value.trim(),code:$("c-code").value.trim()});
   if(!r.ok){setS("cSignStatus","err",r.error);return;}
   if($("c-news").checked) api("/api/subscribe",{email:$("c-email").value.trim(),source:"account"});
-  setS("cSignStatus","",""); await loadAcct(); loadBoard();
+  setS("cSignStatus","",""); await loadAcct(); loadBoard(); resumeInlineAsk();
 });
+// After signing in from a listing card, open that card's question box.
+function resumeInlineAsk(){ const blk=$("acctBlock"); if(!blk||!blk.classList.contains("inline-acct")) return;
+  if(!acct.signedIn||!acct.profile){ ready(blk.previousElementSibling); return; }
+  const btn=blk.previousElementSibling; placeAcct(false); if(btn&&btn.matches("[data-ask]")) btn.click(); }
 $("cProfileForm").addEventListener("submit",async e=>{
   e.preventDefault(); const r=await api("/api/account/profile",{name:$("p-name").value.trim(),town:$("p-town").value.trim()});
   if(!r.ok){setS("cProfileStatus","err",r.error);return;}
-  await loadAcct();
+  await loadAcct(); resumeInlineAsk();
 });
 // ---- Email signup bars (each page makes its own specific promise) ----
 const BARS={
@@ -1542,7 +1567,7 @@ async function loadEvents(){
 }
 document.addEventListener("click",async e=>{
   const ask=e.target.closest("[data-ask]")||e.target.closest("[data-answer]"), rep=e.target.closest("[data-reply]"), rm=e.target.closest("[data-remove]");
-  if(ask){ if(!ready())return; const f=ask.dataset.answer?ask.parentElement.querySelector(`form[data-answerq="${ask.dataset.answer}"]`):ask.parentElement.querySelector("form.ask[data-for]"); f.hidden=!f.hidden; if(!f.hidden) f.querySelector("textarea").focus(); }
+  if(ask){ if(!ready(ask))return; const f=ask.dataset.answer?ask.parentElement.querySelector(`form[data-answerq="${ask.dataset.answer}"]`):ask.parentElement.querySelector("form.ask[data-for]"); f.hidden=!f.hidden; if(!f.hidden) f.querySelector("textarea").focus(); }
   if(rep){ if(!ready())return; const f=rep.parentElement.querySelector("form.ask"); f.hidden=!f.hidden; if(!f.hidden) f.querySelector("textarea").focus(); }
   if(rm){ rm.disabled=true; const r=await api("/api/board/remove",{id:Number(rm.dataset.remove)}); if(r.ok) loadBoard(); else rm.disabled=false; }
 });
