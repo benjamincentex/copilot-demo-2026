@@ -378,6 +378,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .facts dd{margin:0;min-width:0}
 .tags{display:flex;gap:6px;flex-wrap:wrap}
 .tag.littles{background:var(--sun-soft);border-color:var(--sun);color:var(--ink)}
+.tag.spanish{background:var(--bonnet-soft);border-color:var(--bonnet);color:var(--bonnet)}
 .tag{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:2px 7px}
 .card.flash{outline:3px solid var(--sun);outline-offset:2px;transition:outline-color .4s}
 @media (prefers-reduced-motion:reduce){.card.flash{transition:none}}
@@ -611,7 +612,7 @@ html{scroll-behavior:smooth}
       <select id="actSel" aria-label="Activity type" hidden><option value="">All activities</option></select>
       <select id="approachSel" aria-label="Approach">
         <option value="">Any approach</option>
-        <option>Christian</option><option>Catholic</option><option>Secular</option>
+        <option>Christian</option><option>Catholic</option><option>Secular</option><option value="Spanish-speaking">Spanish-speaking</option>
         <option>Classical</option><option>Charlotte Mason</option><option>Nature-based</option>
         <option>STEM</option><option>Arts</option><option>Gifted / 2e</option><option>Littles welcome</option>
       </select>
@@ -1141,7 +1142,7 @@ function card(x){
     ${x.daytime?`<span class="ab a-open" style="align-self:flex-start">Daytime classes</span>`:x.homeschool?`<span class="ab a-open" style="align-self:flex-start">Homeschool program</span>`:""}
     ${descHtml(x)}
     ${facts.length?`<dl class="facts">${facts.map(f=>`<dt>${f[0]}</dt><dd>${esc(f[1])}</dd>`).join("")}</dl>`:""}
-    ${x.tags.length?`<div class="tags">${x.tags.map(t=>`<span class="tag${t==="Littles welcome"?" littles":""}"${t==="Littles welcome"?' title="Little ones are welcome, and some groups offer care or classes for babies and toddlers. Ask the group for details."':""}>${esc(t)}</span>`).join("")}</div>`:""}
+    ${x.tags.length?`<div class="tags">${x.tags.map(t=>t==="Spanish-speaking"?`<span class="tag spanish" title="This group offers classes, programs or help in Spanish." lang="es">Se habla español</span>`:`<span class="tag${t==="Littles welcome"?" littles":""}"${t==="Littles welcome"?' title="Little ones are welcome, and some groups offer care or classes for babies and toddlers. Ask the group for details."':""}>${esc(t)}</span>`).join("")}</div>`:""}
     <div class="avail"><span><span class="ab ${AV[x.avail.s][1]}${x.seen?" seen":""}">${esc(availLabel(x))}</span>${availWhen(x)}</span>${x.avail.s!=="open"?`<button class="linkbtn" type="button" data-notify="${esc(x.n)}">Notify me when spots open</button>`:""}</div>
     <form class="notify" data-for="${esc(x.n)}" hidden novalidate>
       <p>We'll email you when ${esc(x.n)} has openings or opens registration, plus the monthly newsletter with new matches near you.</p>
@@ -1316,9 +1317,9 @@ $("approachSel").addEventListener("change",e=>{state.approach=e.target.value;ren
 $("openNow").addEventListener("click",()=>{state.open=!state.open;render();});
 const setSection=sec=>{ state.section=sec; state.type=""; state.approach=""; $("typeSel").value=""; $("approachSel").value=""; $("actSel").value=""; showAll=false; render(); if(curView==="directory"){ const want=sec==="activity"?"/activities":sec==="all"?"/directory?show=all":"/directory"; if(location.pathname+location.search!==want) history.replaceState(null,"",want); } };
 $("tabLearn").addEventListener("click",()=>setSection("learn"));
-(()=>{ const tags=[...new Set(L.filter(x=>x.type==="activity").flatMap(x=>x.tags))].sort();
+(()=>{ const tags=[...new Set(L.filter(x=>x.type==="activity").flatMap(x=>x.tags))].filter(t=>t!=="Spanish-speaking").sort();
   const grp=(label,xs)=>xs.length?`<optgroup label="${label}">${xs.map(t=>`<option>${esc(t)}</option>`).join("")}</optgroup>`:"";
-  $("actSel").innerHTML='<option value="">All activities &amp; field trips</option>'+grp("Field trips",tags.filter(t=>FIELD_TAGS.has(t)))+grp("Classes, sports &amp; play",tags.filter(t=>!FIELD_TAGS.has(t))); })();
+  $("actSel").innerHTML='<option value="">All activities &amp; field trips</option><option value="Spanish-speaking">Spanish-speaking</option>'+grp("Field trips",tags.filter(t=>FIELD_TAGS.has(t)))+grp("Classes, sports &amp; play",tags.filter(t=>!FIELD_TAGS.has(t))); })();
 $("actSel").addEventListener("change",e=>{state.approach=e.target.value;render();});
 $("tabAct").addEventListener("click",()=>setSection("activity"));
 $("tabBoth").addEventListener("click",()=>setSection("all"));
@@ -1389,7 +1390,8 @@ async function loadOverrides(){
     ["d","ages","sched","cost","site","members"].forEach(k=>{if(o[k]) x[k]=o[k];});
     if(o.avail&&AV[o.avail.s]) x.avail={s:o.avail.s,when:o.avail.when||""};
     if(o.claimed) x.claimed=true; if(o.plan) x.plan=o.plan; if(o.availAt) x.availAt=o.availAt;
-    if(typeof o.littles==="boolean"){ x.tags=x.tags.filter(t=>t!=="Littles welcome"); if(o.littles) x.tags.push("Littles welcome"); }});
+    if(typeof o.littles==="boolean"){ x.tags=x.tags.filter(t=>t!=="Littles welcome"); if(o.littles) x.tags.push("Littles welcome"); }
+    if(typeof o.spanish==="boolean"){ x.tags=x.tags.filter(t=>t!=="Spanish-speaking"); if(o.spanish) x.tags.push("Spanish-speaking"); }});
   // Placeholder from the group's own website/Facebook, only until they claim and set it themselves.
   Object.entries(r.seen||{}).forEach(([id,v])=>{const x=L.find(y=>sid(y)===id); if(!x||x.claimed||!AV[v.s]||v.s==="unknown") return;
     x.avail={s:v.s,when:v.when||""}; x.seen=v; });

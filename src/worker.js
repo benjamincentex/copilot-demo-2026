@@ -213,6 +213,7 @@ function cleanFields(f, dMax = DESC_FREE) {
   for (const [k, n] of [["d", dMax], ["ages", 40], ["sched", 80], ["cost", 80], ["site", 300], ["members", 120]]) { const v = clip(f[k], n); if (v) fields[k] = v; }
   if (fields.site) { fields.site = normSite(fields.site); if (!fields.site) delete fields.site; }
   if (typeof f.littles === "boolean") fields.littles = f.littles;
+  if (typeof f.spanish === "boolean") fields.spanish = f.spanish;
   const a = f.avail || {};
   fields.avail = { s: AVAIL.has(a.s) ? a.s : "unknown", when: clip(a.when, 40) };
   return fields;
@@ -1306,7 +1307,7 @@ const routes = {
     const locality = (html.match(/"addressLocality"\s*:\s*"([^"]+)"/) || [])[1] || "";
     const text = dec(html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<noscript[\s\S]*?<\/noscript>/gi, " ").replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim().slice(0, 5000);
     const TOWNS = ["Liberty Hill", "Leander", "Cedar Park", "Round Rock", "Pflugerville", "Georgetown", "Austin", "Bastrop area"];
-    const TAGS = ["Christian", "Catholic", "Secular", "Classical", "Charlotte Mason", "Nature-based", "STEM", "Arts", "Gifted / 2e", "Littles welcome",
+    const TAGS = ["Christian", "Catholic", "Secular", "Classical", "Charlotte Mason", "Nature-based", "STEM", "Arts", "Gifted / 2e", "Littles welcome", "Spanish-speaking",
       "Gymnastics", "Swim", "Martial arts", "Sports", "Baseball", "Soccer", "Climbing", "Skating", "Dance", "Horseback", "Archery & fencing", "Kid gyms & play", "Bowling & mini golf",
       "Music", "Art", "Theater", "Cooking", "Coding", "Makerspace & robotics", "Chess", "Museums", "Texas history", "Zoos & animals", "Nature centers & gardens", "State parks", "Farms & living history", "Caves", "Stargazing", "Libraries", "Outdoor skills", "Clubs & 4-H"];
     let d = { n: (site || title.split(/\s[|–—-]\s/)[0] || "").slice(0, 140), type: "", town: TOWNS.find((t) => locality.includes(t) || text.includes(t)) || "", d: desc.slice(0, 200), tags: [], ages: "", sched: "" };
