@@ -377,6 +377,12 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .facts dt{color:var(--muted)}
 .facts dd{margin:0;min-width:0}
 .tags{display:flex;gap:6px;flex-wrap:wrap}
+.addcal{position:relative;align-self:flex-start}
+.addcal>.linkbtn{font-size:14px}
+.addcal-menu{position:absolute;z-index:20;top:100%;left:0;margin-top:4px;min-width:220px;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);padding:6px;display:flex;flex-direction:column}
+.addcal-menu[hidden]{display:none}
+.addcal-menu a,.addcal-menu button{font:inherit;font-size:14px;text-align:left;padding:8px 10px;border-radius:6px;color:var(--ink);text-decoration:none;background:none;border:0;cursor:pointer}
+.addcal-menu a:hover,.addcal-menu button:hover{background:var(--oak-soft)}
 .tag.littles{background:var(--sun-soft);border-color:var(--sun);color:var(--ink)}
 .tag.spanish{background:var(--bonnet-soft);border-color:var(--bonnet);color:var(--bonnet)}
 .tag{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:2px 7px}
@@ -1565,6 +1571,7 @@ function eventCard(ev){
   return `<div class="event k-${kindOf(ev)}"><div class="datebox"><span>${d.m}</span><b>${d.d}</b></div><div style="display:flex;flex-direction:column;gap:4px;min-width:0">${ev.category&&CATS[ev.category]?`<span class="tag" style="align-self:flex-start">${esc(CATS[ev.category])}</span>`:""}<b>${esc(ev.title)}</b>
     <span class="meta">${[d.w,ev.event_time,[ev.place,ev.town].filter(Boolean).join(", ")].filter(Boolean).map(esc).join(" · ")}</span>
     ${ev.details?`<p>${esc(ev.details)}</p>`:""}<span class="meta">${sourceLine(ev)}${ev.link?` · <a href="${esc(ev.link)}" target="_blank" rel="noopener">Details ↗</a>`:""}</span>
+    ${addCalHtml(ev)}
     ${ev.event_date>=ymd(new Date())&&ev.id?`<button class="linkbtn" type="button" data-remind style="align-self:flex-start;font-size:14px">🔔 Remind me</button><form class="remind" data-ev="${ev.id}" hidden novalidate><input type="email" placeholder="you@example.com" maxlength="160" aria-label="Email for reminder"><button class="btn sm" type="submit" style="margin-top:0">Remind me the day before</button><span class="status" role="status" style="flex-basis:100%"></span><span class="where" style="font-size:12px;flex-basis:100%">We'll also send our monthly newsletter. Unsubscribe anytime.</span></form>`:""}</div></div>`;
 }
 const kindOf=ev=>(ev.category==="openhouse"||ev.category==="deadline")?"school":"act";
@@ -1584,9 +1591,50 @@ function weekSummary(WK){ if(!WK.length) return "";
 function startMin(t){ const s=String(t||""); const m=s.match(/(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?/i); if(!m) return null;
   let h=+m[1], mi=+(m[2]||0); if(h>23) return null; let mer=m[3]; if(!mer){ const n=s.slice(m.index+m[0].length).match(/(a\.?m|p\.?m)/i); mer=n?n[1]:(h<7?"pm":"am"); }
   mer=mer.toLowerCase()[0]; if(mer==="p"&&h<12) h+=12; if(mer==="a"&&h===12) h=0; return h*60+mi; }
+// ---- Add to calendar (Google, Outlook, Apple/other via .ics). Times are Central Time. ----
+function endMin(t,st){ const s=String(t||""); const parts=s.split(/\s*(?:–|—|-|to)\s*/i); if(parts.length<2||st==null) return null;
+  let e=startMin(parts.slice(1).join(" ")); if(e==null) return null; if(!/(a\.?m|p\.?m)/i.test(parts[1])&&/p\.?m/i.test(s)&&e<st) e+=720; return e>st?e:null; }
+const pad2=n=>String(n).padStart(2,"0");
+function ctOffset(day){ const m=new Date(day+"T18:00:00Z").toLocaleString("en-US",{timeZone:"America/Chicago",timeZoneName:"shortOffset"}).match(/GMT([+-]\d+)/); const h=m?+m[1]:-6; return (h<0?"-":"+")+pad2(Math.abs(h))+":00"; }
+function evTimes(ev){
+  const st=ev.category==="deadline"?null:startMin(ev.event_time); let en=endMin(ev.event_time,st);
+  if(st==null) return {allDay:true,day:ev.event_date};
+  if(en==null) en=st+60;
+  const t=m=>`${pad2(Math.floor(m/60)%24)}:${pad2(m%60)}`;
+  return {allDay:false,day:ev.event_date,start:`${ev.event_date}T${t(st)}:00`,end:`${ev.event_date}T${t(Math.min(en,23*60+59))}:00`,off:ctOffset(ev.event_date)};
+}
+function evText(ev){ return [ev.details, ev.link?"Details: "+ev.link:"", "Found on CenTex Homeschool Hub: "+location.origin+"/calendar"].filter(Boolean).join("\n\n"); }
+const evWhere=ev=>[ev.place,ev.town?ev.town+", TX":""].filter(Boolean).join(", ");
+function nextDay(day){ const d=new Date(day+"T12:00:00Z"); d.setUTCDate(d.getUTCDate()+1); return d.toISOString().slice(0,10); }
+function calLinks(ev){
+  const T=evTimes(ev), q=encodeURIComponent, compact=x=>x.replace(/[-:]/g,"");
+  const g=`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${q(ev.title)}&dates=${T.allDay?compact(T.day)+"/"+compact(nextDay(T.day)):compact(T.start)+"/"+compact(T.end)}&ctz=America/Chicago&details=${q(evText(ev))}&location=${q(evWhere(ev))}`;
+  const ol=host=>`https://${host}/calendar/0/deeplink/compose?path=%2Fcalendar%2Faction%2Fcompose&rru=addevent&subject=${q(ev.title)}&startdt=${q(T.allDay?T.day:T.start+T.off)}&enddt=${q(T.allDay?nextDay(T.day):T.end+T.off)}${T.allDay?"&allday=true":""}&body=${q(evText(ev))}&location=${q(evWhere(ev))}`;
+  return {google:g, outlook:ol("outlook.live.com"), office:ol("outlook.office.com")};
+}
+function icsFor(ev){
+  const T=evTimes(ev), e=t=>String(t||"").replace(/\\/g,"\\\\").replace(/\n/g,"\\n").replace(/([,;])/g,"\\$1");
+  const utc=(local,off)=>new Date(local+off).toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,"");
+  const fold=l=>l.length<=74?l:l.match(/.{1,74}/g).join("\r\n ");
+  const lines=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//CenTex Homeschool Hub//Calendar//EN","CALSCALE:GREGORIAN","METHOD:PUBLISH","BEGIN:VEVENT",
+    `UID:event-${ev.id||ev.title.replace(/\W+/g,"-")}-${ev.event_date}@centexhomeschool.org`,`DTSTAMP:${new Date().toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,"")}`,
+    T.allDay?`DTSTART;VALUE=DATE:${T.day.replace(/-/g,"")}`:`DTSTART:${utc(T.start,T.off)}`, T.allDay?`DTEND;VALUE=DATE:${nextDay(T.day).replace(/-/g,"")}`:`DTEND:${utc(T.end,T.off)}`,
+    `SUMMARY:${e(ev.title)}`,`DESCRIPTION:${e(evText(ev))}`, evWhere(ev)?`LOCATION:${e(evWhere(ev))}`:"", ev.link?`URL:${ev.link}`:"","END:VEVENT","END:VCALENDAR"].filter(Boolean).map(fold);
+  return lines.join("\r\n")+"\r\n";
+}
+const EVBYID={};
+function addCalHtml(ev){ if(!ev||ev.event_date<ymd(new Date())) return ""; const key=ev.id||(ev.event_date+"|"+ev.title); EVBYID[key]=ev; const L=calLinks(ev);
+  return `<div class="addcal"><button class="linkbtn" type="button" data-addcal aria-expanded="false">📅 Add to my calendar</button><div class="addcal-menu" hidden>
+    <a href="${esc(L.google)}" target="_blank" rel="noopener">Google Calendar</a><a href="${esc(L.outlook)}" target="_blank" rel="noopener">Outlook.com</a><a href="${esc(L.office)}" target="_blank" rel="noopener">Outlook (work or school)</a><button type="button" data-ics="${esc(key)}">Apple / other (.ics file)</button></div></div>`; }
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-addcal]"); if(b){ const m=b.nextElementSibling; m.hidden=!m.hidden; b.setAttribute("aria-expanded",!m.hidden); return; }
+  const i=e.target.closest("[data-ics]"); if(i){ const ev=EVBYID[i.dataset.ics]; if(!ev) return;
+    const url=URL.createObjectURL(new Blob([icsFor(ev)],{type:"text/calendar;charset=utf-8"})); const a=document.createElement("a"); a.href=url; a.download=(ev.title.replace(/[^\w\- ]+/g,"").trim().slice(0,60)||"event")+".ics"; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),4000); }
+  if(!e.target.closest(".addcal")) document.querySelectorAll(".addcal-menu:not([hidden])").forEach(m=>{m.hidden=true; m.previousElementSibling.setAttribute("aria-expanded","false");});
+});
 const hrLabel=h=>(h%12||12)+(h<12?" AM":" PM");
 function agendaItem(ev){ const k=kindOf(ev);
-  return `<div class="ag-item k-${k}"><b>${ev.link?`<a href="${esc(ev.link)}" target="_blank" rel="noopener">${esc(ev.title)}</a>`:esc(ev.title)}</b><span class="meta">${[ev.event_time,[ev.place,ev.town].filter(Boolean).join(", ")].filter(Boolean).map(esc).join(" · ")}</span>${ev.details?`<span class="meta">${esc(ev.details)}</span>`:""}<span class="meta">${sourceLine(ev)}</span></div>`; }
+  return `<div class="ag-item k-${k}"><b>${ev.link?`<a href="${esc(ev.link)}" target="_blank" rel="noopener">${esc(ev.title)}</a>`:esc(ev.title)}</b><span class="meta">${[ev.event_time,[ev.place,ev.town].filter(Boolean).join(", ")].filter(Boolean).map(esc).join(" · ")}</span>${ev.details?`<span class="meta">${esc(ev.details)}</span>`:""}<span class="meta">${sourceLine(ev)}</span>${addCalHtml(ev)}</div>`; }
 function dayAgenda(key,evs,wk,flex){
   const dd=new Date(key+"T12:00:00"), timed=[], untimed=[];
   evs.forEach(ev=>{ const m=startMin(ev.event_time); (m==null?untimed:timed).push({m,ev}); });
