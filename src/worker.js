@@ -168,6 +168,11 @@ function alertEmail(listing, town, avail, siteUrl) {
 }
 
 // Publish a listing change and, if it opens spots or posts a registration date, alert waiting families.
+async function isUnpublished(env, slug) {
+  const r = await env.DB.prepare("SELECT data FROM listing_overrides WHERE slug=?").bind(slug).first();
+  try { return !!(r && JSON.parse(r.data).hidden); } catch { return false; }
+}
+const UNPUB_MSG = "This listing was taken off the directory by CenTex Homeschool Hub, so it can't be edited. Use Contact us at the bottom of any page if you think that's a mistake.";
 async function publishListing(env, slug, listing, town, fields, updatedBy) {
   const prevRow = await env.DB.prepare("SELECT data FROM listing_overrides WHERE slug=?").bind(slug).first();
   const prev = prevRow ? JSON.parse(prevRow.data) : {};
@@ -449,6 +454,7 @@ const routes = {
     const b = await body(req) || {}; const slug = clip(b.slug, 140);
     const owned = await env.DB.prepare("SELECT 1 FROM listing_owners WHERE slug=? AND email=?").bind(slug, email).first();
     if (!owned) return bad("You can only update listings you manage.", 403);
+    if (await isUnpublished(env, slug)) return bad(UNPUB_MSG, 403);
     return json({ ok: true, availAt: await confirmAvail(env, slug, email) });
   },
   // One-click link from the monthly availability reminder email.
@@ -579,6 +585,7 @@ const routes = {
     const b = await body(req) || {}; const slug = clip(b.slug, 140);
     const owned = await env.DB.prepare("SELECT 1 FROM listing_owners WHERE slug=? AND email=?").bind(slug, email).first();
     if (!owned) return bad("You can only add events for listings you manage.", 403);
+    if (await isUnpublished(env, slug)) return bad(UNPUB_MSG, 403);
     // Featured plan perk: unlimited calendar events. Free listings get FREE_EVENT_LIMIT upcoming events (only enforced when paid plans are on).
     if (paidOn(env)) {
       const ov = await env.DB.prepare("SELECT data FROM listing_overrides WHERE slug=?").bind(slug).first();
@@ -641,6 +648,7 @@ const routes = {
     const b = await body(req); const slug = clip(b && b.slug, 120);
     const owned = await env.DB.prepare("SELECT 1 FROM listing_owners WHERE slug=? AND email=?").bind(slug, email).first();
     if (!owned) return bad("You can only update listings you've claimed. If you've asked to claim this one, we'll email you once it's approved.", 403);
+    if (await isUnpublished(env, slug)) return bad(UNPUB_MSG, 403);
     const ovRow = await env.DB.prepare("SELECT data FROM listing_overrides WHERE slug=?").bind(slug).first();
     const plan = ovRow ? (JSON.parse(ovRow.data).plan || "") : "";
     const dMax = ["featured", "partner", "enhanced"].includes(plan) ? DESC_FEATURED : DESC_FREE;
@@ -654,7 +662,8 @@ const routes = {
   "GET /api/account/me": async (req, env) => {
     const email = await leaderEmail(req, env);
     if (!email) return json({ signedIn: false });
-    return json({ signedIn: true, email, profile: await profileOf(env, email) });
+    const { results: own } = await env.DB.prepare("SELECT slug FROM listing_owners WHERE email=?").bind(email).all();
+    return json({ signedIn: true, email, profile: await profileOf(env, email), owned: own.map((r) => r.slug) });
   },
 
   "POST /api/account/profile": async (req, env) => {

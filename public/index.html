@@ -1174,7 +1174,7 @@ function card(x){
     </form>
     <div class="contact">${x.site?`<a href="${esc(x.site)}" target="_blank" rel="noopener" data-site="${esc(sid(x))}">${/facebook\.com/i.test(x.site)?"Facebook page":"Visit website"} ↗</a>`:x.test?"":`<a href="https://www.google.com/search?q=${encodeURIComponent(x.n+" "+(x.town||"")+" TX")}" target="_blank" rel="noopener">Find them online ↗</a>`}${x.phone?`<span>${esc(x.phone)}</span>`:""}</div>
     ${qaBlock(x)}
-    ${x.claimed?`<div class="foot"><span class="claimed">${x.type==="tutor"?"Managed by the tutor":"Updated by the group"}</span><a class="linkbtn" href="/leaders.html#${esc(sid(x))}">Manage listing</a></div>`
+    ${x.claimed?`<div class="foot"><span class="claimed">✓ ${x.type==="tutor"?"Managed by the tutor":x.type==="activity"?"Updated by the business":"Updated by the group"}</span>${(window.MY_OWNED||[]).includes(sid(x))?`<a class="linkbtn" href="/leaders.html#${esc(sid(x))}">Manage your listing</a>`:""}</div>`
       :`<div class="foot unclaimed"><span>${x.type==="activity"?"Run this business?":"Run this group?"}</span><a class="claimbtn" href="/leaders.html#${esc(sid(x))}">Claim your listing</a></div>`}
   </article>`;
 }
@@ -1471,7 +1471,7 @@ function ready(anchor){
   blk&&blk.scrollIntoView({behavior:"smooth",block:"center"});
   return false;
 }
-async function loadAcct(){ const r=await api("/api/account/me"); acct=r.ok?r:{signedIn:false}; renderAcct(); }
+async function loadAcct(){ const r=await api("/api/account/me"); const had=(window.MY_OWNED||[]).join(); acct=r.ok?r:{signedIn:false}; window.MY_OWNED=acct.owned||[]; renderAcct(); if(window.MY_OWNED.join()!==had) render(); }
 $("cEmailForm").addEventListener("submit",async e=>{
   e.preventDefault(); const email=$("c-email").value.trim();
   if(!/^\S+@\S+\.\S+$/.test(email)){setS("cSignStatus","err","Enter a valid email address.");return;}

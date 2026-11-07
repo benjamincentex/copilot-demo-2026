@@ -416,6 +416,8 @@ $("logout").addEventListener("click",async()=>{await api("/api/auth/logout",{});
 
 function editor(x){
   const id=sid(x), c=current(x);
+  if(c.hidden) return `<div class="box" data-slug="${esc(id)}"><h2>${esc(x.n)}</h2><span class="where" style="margin-top:-8px">${esc(x.town||"")}</span>
+    <div class="availbox" style="background:var(--sun-soft)"><span><b>Removed from the directory.</b> CenTex Homeschool Hub took this listing down, so families can't see it and it can't be edited or republished here. If you think that's a mistake, use "Contact us" at the bottom of our home page.</span></div></div>`;
   return `<form class="box" data-slug="${esc(id)}" novalidate>
     <h2>${esc(x.n)}</h2><span class="where" style="margin-top:-8px">${esc(x.town)}${x.test?" · demo listing":""}</span>
     <div class="availbox"><span>Families see: <b>${esc(AVL[c.avail.s]||"Not set")}</b>${c.availAt?` · last confirmed ${new Date(c.availAt).toLocaleDateString("en-US",{month:"short",day:"numeric"})}`:""}</span>${c.avail.s!=="unknown"?`<button class="btn sm ghost" type="button" data-availok="${esc(id)}" style="margin-top:0">Still accurate</button>`:""}<span class="status" role="status"></span></div>
@@ -520,7 +522,7 @@ $("tutorForm").addEventListener("submit",async e=>{
   await load(); const f=document.querySelector(`form[data-slug="${r.slug}"]`); if(f){f.scrollIntoView({behavior:"smooth",block:"start"}); f.querySelector(".status").className="status ok"; f.querySelector(".status").textContent="Your listing is live. Add your availability here anytime.";}
 });
 async function loadEv(){
-  const map=bySlug(); const owned=(me&&me.owned||[]).filter(id=>map[id]);
+  const map=bySlug(); const owned=(me&&me.owned||[]).filter(id=>map[id]&&!(overrides[id]&&overrides[id].hidden));
   $("evBox").hidden=!owned.length; if(!owned.length) return;
   $("ev-listing").innerHTML=owned.map(id=>`<option value="${esc(id)}">${esc(map[id].n)}</option>`).join("");
   const r=await api("/api/leader/cal"); const evs=(r.ok&&r.events)||[];
