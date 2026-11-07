@@ -277,7 +277,7 @@ html{scroll-behavior:smooth}
       </form></div>
     <div class="box" id="unpublish"><h2>Unpublish a listing</h2><p class="where" style="margin:0">Takes any listing off the directory, calendar and search right away. Nothing is deleted, so you can put it back anytime.</p>
       <input id="hideName" type="search" placeholder="Search by name, town or type…" autocomplete="off" style="font:inherit;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)"><span class="status" id="hideStatus" role="status"></span><div id="hideResults"></div>
-      <h3 style="margin:6px 0 0;font-size:18px">Unpublished</h3><div id="hiddenList" class="where">No unpublished listings.</div></div>
+      <p class="where" style="margin:0;font-size:13px">Unpublished listings move to <a href="#graveyard">Rejected &amp; removed</a> below.</p><div id="hiddenList" hidden></div></div>
     <div class="box" id="requests"><h2>Listing requests to review</h2><p class="where" style="margin:0">Requests from the "Add a listing" form. Check the details, pick a type, then publish. The submitter gets an email when it's live.</p><div id="reqList" class="where">No requests waiting.</div></div>
     <div class="box"><h2>Listing claims to review</h2><p class="where" style="margin:0">When someone claims a listing, approve it to let them manage it, or reject it. You can remove access later too.</p><div id="claims" class="where">No claims waiting.</div></div>
     <div class="box" id="activity"><h2>Listing activity (last 30 days)</h2><p class="where" style="margin:0">How families interact with each listing. Views count when a listing is on screen for a second (once per visit). Featured listings get a quarterly version of this by email (Jan 1, Apr 1, Jul 1, Oct 1).</p><div id="actTable" class="where" style="overflow-x:auto">No activity yet.</div></div>
@@ -292,6 +292,9 @@ html{scroll-behavior:smooth}
         <div class="field"><label for="pl-plan">Plan</label><select id="pl-plan"><option value="">Basic (free)</option><option value="featured">Featured ($39)</option></select></div>
         <button class="btn sm" type="submit">Save plan</button><span class="status" id="planStatus" role="status"></span>
       </form><div id="planList" class="where"></div></div>
+    <div class="box" id="graveyard"><h2>Rejected &amp; removed</h2><p class="where" style="margin:0">Nothing here is deleted. Bring anything back with one click.</p>
+      <h3 style="margin:8px 0 0;font-size:16px">Removed listings</h3><div id="gyListings" class="where">No removed listings.</div>
+      <h3 style="margin:12px 0 0;font-size:16px">Rejected requests</h3><div id="gyRequests" class="where">No rejected requests.</div></div>
     <div class="box"><h2>Listings added through the site</h2><p class="where" style="margin:0">Tutor listings and listing requests you published. Remove any that shouldn't be up.</p><div id="mTutors" class="where">No tutor listings yet.</div></div>
     <div class="box"><h2>Job posts</h2><p class="where" style="margin:0">Posting is free for now, so every job post goes live right away. Remove anything that breaks the rules.</p><div id="mJobs" class="where">No job posts yet.</div></div>
     <div class="box"><h2>Live events</h2><div id="mEvents" class="where">No events yet.</div></div>
@@ -383,7 +386,9 @@ async function loadRequests(){
   const r=await api("/api/admin/detail?what=submissions"); if(!r.ok) return;
   const open=r.rows.filter(x=>x.status==="new");
   const guess=x=>{const t=((x.name||"")+" "+(x.details||"")).toLowerCase(); return /co-?op/.test(t)?"coop":/microschool|hybrid|academy|university model/.test(t)?"micro":/tutor/.test(t)?"tutor":/support group|moms group|park day/.test(t)?"group":/karate|martial|gym|dance|sport|swim|museum|zoo|farm|art|music|theater|camp|lesson/.test(t)?"activity":/class/.test(t)?"class":"activity";};
-  const done=r.rows.filter(x=>x.status!=="new").slice(0,15);
+  const rej=r.rows.filter(x=>x.status==="dismissed");
+  $("gyRequests").innerHTML=rej.length?rej.map(x=>`<div class="rev"><b style="color:var(--ink)">${esc(x.kind||"Request")}: ${esc(x.name)}</b><span>${esc(x.contact?x.contact+" · ":"")}${esc(x.email)}${x.town?" · "+esc(x.town):""} · ${when(x.created_at)}</span>${x.details?`<span>${esc(x.details)}</span>`:""}<div class="row"><button class="btn sm" type="button" data-reqst="${x.id}:new">Relist for review</button></div></div>`).join(""):"No rejected requests.";
+  const done=r.rows.filter(x=>x.status!=="new"&&x.status!=="dismissed").slice(0,15);
   const doneHtml=done.length?`<h3 style="margin:14px 0 4px;font-size:16px">Recently handled</h3>`+done.map(x=>`<div class="rev"><b style="color:var(--ink)">${esc(x.kind||"Request")}: ${esc(x.name)}</b><span>${esc(x.email)} · <span class="pill">${esc({approved:"Published",dismissed:"Dismissed",handled:"Handled"}[x.status]||x.status)}</span> ${when(x.created_at)}</span><div class="row">${x.status==="approved"?`<span class="where" style="font-size:13px">To take it down, use Unpublish a listing above.</span>`:`<button class="btn ghost sm" type="button" data-reqst="${x.id}:new">Reopen for review</button>`}</div></div>`).join(""):"";
   $("reqList").innerHTML=(open.length?open.map(x=>{
     const isAdd=!/claim|correct|event/i.test(x.kind||"");
@@ -432,6 +437,7 @@ document.addEventListener("click",async e=>{
   const r=await api("/api/admin/listings/visibility",{slug:m.slug,hidden:true,name:m.n});
   st.className="status "+(r.ok?"ok":"err"); st.textContent=r.ok?`"${m.n}" is off the directory.`:r.error; if(r.ok) load(); else b.disabled=false;
 });
+document.addEventListener("click",async e=>{const b=e.target.closest("[data-restore]"); if(!b) return; b.disabled=true; const r=await api("/api/admin/user-listings/restore",{slug:b.dataset.restore}); r.ok?load():(b.disabled=false);});
 document.addEventListener("click",async e=>{const b=e.target.closest("[data-unhide]"); if(!b) return; b.disabled=true; const r=await api("/api/admin/listings/visibility",{slug:b.dataset.unhide,hidden:false}); r.ok?load():(b.disabled=false);});
 document.getElementById("fromLink").addEventListener("submit",async e=>{
   e.preventDefault(); const st=$("flStatus"), url=$("fl-url").value.trim(); if(!url){st.className="status err"; st.textContent="Paste a link first."; return;}
@@ -505,6 +511,10 @@ async function load(){
     HIDE_INDEX=all.filter(x=>!isHidden(x)).map(x=>({slug:sid(x),n:x.n,town:x.town||"",type:x.type||"",hay:[x.n,x.town,(x.also||[]).join(" "),x.type,TYPE_LABEL[x.type]||"",(x.tags||[]).join(" ")].join(" ").toLowerCase()}));
     showHideResults();
     const hid=Object.entries(ov).filter(([k,o])=>o.hidden);
+    const rm=await api("/api/admin/removed-listings"); const rmRows=(rm.ok&&rm.listings)||[];
+    const gy=hid.map(([k,o])=>{const x=all.find(v=>sid(v)===k); return `<div class="rev"><b style="color:var(--ink)">${esc(x?x.n:(o.hiddenName||k))}</b><span>Unpublished ${esc((o.hiddenAt||"").slice(0,10))}${x&&x.town?" · "+esc(x.town):""}</span><button class="btn sm" type="button" data-unhide="${esc(k)}" style="align-self:flex-start">Relist</button></div>`;})
+      .concat(rmRows.map(r=>`<div class="rev"><b style="color:var(--ink)">${esc(r.data.n)}</b><span>Removed${r.data.town?" · "+esc(r.data.town):""} · ${esc(r.email)}</span><button class="btn ghost sm" type="button" data-restore="${esc(r.slug)}" style="align-self:flex-start">Relist</button></div>`));
+    $("gyListings").innerHTML=gy.length?gy.join(""):"No removed listings.";
     $("hiddenList").innerHTML=hid.length?hid.map(([k,o])=>{const x=all.find(v=>sid(v)===k); return `<div class="rev"><b style="color:var(--ink)">${esc(x?x.n:(o.hiddenName||k))}</b><span>Unpublished ${esc((o.hiddenAt||"").slice(0,10))}</span><button class="linkbtn" type="button" data-unhide="${esc(k)}" style="align-self:flex-start">Republish</button></div>`;}).join(""):"No unpublished listings.";
     $("pl-listing").innerHTML=all.slice().sort((a,b)=>a.n.localeCompare(b.n)).map(x=>`<option value="${esc(sid(x))}">${esc(x.n)}${x.test?" (demo)":""}</option>`).join("");
     const paid=Object.entries(lo.overrides||{}).filter(([k,o])=>o.plan);

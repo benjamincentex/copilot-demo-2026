@@ -168,6 +168,71 @@ function alertEmail(listing, town, avail, siteUrl) {
 }
 
 // Publish a listing change and, if it opens spots or posts a registration date, alert waiting families.
+async function approveSubmission(env, b) {
+  const fail = (error, status = 400) => ({ ok: false, error, status });
+  const id = Number(b.id); if (!id) return fail("Missing id.");
+    const sub = await env.DB.prepare("SELECT * FROM submissions WHERE id=?").bind(id).first();
+    if (!sub) return fail("That request is gone.", 404);
+    if (sub.status !== "new") return fail("That request was already handled.");
+    const n = clip(b.n || sub.name, 140), town = clip(b.town || sub.town, 60);
+    const type = ["coop", "group", "class", "micro", "tutor", "activity"].includes(b.type) ? b.type : "";
+    if (!n || !town || !type) return fail("Add a name, town and type before publishing.");
+    const site = normSite(b.site ?? sub.website); if (clip(b.site ?? sub.website, 300) && !site) return fail("That website doesn't look like a web address, e.g. www.example.com");
+    const d = clip(b.d ?? sub.details, 300);
+    const tags = String(b.tags || "").split(",").map((t) => t.trim()).filter(Boolean).slice(0, 6);
+    const slug = (n.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "listing") + "-" + randomToken(2);
+    const data = { n, town, type, tags, days: [], d, site, ages: clip(b.ages, 40) };
+    const stamp = new Date().toISOString();
+    const stmts = [
+      env.DB.prepare("INSERT INTO user_listings (slug, email, data) VALUES (?,?,?)").bind(slug, sub.email, JSON.stringify(data)),
+      env.DB.prepare("UPDATE submissions SET status='approved' WHERE id=?").bind(id),
+    ];
+    if (b.makeOwner) {
+      stmts.push(env.DB.prepare("INSERT OR REPLACE INTO listing_owners (slug, email, name, role, approved_at) VALUES (?,?,?,?,?)").bind(slug, sub.email, sub.contact || "", "submitter", stamp));
+      stmts.push(env.DB.prepare("INSERT INTO listing_overrides (slug, data, updated_at, updated_by) VALUES (?,?,?,?) ON CONFLICT(slug) DO NOTHING").bind(slug, JSON.stringify({ claimed: true }), stamp, "owner"));
+    }
+    await env.DB.batch(stmts);
+    const site0 = env.SITE_URL || "https://centexhomeschool.org";
+    let emailed = false;
+    try {
+      emailed = await sendMail(env, sub.email, `${n} is now live on CenTex Homeschool Hub`,
+        `Hi ${sub.contact || "there"},\n\nGood news: ${n} is now listed in the CenTex Homeschool Hub directory, where Central Texas families look for co-ops, classes and activities.\n\n` +
+        (b.makeOwner
+          ? `You can manage it yourself. Sign in with this email address to update your details, mark availability and add open houses to the community calendar. Families who tap "Notify me" get an email the moment you open spots.\n\nManage your listing: ${site0}/leaders.html\n\n`
+          : `Want to keep it up to date yourself? Claim it with this email address and you can update details, mark availability and add open houses to the community calendar.\n\nClaim your listing: ${site0}/leaders.html\n\n`) +
+        `See it in the directory: ${site0}/directory\n\n` + (await joinBlock(env, sub.email)) + `Thanks,\nBerkli\nCenTex Homeschool Hub`);
+    } catch (e) { console.error("live email failed", e && e.message); }
+    return { ok: true, slug, emailed, name: n };
+}
+// ---- One-click review from the owner's inbox ----
+const TYPE_NAMES = { coop: "Co-op", group: "Support group", class: "Class", micro: "Microschool / hybrid", tutor: "Tutor", activity: "Activity" };
+function guessType(t) { t = String(t || "").toLowerCase(); return /co-?op/.test(t) ? "coop" : /microschool|hybrid|academy|university model/.test(t) ? "micro" : /tutor/.test(t) ? "tutor" : /support group|moms group|park day/.test(t) ? "group" : /karate|martial|gym|dance|sport|swim|museum|zoo|farm|art|music|theater|camp|lesson|soccer|baseball|chess|coding|robot/.test(t) ? "activity" : /class/.test(t) ? "class" : "activity"; }
+const hEsc = (t) => String(t ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+async function sendSubmissionReview(env, id) {
+  const sub = await env.DB.prepare("SELECT * FROM submissions WHERE id=?").bind(id).first(); if (!sub) return;
+  const to = (env.ADMIN_EMAIL || "").split(",")[0].trim(); if (!to) return;
+  const site = env.SITE_URL || "https://centexhomeschool.org";
+  const isAdd = !/claim|correct|event/i.test(sub.kind || "");
+  let dupes = []; try { dupes = JSON.parse(sub.dupes || "[]"); } catch {}
+  const rows = [["Request", sub.kind || "Suggestion"], ["Name", sub.name], ["Town", sub.town], ["Website", sub.website], ["Contact", sub.contact], ["Email", sub.email], ["Availability", sub.availability], ["Registration opens", sub.registration_opens], ["Details", sub.details], ["Submitted", String(sub.created_at || "").slice(0, 16) + " UTC"]].filter((r) => r[1]);
+  const table = `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:15px;margin:8px 0 16px">${rows.map(([k, v]) => `<tr><td style="padding:7px 12px 7px 0;color:#76675A;vertical-align:top;white-space:nowrap;border-top:1px solid #E8DCCB">${k}</td><td style="padding:7px 0;vertical-align:top;border-top:1px solid #E8DCCB">${k === "Website" ? `<a href="${hEsc(/^https?:/i.test(v) ? v : "https://" + v)}" style="color:#3546A8">${hEsc(v)}</a>` : k === "Email" ? `<a href="mailto:${hEsc(v)}" style="color:#3546A8">${hEsc(v)}</a>` : hEsc(v).replace(/\n/g, "<br>")}</td></tr>`).join("")}</table>`;
+  const dupeHtml = dupes.length ? `<div style="background:#FBF0DA;border:1px solid #D9A441;border-radius:10px;padding:12px 14px;margin:0 0 16px;font-size:14.5px"><b style="color:#8A5A12">⚠ Possible duplicate. Check before approving:</b><br>${dupes.map((d) => `• ${hEsc(d.name)}${d.town ? " (" + hEsc(d.town) + ")" : ""}: ${hEsc(d.why)}, ${d.where === "directory" ? "already in the directory" : hEsc(d.where)}`).join("<br>")}</div>` : (isAdd ? `<p style="margin:0 0 16px;color:#2F5A3D;font-size:14.5px">✓ No duplicates found.</p>` : "");
+  const btn = (label, href, bg, fg, border) => `<a href="${href}" style="display:inline-block;background:${bg};color:${fg};border:2px solid ${border};font-weight:bold;font-size:16px;text-decoration:none;padding:12px 22px;border-radius:10px;margin:0 8px 8px 0">${label}</a>`;
+  const u = (a) => `${site}/api/review?t=${sub.review_token}&a=${a}`;
+  const actions = isAdd
+    ? btn("✓ Approve and publish", u("approve"), "#2F5A3D", "#FFFBF5", "#2F5A3D") + btn("✕ Reject", u("reject"), "#FFFBF5", "#8A2E1F", "#8A2E1F")
+    : btn("✓ Mark handled", u("handled"), "#2F5A3D", "#FFFBF5", "#2F5A3D") + btn("Dismiss", u("reject"), "#FFFBF5", "#8A2E1F", "#8A2E1F");
+  const inner = `<h2 style="font-family:Georgia,serif;font-weight:normal;font-size:24px;margin:0 0 4px">${hEsc(sub.kind || "New request")}: ${hEsc(sub.name)}</h2>
+    <p style="margin:0 0 6px;color:#76675A">Here's everything they sent. ${isAdd ? "Approving publishes it to the directory right away and emails them that it's live." : ""}</p>${table}${dupeHtml}<div>${actions}</div>
+    <p style="margin:10px 0 0;font-size:13px;color:#76675A">Each button opens a page where you can check the details${isAdd ? ", adjust the type or town," : ""} and confirm with one more click. You can also review everything on your <a href="${site}/admin.html" style="color:#3546A8">owner page</a>.</p>`;
+  const text = rows.map(([k, v]) => `${k}: ${v}`).join("\n") + (dupes.length ? `\n\nPossible duplicate: ${dupes.map((d) => d.name + " (" + d.why + ")").join("; ")}` : "") + `\n\n${isAdd ? "Approve and publish" : "Mark handled"}: ${u(isAdd ? "approve" : "handled")}\nReject: ${u("reject")}`;
+  await sendMail(env, to, `New request: ${sub.kind || "Suggestion"} — ${sub.name}${dupes.length ? " (possible duplicate)" : ""}`, text, emailShell(env, inner, `Review ${sub.name}: approve or reject`), { replyTo: sub.email });
+}
+function reviewPage(title, body) {
+  return new Response(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${hEsc(title)} · CenTex Homeschool Hub</title>
+<style>body{font-family:system-ui,-apple-system,sans-serif;background:#F8F1E7;color:#2A2219;margin:0;padding:28px 16px}main{max-width:640px;margin:0 auto;background:#FFFBF5;border:1px solid #E8DCCB;border-radius:16px;padding:22px}h1{font-family:Georgia,serif;font-weight:normal;font-size:26px;margin:0 0 6px}p{line-height:1.5}.muted{color:#76675A;font-size:14px}label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:#76675A}input,select,textarea{font:inherit;font-size:15px;padding:8px 10px;border:1px solid #E8DCCB;border-radius:8px;background:#F8F1E7;color:#2A2219}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.full{grid-column:1/-1}.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}button{font:inherit;font-weight:700;font-size:16px;border-radius:10px;padding:12px 20px;cursor:pointer}.ok{background:#2F5A3D;color:#FFFBF5;border:2px solid #2F5A3D}.no{background:#FFFBF5;color:#8A2E1F;border:2px solid #8A2E1F}.warn{background:#FBF0DA;border:1px solid #D9A441;border-radius:10px;padding:10px 12px;font-size:14px}table{width:100%;border-collapse:collapse;font-size:15px}td{padding:6px 10px 6px 0;border-top:1px solid #E8DCCB;vertical-align:top}td:first-child{color:#76675A;white-space:nowrap}a{color:#3546A8}@media(max-width:560px){.grid{grid-template-columns:1fr}}</style>
+<main>${body}<p class="muted" style="margin-top:18px"><a href="/admin.html">Owner page</a> · <a href="/">CenTex Homeschool Hub</a></p></main></html>`, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
+}
 async function isUnpublished(env, slug) {
   const r = await env.DB.prepare("SELECT data FROM listing_overrides WHERE slug=?").bind(slug).first();
   try { return !!(r && JSON.parse(r.data).hidden); } catch { return false; }
@@ -323,13 +388,12 @@ const routes = {
     if (!EMAIL_RE.test(email)) return bad("Add a valid email address.");
     let dupes = [];
     if (/listing/i.test(clip(b.kind, 60)) || !b.kind) { try { dupes = await findDuplicates(env, { name, site: clip(b.website, 300), town: clip(b.town, 60) }); } catch (e) { console.error("dupe check failed", e && e.message); } }
-    await env.DB.prepare(
-      "INSERT INTO submissions (kind, name, town, website, contact, email, details, availability, registration_opens, dupes) VALUES (?,?,?,?,?,?,?,?,?,?)"
+    const reviewToken = randomToken(16);
+    const ins = await env.DB.prepare(
+      "INSERT INTO submissions (kind, name, town, website, contact, email, details, availability, registration_opens, dupes, review_token) VALUES (?,?,?,?,?,?,?,?,?,?,?)"
     ).bind(clip(b.kind, 60), name, clip(b.town, 60), clip(b.website, 300), clip(b.contact, 80), email, clip(b.details, 2000),
-      AVAIL.has(b.availability) ? b.availability : "", clip(b.registrationOpens, 40), dupes.length ? JSON.stringify(dupes) : null).run();
-    await notifyOwner(env, `New request: ${clip(b.kind, 60) || "Suggestion"} — ${name}${dupes.length ? " (possible duplicate)" : ""}`,
-      `${clip(b.kind, 60)}\nName: ${name}\nTown: ${clip(b.town, 60)}\nWebsite: ${clip(b.website, 300)}\nFrom: ${clip(b.contact, 80)} <${email}>\n\n${clip(b.details, 2000)}` +
-      (dupes.length ? `\n\nPOSSIBLE DUPLICATE. Check before publishing:\n${dupes.map((d) => `- ${d.name}${d.town ? " (" + d.town + ")" : ""}: ${d.why}, ${d.where === "directory" ? "already in the directory" : d.where}`).join("\n")}` : ""));
+      AVAIL.has(b.availability) ? b.availability : "", clip(b.registrationOpens, 40), dupes.length ? JSON.stringify(dupes) : null, reviewToken).run();
+    try { await sendSubmissionReview(env, ins.meta.last_row_id); } catch (e) { console.error("review email failed", e && e.message); }
     // Let the submitter know we got it.
     try {
       const site = env.SITE_URL || "https://centexhomeschool.org";
@@ -380,6 +444,46 @@ const routes = {
       await notifyOwner(env, `Claim confirmed by the group: ${c.listing}`, `${v.confirmedBy} (from ${c.listing}'s website) confirmed ${c.email}, so the claim was approved automatically.`);
     }
     return simplePage("Confirmed", `Thanks! ${c.name || "They"} can now manage ${c.listing}'s listing.`);
+  },
+
+  // Review page behind the buttons in the owner's email. GET shows everything (so link scanners can't approve); POST acts.
+  "GET /api/review": async (req, env) => {
+    const u = new URL(req.url), t = clip(u.searchParams.get("t"), 64).replace(/[^a-f0-9]/gi, ""), want = u.searchParams.get("a") || "approve";
+    const sub = t ? await env.DB.prepare("SELECT * FROM submissions WHERE review_token=?").bind(t).first() : null;
+    if (!sub) return reviewPage("Review", `<h1>That link has expired</h1><p>Review requests on your <a href="/admin.html">owner page</a>.</p>`);
+    if (sub.status !== "new") return reviewPage("Already handled", `<h1>${hEsc(sub.name)}</h1><p>This request was already ${sub.status === "approved" ? "approved and published" : sub.status === "dismissed" ? "rejected" : "handled"}.</p>`);
+    const isAdd = !/claim|correct|event/i.test(sub.kind || "");
+    let dupes = []; try { dupes = JSON.parse(sub.dupes || "[]"); } catch {}
+    const info = [["Request", sub.kind], ["Contact", sub.contact], ["Email", sub.email], ["Availability", sub.availability], ["Registration opens", sub.registration_opens], ["Submitted", String(sub.created_at || "").slice(0, 16) + " UTC"]].filter((r) => r[1]);
+    const g = guessType(`${sub.name} ${sub.details} ${sub.kind}`);
+    const form = isAdd ? `<div class="grid">
+      <label>Name<input name="n" value="${hEsc(sub.name)}" maxlength="140"></label>
+      <label>Type<select name="type">${Object.entries(TYPE_NAMES).map(([k, v]) => `<option value="${k}"${k === g ? " selected" : ""}>${v}</option>`).join("")}</select></label>
+      <label>Town<input name="town" value="${hEsc(sub.town)}" maxlength="60" placeholder="e.g. Leander"></label>
+      <label>Website<input name="site" value="${hEsc(sub.website)}" maxlength="300"></label>
+      <label>Ages<input name="ages" maxlength="40" placeholder="e.g. 5–12"></label>
+      <label>Tags (comma separated)<input name="tags" maxlength="120" placeholder="e.g. Christian, Classical"></label>
+      <label class="full">Description families will see<textarea name="d" maxlength="300" rows="3">${hEsc(String(sub.details || "").slice(0, 300))}</textarea></label>
+      <label class="full" style="flex-direction:row;align-items:center;gap:8px;color:#2A2219;font-size:15px"><input type="checkbox" name="makeOwner" value="1" checked style="width:auto"> Let ${hEsc(sub.email)} manage this listing</label></div>`
+      : `<p>${hEsc(sub.details || "")}</p>`;
+    return reviewPage("Review " + sub.name, `<h1>${hEsc(sub.kind || "Request")}: ${hEsc(sub.name)}</h1>
+      <table>${info.map(([k, v]) => `<tr><td>${k}</td><td>${k === "Email" ? `<a href="mailto:${hEsc(v)}">${hEsc(v)}</a>` : hEsc(v)}</td></tr>`).join("")}</table>
+      ${isAdd ? (dupes.length ? `<p class="warn"><b>⚠ Possible duplicate:</b><br>${dupes.map((d) => `• <a href="/directory?q=${encodeURIComponent(d.name)}" target="_blank">${hEsc(d.name)}</a>${d.town ? " (" + hEsc(d.town) + ")" : ""}: ${hEsc(d.why)}, ${d.where === "directory" ? "already in the directory" : hEsc(d.where)}`).join("<br>")}</p>` : `<p class="muted">✓ No duplicates found.</p>`) : ""}
+      <form method="post" action="/api/review"><input type="hidden" name="t" value="${t}">${form}
+      <div class="row">${isAdd ? `<button class="ok" name="action" value="approve"${want === "approve" ? " autofocus" : ""}>✓ Approve and publish</button>` : `<button class="ok" name="action" value="handled">✓ Mark handled</button>`}<button class="no" name="action" value="reject"${want === "reject" ? " autofocus" : ""}>✕ ${isAdd ? "Reject" : "Dismiss"}</button></div></form>`);
+  },
+  "POST /api/review": async (req, env) => {
+    const f = await req.formData(); const t = clip(f.get("t"), 64).replace(/[^a-f0-9]/gi, ""), action = String(f.get("action") || "");
+    const sub = t ? await env.DB.prepare("SELECT * FROM submissions WHERE review_token=?").bind(t).first() : null;
+    if (!sub) return reviewPage("Review", `<h1>That link has expired</h1><p>Review requests on your <a href="/admin.html">owner page</a>.</p>`);
+    if (sub.status !== "new") return reviewPage("Already handled", `<h1>${hEsc(sub.name)}</h1><p>This request was already handled.</p>`);
+    if (action === "reject" || action === "handled") {
+      await env.DB.prepare("UPDATE submissions SET status=? WHERE id=?").bind(action === "reject" ? "dismissed" : "handled", sub.id).run();
+      return reviewPage("Done", `<h1>${action === "reject" ? "Rejected" : "Marked handled"}</h1><p>${hEsc(sub.name)} ${action === "reject" ? "won't be added. Nothing was sent to them." : "is marked handled."} You can reopen it from your <a href="/admin.html">owner page</a> anytime.</p>`);
+    }
+    const r = await approveSubmission(env, { id: sub.id, n: f.get("n"), type: f.get("type"), town: f.get("town"), site: f.get("site") ?? undefined, ages: f.get("ages"), tags: f.get("tags"), d: f.get("d") ?? undefined, makeOwner: !!f.get("makeOwner") });
+    if (!r.ok) return reviewPage("Couldn't publish", `<h1>Couldn't publish yet</h1><p class="warn">${hEsc(r.error)}</p><p><a href="/api/review?t=${t}&a=approve">Go back and fix it</a></p>`);
+    return reviewPage("Published", `<h1>✓ ${hEsc(r.name)} is live</h1><p>It's in the directory now${r.emailed ? ", and we emailed " + hEsc(sub.email) + " to let them know" : ""}.</p><p><a href="/directory?q=${encodeURIComponent(r.name)}">See it in the directory</a></p>`);
   },
 
   "POST /api/subscribe": async (req, env) => {
@@ -1129,6 +1233,15 @@ const routes = {
     return json({ listings: results.map((r) => ({ ...r, data: JSON.parse(r.data) })) });
   },
 
+  "GET /api/admin/removed-listings": async (req, env) => {
+    const { results } = await env.DB.prepare("SELECT slug, email, data, created_at FROM user_listings WHERE status='removed' ORDER BY created_at DESC LIMIT 100").all();
+    return json({ listings: results.map((r) => ({ ...r, data: JSON.parse(r.data) })) });
+  },
+  "POST /api/admin/user-listings/restore": async (req, env) => {
+    const b = await body(req); const slug = clip(b && b.slug, 140);
+    await env.DB.prepare("UPDATE user_listings SET status='live' WHERE slug=?").bind(slug).run();
+    return json({ ok: true });
+  },
   "POST /api/admin/user-listings/remove": async (req, env) => {
     const b = await body(req); const slug = clip(b && b.slug, 140);
     await env.DB.prepare("UPDATE user_listings SET status='removed' WHERE slug=?").bind(slug).run();
@@ -1229,39 +1342,8 @@ const routes = {
 
   // Publish a "Add a listing" request as a live directory listing, and tell the submitter.
   "POST /api/admin/submissions/approve": async (req, env) => {
-    const b = await body(req) || {}; const id = Number(b.id); if (!id) return bad("Missing id.");
-    const sub = await env.DB.prepare("SELECT * FROM submissions WHERE id=?").bind(id).first();
-    if (!sub) return bad("That request is gone.", 404);
-    if (sub.status !== "new") return bad("That request was already handled.");
-    const n = clip(b.n || sub.name, 140), town = clip(b.town || sub.town, 60);
-    const type = ["coop", "group", "class", "micro", "tutor", "activity"].includes(b.type) ? b.type : "";
-    if (!n || !town || !type) return bad("Add a name, town and type before publishing.");
-    const site = normSite(b.site ?? sub.website); if (clip(b.site ?? sub.website, 300) && !site) return bad("That website doesn't look like a web address, e.g. www.example.com");
-    const d = clip(b.d ?? sub.details, 300);
-    const tags = String(b.tags || "").split(",").map((t) => t.trim()).filter(Boolean).slice(0, 6);
-    const slug = (n.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "listing") + "-" + randomToken(2);
-    const data = { n, town, type, tags, days: [], d, site, ages: clip(b.ages, 40) };
-    const stamp = new Date().toISOString();
-    const stmts = [
-      env.DB.prepare("INSERT INTO user_listings (slug, email, data) VALUES (?,?,?)").bind(slug, sub.email, JSON.stringify(data)),
-      env.DB.prepare("UPDATE submissions SET status='approved' WHERE id=?").bind(id),
-    ];
-    if (b.makeOwner) {
-      stmts.push(env.DB.prepare("INSERT OR REPLACE INTO listing_owners (slug, email, name, role, approved_at) VALUES (?,?,?,?,?)").bind(slug, sub.email, sub.contact || "", "submitter", stamp));
-      stmts.push(env.DB.prepare("INSERT INTO listing_overrides (slug, data, updated_at, updated_by) VALUES (?,?,?,?) ON CONFLICT(slug) DO NOTHING").bind(slug, JSON.stringify({ claimed: true }), stamp, "owner"));
-    }
-    await env.DB.batch(stmts);
-    const site0 = env.SITE_URL || "https://centexhomeschool.org";
-    let emailed = false;
-    try {
-      emailed = await sendMail(env, sub.email, `${n} is now live on CenTex Homeschool Hub`,
-        `Hi ${sub.contact || "there"},\n\nGood news: ${n} is now listed in the CenTex Homeschool Hub directory, where Central Texas families look for co-ops, classes and activities.\n\n` +
-        (b.makeOwner
-          ? `You can manage it yourself. Sign in with this email address to update your details, mark availability and add open houses to the community calendar. Families who tap "Notify me" get an email the moment you open spots.\n\nManage your listing: ${site0}/leaders.html\n\n`
-          : `Want to keep it up to date yourself? Claim it with this email address and you can update details, mark availability and add open houses to the community calendar.\n\nClaim your listing: ${site0}/leaders.html\n\n`) +
-        `See it in the directory: ${site0}/directory\n\n` + (await joinBlock(env, sub.email)) + `Thanks,\nBerkli\nCenTex Homeschool Hub`);
-    } catch (e) { console.error("live email failed", e && e.message); }
-    return json({ ok: true, slug, emailed });
+    const r = await approveSubmission(env, await body(req) || {});
+    return r.ok ? json(r) : bad(r.error, r.status);
   },
   // Owner adds a listing directly: live immediately, no review.
   "POST /api/admin/listings/create": async (req, env) => {

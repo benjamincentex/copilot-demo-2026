@@ -71,3 +71,4 @@ CREATE TABLE IF NOT EXISTS join_tokens (token TEXT PRIMARY KEY, email TEXT NOT N
 CREATE TABLE IF NOT EXISTS contact_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT, message TEXT, page TEXT, ip TEXT, created_at TEXT DEFAULT (datetime('now')));
 ALTER TABLE claims ADD COLUMN verify TEXT;
 ALTER TABLE submissions ADD COLUMN dupes TEXT;
+ALTER TABLE submissions ADD COLUMN review_token TEXT;
