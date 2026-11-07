@@ -372,6 +372,13 @@ document.addEventListener("click",async e=>{
   const r=await api("/api/admin/detail?what="+k);
   box.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px"><h3 style="margin:0;font-size:18px">${esc(DRILL[k].title)}${r.ok?` <span class="where" style="font-size:14px">(${r.rows.length})</span>`:""}</h3><button class="linkbtn" type="button" data-drill="${k}">Close</button></div>`+(r.ok?DRILL[k].render(r.rows):`<p class="status err">${esc(r.error)}</p>`)+(k==="submissions"?`<p class="where" style="margin:8px 0 0"><a href="#requests">Review new listing requests ›</a></p>`:"");
 });
+function dupeHtml(list){ if(!list||!list.length) return `<span class="vgood">✓ No duplicates found</span>`;
+  return `<b class="vwarn">⚠ Possible duplicate${list.length>1?"s":""}. Check before publishing</b>`+list.map(d=>`<span>• <a href="/${d.where==="directory"?"directory":"directory"}?q=${encodeURIComponent(d.name)}" target="_blank" rel="noopener">${esc(d.name)}</a>${d.town?` (${esc(d.town)})`:""}: ${esc(d.why)}, ${d.where==="directory"?"already in the directory":d.where==="unpublished"?"an unpublished listing":"another request waiting for review"}</span>`).join(""); }
+function dupeBox(x){ let d=null; try{ d=x.dupes?JSON.parse(x.dupes):[]; }catch(e){ d=[]; }
+  return `<div class="vbox ${d.length?"vno":"vok"}" data-dupebox="${x.id}">${dupeHtml(d)}<span><button class="linkbtn" type="button" data-dupecheck="${x.id}" style="font-size:12.5px">Check again</button></span></div>`; }
+document.addEventListener("click",async e=>{ const b=e.target.closest("[data-dupecheck]"); if(!b) return; const card=b.closest("[data-req]"), box=card.querySelector("[data-dupebox]"), f=n=>card.querySelector(`[name="${n}"]`);
+  b.textContent="Checking…"; const r=await api("/api/admin/submissions/dupes",{id:Number(b.dataset.dupecheck),n:f("n")?.value.trim(),site:f("site")?.value.trim()});
+  if(r.ok){ box.className="vbox "+(r.dupes.length?"vno":"vok"); box.innerHTML=dupeHtml(r.dupes)+`<span><button class="linkbtn" type="button" data-dupecheck="${b.dataset.dupecheck}" style="font-size:12.5px">Check again</button></span>`; } else b.textContent=r.error; });
 async function loadRequests(){
   const r=await api("/api/admin/detail?what=submissions"); if(!r.ok) return;
   const open=r.rows.filter(x=>x.status==="new");
@@ -383,6 +390,7 @@ async function loadRequests(){
     return `<div class="rev" data-req="${x.id}"><b style="color:var(--ink)">${esc(x.kind||"Request")}: ${esc(x.name)}</b>
     <span>${esc(x.contact?x.contact+" · ":"")}${esc(x.email)} · ${when(x.created_at)}${x.website?` · <a href="${esc(x.website)}" target="_blank" rel="noopener">website</a>`:""}</span>
     ${x.details?`<span>${esc(x.details)}</span>`:""}
+    ${isAdd?dupeBox(x):""}
     ${isAdd?`<div class="reqform">
       <label>Name<input name="n" value="${esc(x.name||"")}" maxlength="140"></label>
       <label>Type<select name="type">${Object.entries(TYPES).map(([k,v])=>`<option value="${k}"${k===guess(x)?" selected":""}>${v}</option>`).join("")}</select></label>
@@ -441,7 +449,7 @@ document.getElementById("addForm").addEventListener("input",()=>{addForce=false;
 document.getElementById("addForm").addEventListener("submit",async e=>{
   e.preventDefault(); const f=e.target, v=n=>f.elements[n].value.trim(), st=$("addStatus");
   if(!v("n")||!v("type")||!v("town")){st.className="status err"; st.textContent="Add a name, type and town."; return;}
-  if(!addForce&&(window.L||[]).some(x=>x.n.toLowerCase()===v("n").toLowerCase())){addForce=true; st.className="status err"; st.textContent="That name is already in the directory. Click again to add it anyway."; return;}
+  if(!addForce){ const dc=await api("/api/admin/dupe-check",{n:v("n"),site:v("site"),town:v("town")}); if(dc.ok&&dc.dupes.length){ addForce=true; st.className="status err"; st.innerHTML="Possible duplicate: "+dc.dupes.map(d=>`<b>${esc(d.name)}</b> (${esc(d.why)}${d.where!=="directory"?", "+esc(d.where):""})`).join("; ")+". Click Publish again to add it anyway."; return; } }
   st.className="status"; st.textContent="Publishing…";
   const r=await api("/api/admin/listings/create",{n:v("n"),type:v("type"),town:v("town"),site:v("site"),ages:v("ages"),sched:v("sched"),tags:v("tags"),d:v("d"),manager:v("manager"),notify:f.elements.notify.checked,force:addForce});
   if(!r.ok){ if(r.status===409) addForce=true; st.className="status err"; st.textContent=r.error; return; }

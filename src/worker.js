@@ -316,12 +316,15 @@ const routes = {
     const name = clip(b.name, 140), email = clip(b.email, 160);
     if (!name) return bad("Add the group or business name.");
     if (!EMAIL_RE.test(email)) return bad("Add a valid email address.");
+    let dupes = [];
+    if (/listing/i.test(clip(b.kind, 60)) || !b.kind) { try { dupes = await findDuplicates(env, { name, site: clip(b.website, 300), town: clip(b.town, 60) }); } catch (e) { console.error("dupe check failed", e && e.message); } }
     await env.DB.prepare(
-      "INSERT INTO submissions (kind, name, town, website, contact, email, details, availability, registration_opens) VALUES (?,?,?,?,?,?,?,?,?)"
+      "INSERT INTO submissions (kind, name, town, website, contact, email, details, availability, registration_opens, dupes) VALUES (?,?,?,?,?,?,?,?,?,?)"
     ).bind(clip(b.kind, 60), name, clip(b.town, 60), clip(b.website, 300), clip(b.contact, 80), email, clip(b.details, 2000),
-      AVAIL.has(b.availability) ? b.availability : "", clip(b.registrationOpens, 40)).run();
-    await notifyOwner(env, `New request: ${clip(b.kind, 60) || "Suggestion"} — ${name}`,
-      `${clip(b.kind, 60)}\nName: ${name}\nTown: ${clip(b.town, 60)}\nWebsite: ${clip(b.website, 300)}\nFrom: ${clip(b.contact, 80)} <${email}>\n\n${clip(b.details, 2000)}`);
+      AVAIL.has(b.availability) ? b.availability : "", clip(b.registrationOpens, 40), dupes.length ? JSON.stringify(dupes) : null).run();
+    await notifyOwner(env, `New request: ${clip(b.kind, 60) || "Suggestion"} — ${name}${dupes.length ? " (possible duplicate)" : ""}`,
+      `${clip(b.kind, 60)}\nName: ${name}\nTown: ${clip(b.town, 60)}\nWebsite: ${clip(b.website, 300)}\nFrom: ${clip(b.contact, 80)} <${email}>\n\n${clip(b.details, 2000)}` +
+      (dupes.length ? `\n\nPOSSIBLE DUPLICATE. Check before publishing:\n${dupes.map((d) => `- ${d.name}${d.town ? " (" + d.town + ")" : ""}: ${d.why}, ${d.where === "directory" ? "already in the directory" : d.where}`).join("\n")}` : ""));
     // Let the submitter know we got it.
     try {
       const site = env.SITE_URL || "https://centexhomeschool.org";
@@ -1208,7 +1211,7 @@ const routes = {
       alerts: "SELECT email, listing, town, status_at_signup, created_at FROM alerts ORDER BY created_at DESC LIMIT 500",
       claimed: "SELECT w.slug, w.email, w.name, w.role, w.approved_at, COALESCE((SELECT c.listing FROM claims c WHERE c.slug=w.slug ORDER BY c.id DESC LIMIT 1), (SELECT json_extract(u.data,'$.n') FROM user_listings u WHERE u.slug=w.slug)) AS listing FROM listing_owners w ORDER BY w.approved_at DESC LIMIT 500",
       quizzes: "SELECT town, age, faith, want, interest, matches, local_matches, created_at FROM demand ORDER BY created_at DESC LIMIT 500",
-      submissions: "SELECT id, kind, name, town, website, contact, email, details, availability, registration_opens, status, created_at FROM submissions ORDER BY (status='new') DESC, created_at DESC LIMIT 200",
+      submissions: "SELECT id, kind, name, town, website, contact, email, details, availability, registration_opens, status, created_at, dupes FROM submissions ORDER BY (status='new') DESC, created_at DESC LIMIT 200",
       outbox: "SELECT to_email, listing, kind, subject, status, created_at FROM outbox WHERE status='queued' ORDER BY created_at DESC LIMIT 500",
     };
     if (!Q[what]) return bad("Unknown list.");
@@ -1387,6 +1390,15 @@ const routes = {
     const ok1 = await sendMail(env, to, `Facebook pages to follow: ${fbRows.length} CenTex Homeschool Hub listings`, `Facebook pages for ${fbRows.length} of our listings are in this email. Open it in an email app that shows HTML to click the links.`, emailShell(env, html1, "Every listing's Facebook page, ready to follow"));
     const ok2 = await sendMail(env, to, `Group contacts: ${ctRows.length} CenTex Homeschool Hub listings`, `Published contacts for ${ctRows.length} of our listings are in this email. Open it in an email app that shows HTML to click the links.`, emailShell(env, html2, "Each group's published contact, to invite them to claim their listing"));
     return json({ ok: ok1 && ok2, listings: out.length, facebook: fbRows.length, contacts: ctRows.length, withEmail: out.filter((r) => r.emails.length).length });
+  },
+  "POST /api/admin/submissions/dupes": async (req, env) => {
+    const b = await body(req) || {}; const sub = await env.DB.prepare("SELECT * FROM submissions WHERE id=?").bind(Number(b.id)).first();
+    if (!sub) return bad("Not found.", 404);
+    const d = await findDuplicates(env, { name: clip(b.n || sub.name, 140), site: clip(b.site ?? sub.website, 300), town: sub.town }, { excludeSubId: sub.id });
+    return json({ ok: true, dupes: d });
+  },
+  "POST /api/admin/dupe-check": async (req, env) => {
+    const b = await body(req) || {}; return json({ ok: true, dupes: await findDuplicates(env, { name: clip(b.n, 140), site: clip(b.site, 300), town: clip(b.town, 60) }) });
   },
   "POST /api/admin/submissions/status": async (req, env) => {
     const b = await body(req) || {}; const id = Number(b.id);
@@ -1684,6 +1696,58 @@ async function verifyClaim(env, slug, email, proof) {
   }
   v.level = v.domainMatch || v.emailOnSite || v.proofChecked ? "strong" : v.freeEmail ? "weak" : "unknown";
   return v;
+}
+// ---- Duplicate check: does a new listing look like one we already have (or one already waiting for review)? ----
+const DUP_STOP = new Set(["the", "a", "an", "of", "and", "at", "in", "for", "inc", "llc", "tx", "texas", "co", "op", "coop", "group", "homeschool", "home", "school", "kids", "kid", "learning", "center", "club", "studio", "classes", "austin", "leander", "cedar", "park", "round", "rock", "georgetown", "pflugerville", "liberty", "hill", "bastrop", "central", "centex", "north", "south", "east", "west", "nature", "science", "art", "arts", "music", "classical", "christian", "catholic", "stem", "montessori", "enrichment", "academy", "tutoring", "sports", "dance", "swim", "gymnastics", "family", "families", "community", "program", "programs"]);
+const dupWords = (n) => String(n || "").toLowerCase().replace(/&/g, " and ").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim().split(" ").filter(Boolean);
+const dupKey = (n) => dupWords(n).filter((w) => !["the", "a", "an", "inc", "llc"].includes(w)).join(" ");
+const dupSig = (n) => dupWords(n).filter((w) => !DUP_STOP.has(w));
+function dupSite(u) {
+  try { const x = new URL(/^https?:/i.test(u) ? u : "https://" + u); const h = x.hostname.replace(/^www\.|^m\./, "");
+    if (/facebook\.com$|instagram\.com$/.test(h)) { const p = x.pathname.replace(/\/+$/, "").toLowerCase(); return p && p !== "/profile.php" ? h + p : (x.searchParams.get("id") ? h + "?id=" + x.searchParams.get("id") : ""); }
+    if (/google\.com$|sites\.google\.com$|wix(site)?\.com$|square\.site$|linktr\.ee$/.test(h)) return h + x.pathname.replace(/\/+$/, "").toLowerCase();
+    return h.split(".").slice(-2).join(".");
+  } catch { return ""; }
+}
+function dupCompare(a, b) {
+  const why = [];
+  if (a.site && b.site && dupSite(a.site) && dupSite(a.site) === dupSite(b.site)) why.push("same website");
+  const ka = dupKey(a.name), kb = dupKey(b.name);
+  if (ka && ka === kb) why.push("same name");
+  else {
+    let sa = dupSig(a.name), sb = dupSig(b.name);
+    if (!sa.length || !sb.length) { sa = ka.split(" ").filter(Boolean); sb = kb.split(" ").filter(Boolean); if (sa.length < 2 || sb.length < 2) sa = []; }
+    if (sa.length && sb.length) {
+      const A = new Set(sa), B = new Set(sb), inter = [...A].filter((w) => B.has(w)).length, uni = new Set([...A, ...B]).size;
+      const small = A.size <= B.size ? sa : sb;
+      const subset = inter === Math.min(A.size, B.size) && (Math.min(A.size, B.size) >= 2 || small[0].length >= 5);
+      if (inter / uni >= 0.75 || subset) why.push("similar name");
+    }
+  }
+  return why;
+}
+async function findDuplicates(env, cand, opts = {}) {
+  const pool = [];
+  try {
+    const txt = await (await env.ASSETS.fetch(new Request("https://assets.local/listings.js"))).text();
+    for (const line of txt.split("\n")) {
+      const n = line.match(/\{n:"([^"]+)"/); if (!n || /test:true/.test(line)) continue;
+      const site = line.match(/site:"([^"]+)"/), town = line.match(/town:"([^"]+)"/);
+      pool.push({ name: n[1], site: site ? site[1] : "", town: town ? town[1] : "", where: "directory", slug: n[1].toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 120) });
+    }
+  } catch {}
+  const { results: ul } = await env.DB.prepare("SELECT slug, data FROM user_listings WHERE status='live'").all();
+  for (const r of ul) { try { const d = JSON.parse(r.data); pool.push({ name: d.n, site: d.site || "", town: d.town || "", where: "directory", slug: r.slug }); } catch {} }
+  const { results: ov } = await env.DB.prepare("SELECT slug, data FROM listing_overrides").all();
+  const hidden = new Set(), siteOv = {};
+  for (const r of ov) { try { const d = JSON.parse(r.data); if (d.hidden) hidden.add(r.slug); if (d.site) siteOv[r.slug] = d.site; } catch {} }
+  for (const p of pool) { if (siteOv[p.slug]) p.site = siteOv[p.slug]; if (hidden.has(p.slug)) p.where = "unpublished"; }
+  const { results: subs } = await env.DB.prepare("SELECT id, name, website, town FROM submissions WHERE status='new' AND kind LIKE '%listing%'").all();
+  for (const r of subs) if (r.id !== opts.excludeSubId) pool.push({ name: r.name, site: r.website || "", town: r.town || "", where: "pending request", subId: r.id });
+  const out = [];
+  for (const p of pool) { const why = dupCompare(cand, p); if (why.length) out.push({ name: p.name, town: p.town, where: p.where, why: why.join(" + "), strong: why.includes("same website") || why.includes("same name") }); }
+  out.sort((a, b) => (b.strong - a.strong) || a.name.localeCompare(b.name));
+  return out.slice(0, 5);
 }
 async function listingSites(env) {
   const r = await env.ASSETS.fetch(new Request("https://assets.local/listings.js"));
