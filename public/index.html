@@ -434,11 +434,17 @@ section .intro p{color:var(--muted);margin:10px 0 0}
 .opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .opt{font:inherit;text-align:left;padding:14px 16px;border:1px solid var(--line);border-radius:var(--r);background:var(--bg);color:var(--ink);cursor:pointer;display:flex;flex-direction:column;gap:2px}
 .opt:hover{border-color:var(--oak)}
-.opt.picked{border-color:var(--oak);box-shadow:inset 0 0 0 1px var(--oak)}
+.opt.picked{border-color:var(--oak);box-shadow:inset 0 0 0 1px var(--oak);background:var(--oak-soft)}
+.opt{position:relative}
+.opt .tick{position:absolute;top:12px;right:12px;width:18px;height:18px;border:1.5px solid var(--line);border-radius:5px;background:var(--surface)}
+.opt.picked .tick{background:var(--oak);border-color:var(--oak)}
+.opt.picked .tick::after{content:"";position:absolute;left:5px;top:1px;width:5px;height:10px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.opt:has(.tick) b{padding-right:24px}
+.qnav .btn[disabled]{opacity:.45;cursor:not-allowed}
 .msec{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:14px 0 6px;font-family:var(--body)}
 .opt b{font-weight:600}
 .opt span{font-size:13px;color:var(--muted)}
-.qnav{display:flex;justify-content:space-between;margin-top:16px}
+.qnav{display:flex;justify-content:space-between;align-items:center;margin-top:16px}
 .matches{display:flex;flex-direction:column;gap:10px;margin:6px 0 18px}
 .match{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center;padding:14px;border:1px solid var(--line);border-radius:var(--r);background:var(--bg)}
 .rank{font-family:var(--display);font-size:22px;color:var(--oak);width:26px;text-align:center}
@@ -580,7 +586,7 @@ html{scroll-behavior:smooth}
     <div class="intro">
       <span class="label">Find your fit</span>
       <h2>A few quick questions to your best matches</h2>
-      <p>Looking for a school or group, or for activities and field trips? Pick one, answer a few questions, and we'll find your five best fits.</p>
+      <p>Looking for a school or group, or for activities and field trips? Pick one, answer a few questions, and we'll find your ten best fits.</p>
     </div>
     <div class="quiz" id="quiz" aria-live="polite"></div>
   </section>
@@ -1230,67 +1236,72 @@ const KIND={"Sports & martial arts":["Gymnastics","Swim","Martial arts","Sports"
  "Field trips & nature":["Museums","Texas history","Zoos & animals","Nature centers & gardens","State parks","Farms & living history","Caves","Stargazing","Libraries","Outdoor skills","Clubs & 4-H"]};
 const TOWNMAP={"Liberty Hill":["Liberty Hill","Leander","Cedar Park","Georgetown"],"Leander / Cedar Park":["Leander","Cedar Park","Liberty Hill"],"Round Rock / Pflugerville":["Round Rock","Pflugerville"],"Georgetown":["Georgetown"],"Austin":["Austin"]};
 let qi=0, ans={};
+// Every question after the first is multi-select: ans[key] is an array. "Anywhere nearby", "No preference", "Nothing specific" and "Surprise me" mean "don't narrow".
+const A=k=>Array.isArray(ans[k])?ans[k]:(ans[k]?[ans[k]]:[]);
+const ANY=new Set(["Anywhere nearby","No preference","Nothing specific","Surprise me"]);
+const picks=k=>A(k).filter(v=>!ANY.has(v));
 function gradeRange(x){
   if(!x.ages) return null;
   const m=x.ages.match(/(Pre-K|K|\d+)\s*[–-]\s*(\d+)/); if(!m) return null;
   const lo=m[1]==="Pre-K"?-1:m[1]==="K"?0:+m[1]; return [lo,+m[2]];
 }
 function scoreCommon(x,why,isTrip){
-  let s=0; const towns=TOWNMAP[ans.town];
-  if(towns){ if(townsOf(x).some(t=>towns.includes(t))){s+=4;why.push("Near you");} else if(!isTrip) s-=2; }
-  const g=GRADE[ans.age], r=gradeRange(x);
-  if(g&&r){ if(r[1]<g[0]||r[0]>g[1]) return null; s+=1; why.push("Right ages"); }
-  if(ans.age==="Little ones"&&x.tags.includes("Littles welcome")){s+=2;why.push("Littles welcome");}
+  let s=0; const towns=[...new Set(picks("town").flatMap(t=>TOWNMAP[t]||[]))];
+  if(towns.length){ if(townsOf(x).some(t=>towns.includes(t))){s+=4;why.push("Near you");} else if(!isTrip) s-=2; }
+  const gs=picks("age").map(a=>GRADE[a]).filter(Boolean), r=gradeRange(x);
+  if(gs.length&&r){ if(!gs.some(g=>!(r[1]<g[0]||r[0]>g[1]))) return null; s+=1; why.push("Right ages"); }
+  if(A("age").includes("Little ones")&&x.tags.includes("Littles welcome")){s+=2;why.push("Littles welcome");}
   return s;
 }
 function scoreSchool(x){
   if(x.type==="activity") return null;
   const why=[]; let s=scoreCommon(x,why,false); if(s===null) return null; const t=x.tags;
-  if(ans.faith==="Secular"){ if(t.some(v=>RELIGIONS.includes(v))) return null; if(t.includes("Secular")){s+=3;why.push("Secular");} }
-  else if(ans.faith==="Christian"){ if(t.includes("Secular")) return null; if(t.includes("Christian")){s+=3;why.push("Christian");} else if(t.includes("Catholic")) s+=1; }
-  else if(ans.faith==="Catholic"){ if(t.includes("Secular")) return null; if(t.includes("Catholic")){s+=4;why.push("Catholic");} else if(t.includes("Christian")) s+=1; }
-  const w=WANT[ans.want]; if(w&&w.includes(x.type)){s+=3;why.push(TYPES[x.type][0]);}
-  const it=INTEREST[ans.interest]; if(it&&t.some(v=>it.includes(v))){s+=3;why.push(ans.interest);}
+  const f=picks("faith"), wantSec=f.includes("Secular"), wantRel=f.filter(v=>v!=="Secular");
+  if(f.length){
+    if(wantSec&&!wantRel.length&&t.some(v=>RELIGIONS.includes(v))) return null;   // secular only
+    if(wantRel.length&&!wantSec&&t.includes("Secular")) return null;               // faith-based only
+    const hit=f.find(v=>t.includes(v)); if(hit){s+=3;why.push(hit);} else if(wantRel.length&&t.some(v=>RELIGIONS.includes(v))) s+=1;
+  }
+  const w=picks("want"); if(w.some(k=>(WANT[k]||[]).includes(x.type))){s+=3;why.push(TYPES[x.type][0]);}
+  const ints=picks("interest").filter(k=>INTEREST[k]&&t.some(v=>INTEREST[k].includes(v)));
+  if(ints.length){ s+=3+(ints.length-1); ints.forEach(k=>why.push(k)); }
   return {x,s,why};
 }
 function scoreActivity(x){
   if(x.type!=="activity") return null;
-  const kinds=KIND[ans.kind], hit=kinds?x.tags.filter(v=>kinds.includes(v)):[];
-  if(kinds&&!hit.length) return null; // they asked for a specific kind
+  const kinds=[...new Set(picks("kind").flatMap(k=>KIND[k]||[]))], hit=kinds.length?x.tags.filter(v=>kinds.includes(v)):[];
+  if(kinds.length&&!hit.length) return null; // they asked for specific kinds
   const isTrip=x.tags.some(v=>FIELD_TAGS.has(v));
   const why=[]; let s=scoreCommon(x,why,isTrip); if(s===null) return null;
   if(hit.length){ s+=3; why.push(hit[0]); }
-  const IA={"Sports & martial arts":KIND["Sports & martial arts"],"Arts & music":KIND["Arts, music & theater"],"STEM & coding":KIND["STEM & making"],"Nature & Charlotte Mason":["Nature centers & gardens","State parks","Outdoor skills","Farms & living history","Zoos & animals"]}[ans.interest];
-  if(IA&&x.tags.some(v=>IA.includes(v))){ s+=2; if(!hit.length) why.push(x.tags.find(v=>IA.includes(v))); }
-  if(ans.when==="During the school day"){
+  const wh=A("when"), dayOnly=wh.includes("During the school day")&&!wh.includes("Any time works");
+  if(dayOnly){
     if(x.daytime){s+=4;why.push("Daytime classes");} else if(x.homeschool){s+=3;why.push("Homeschool program");} else if(isTrip){s+=2;why.push("Open weekdays");}
   } else if(x.homeschool||x.daytime) s+=1;
-  if(isTrip&&!why.includes("Near you")&&ans.town&&ans.town!=="Anywhere nearby") why.push("Day trip");
+  if(isTrip&&!why.includes("Near you")&&picks("town").length) why.push("Day trip");
   return {x,s:s+1,why};
 }
+const TOPN=10;
 const topFit=(fn,n)=>L.filter(x=>!x.test).map(fn).filter(r=>r&&r.s>0).sort((a,b)=>b.s-a.s||a.x.n.localeCompare(b.x.n)).slice(0,n);
 function matchList(res,act){
-  return `<div class="matches">${res.map((r,i)=>`<div class="match"><div class="rank">${i+1}</div><div><h4>${esc(r.x.n)}</h4><p>${esc(townsOf(r.x).join(" · "))}${r.x.d?" · "+esc(shortText(r.x.d)):""}</p><div class="why">${r.why.map(w=>`<span class="tag">${esc(w)}</span>`).join("")}</div></div><button type="button" class="linkbtn" data-see="${esc(r.x.n)}"${act?' data-act="1"':""}>See listing</button></div>`).join("")}</div>`;
+  return `<div class="matches">${res.map((r,i)=>`<div class="match"><div class="rank">${i+1}</div><div><h4>${esc(r.x.n)}</h4><p>${esc(townsOf(r.x).join(" · "))}${r.x.d?" · "+esc(shortText(r.x.d)):""}</p><div class="why">${[...new Set(r.why)].map(w=>`<span class="tag">${esc(w)}</span>`).join("")}</div></div><button type="button" class="linkbtn" data-see="${esc(r.x.n)}"${act?' data-act="1"':""}>See listing</button></div>`).join("")}</div>`;
 }
 function renderQuiz(){
   const box=$("quiz"), QS=quizQs(), total=ans.path?QS.length:5;
   if(qi<QS.length){
-    const Q=QS[qi];
+    const Q=QS[qi], multi=Q.k!=="path", cur=A(Q.k);
     box.innerHTML=`<div class="qprog"><span class="label">${ans.path?`Question ${qi+1} of ${total}`:"First question"}</span><div class="bar"><i style="width:${(qi/total)*100}%"></i></div></div>
-      <h3>${Q.q}</h3>
-      <div class="opts">${Q.o.map(([l,sub])=>`<button type="button" class="opt${ans[Q.k]===l?" picked":""}" data-a="${esc(l)}"><b>${esc(l)}</b>${sub?`<span>${esc(sub)}</span>`:""}</button>`).join("")}</div>
-      <div class="qnav">${qi>0?`<button type="button" class="linkbtn" id="qBack">Back</button>`:"<span></span>"}</div>`;
+      <h3>${Q.q}</h3>${multi?`<p class="where" style="margin:-6px 0 12px;font-size:14px">Choose all that apply.</p>`:""}
+      <div class="opts">${Q.o.map(([l,sub])=>`<button type="button" class="opt${cur.includes(l)?" picked":""}" data-a="${esc(l)}"${multi?` aria-pressed="${cur.includes(l)}"`:""}>${multi?`<i class="tick" aria-hidden="true"></i>`:""}<b>${esc(l)}</b>${sub?`<span>${esc(sub)}</span>`:""}</button>`).join("")}</div>
+      <div class="qnav">${qi>0?`<button type="button" class="linkbtn" id="qBack">Back</button>`:"<span></span>"}${multi?`<button type="button" class="btn" id="qNext" style="margin-top:0"${cur.length?"":" disabled"}>${qi===QS.length-1?"See my matches":"Next"}</button>`:""}</div>`;
     return;
   }
-  const both=ans.path==="Both", wantS=ans.path!=="Activities & field trips", wantA=ans.path!=="Schools & groups";
-  const rs=wantS?topFit(scoreSchool,both?3:5):[], ra=wantA?topFit(scoreActivity,both?3:5):[];
-  recordDemand(rs.concat(ra));
-  const none=!rs.length&&!ra.length;
-  const sec=(title,res,act,empty)=>`${both?`<h4 class="msec">${title}</h4>`:""}${res.length?matchList(res,act):`<p class="where" style="margin:0 0 14px">${empty}</p>`}`;
+  const wantS=ans.path!=="Activities & field trips";
+  const res=wantS?topFit(scoreSchool,TOPN):topFit(scoreActivity,TOPN);
+  recordDemand(res);
   box.innerHTML=`<div class="qprog"><span class="label">Your matches</span><button type="button" class="linkbtn" id="qRetake">Start over</button></div>
-    <h3>${none?"No close matches yet":both?"Your best matches":`Your top ${(rs.length||ra.length)} ${wantS?"schools & groups":"activities"}`}</h3>
-    ${wantS?sec("Schools & groups",rs,false,"No close school or group matches yet. We're adding more every month."):""}
-    ${wantA?sec("Activities & field trips",ra,true,"No close activity matches yet. Try “Surprise me” or “Any time works.”"):""}
+    <h3>${res.length?`Your top ${res.length} ${wantS?"schools & groups":"activities"}`:"No close matches yet"}</h3>
+    ${res.length?matchList(res,!wantS):`<p class="where" style="margin:0 0 14px">${wantS?"No close school or group matches yet. Try choosing more towns or ages. We're adding more every month.":"No close activity matches yet. Try more kinds of activities, or “Any time works.”"}</p>`}
     <form class="news" id="newsForm" novalidate>
       <h4>Get new matches once a month</h4>
       <p>New groups, open spots and events near you, in one email a month. Unsubscribe anytime.</p>
@@ -1300,7 +1311,13 @@ function renderQuiz(){
 }
 $("quiz").addEventListener("click",e=>{
   const o=e.target.closest(".opt");
-  if(o){ const Q=quizQs()[qi]; if(Q.k==="path"&&ans.path!==o.dataset.a){ const keep={town:ans.town,age:ans.age}; ans={...keep}; demandSent=false; } ans[Q.k]=o.dataset.a; qi++; renderQuiz(); $("quiz").querySelector("button")?.focus({preventScroll:true}); return;}
+  if(o){ const Q=quizQs()[qi], v=o.dataset.a;
+    if(Q.k==="path"){ if(ans.path!==v){ ans={town:ans.town,age:ans.age}; demandSent=false; } ans.path=v; qi++; renderQuiz(); $("quiz").querySelector("button")?.focus({preventScroll:true}); return; }
+    let cur=A(Q.k);
+    if(ANY.has(v)) cur=cur.includes(v)?[]:[v];               // "Anywhere / No preference" clears the others
+    else { cur=cur.filter(x=>!ANY.has(x)); cur=cur.includes(v)?cur.filter(x=>x!==v):cur.concat(v); }
+    ans[Q.k]=cur; renderQuiz(); $("quiz").querySelector(`.opt[data-a="${CSS.escape(v)}"]`)?.focus({preventScroll:true}); return; }
+  if(e.target.id==="qNext"){ if(!A(quizQs()[qi].k).length) return; qi++; renderQuiz(); $("quiz").querySelector("button")?.focus({preventScroll:true}); return; }
   if(e.target.id==="qBack"){qi=Math.max(0,qi-1); renderQuiz(); return;}
   if(e.target.id==="qRetake"){qi=0; ans={}; demandSent=false; renderQuiz(); return;}
   const see=e.target.closest("[data-see]");
@@ -1382,7 +1399,8 @@ let demandSent=false;
 async function recordDemand(res){
   if(demandSent) return; demandSent=true;
   const local=res.filter(r=>r.why.includes("Near you")).length;
-  await api("/api/demand",{...ans,matches:res.length,localMatches:local});
+  const flat={}; for(const k in ans) flat[k]=Array.isArray(ans[k])?ans[k].join(", "):ans[k];
+  await api("/api/demand",{...flat,matches:res.length,localMatches:local});
 }
 document.querySelectorAll("[data-plan]").forEach(b=>b.addEventListener("click",()=>{
   const link=STRIPE_LINKS[b.dataset.plan];
