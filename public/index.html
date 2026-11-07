@@ -393,6 +393,13 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .contact span{color:var(--ink);font-variant-numeric:tabular-nums}
 .card.partner{border:2px solid var(--sun);box-shadow:0 0 0 4px var(--sun-soft);position:relative;padding-top:30px}
 .ribbon{position:absolute;top:0;left:18px;background:var(--sun);color:var(--ink);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:0 0 8px 8px}
+.card .foot.unclaimed{background:var(--sun-soft);border:1px solid var(--sun);border-radius:10px;padding:10px 12px;margin-top:auto;color:var(--ink);font-size:13.5px;font-weight:600}
+.card .foot.unclaimed span{display:flex;flex-direction:column;gap:2px}
+.card .foot.unclaimed small{font-weight:400;color:var(--muted);font-size:12.5px;line-height:1.35}
+.leadstrip{margin:0 0 12px;font-size:14px;color:var(--muted)}
+.leadstrip a{color:var(--bonnet)}
+.claimbtn{flex:none;font-size:13.5px;font-weight:700;background:var(--oak);color:#FFFBF5;border-radius:999px;padding:7px 14px;text-decoration:none;white-space:nowrap}
+.claimbtn:hover{filter:brightness(1.1)}
 .card .foot{margin-top:auto;display:flex;justify-content:space-between;align-items:center;gap:10px;padding-top:10px;border-top:1px dashed var(--line);font-size:13px;color:var(--muted)}
 .empty{padding:40px 0;color:var(--muted)}
 
@@ -632,6 +639,7 @@ html{scroll-behavior:smooth}
     <span class="count" id="count"></span>
     <button class="linkbtn" id="clearBtn" type="button">Clear filters</button>
   </div>
+  <p class="leadstrip">Run a co-op, school or class? Find your listing below and tap <b>Claim this listing</b>, or <a href="/leaders.html">go to the leader portal</a>. It's free.</p>
   <div class="grid" id="grid"></div>
   <div class="moreline"><button class="btn ghost" type="button" id="showAll" hidden style="margin-top:0"></button></div>
 </div>
@@ -1157,7 +1165,8 @@ function card(x){
     </form>
     <div class="contact">${x.site?`<a href="${esc(x.site)}" target="_blank" rel="noopener" data-site="${esc(sid(x))}">${/facebook\.com/i.test(x.site)?"Facebook page":"Visit website"} ↗</a>`:x.test?"":`<a href="https://www.google.com/search?q=${encodeURIComponent(x.n+" "+(x.town||"")+" TX")}" target="_blank" rel="noopener">Find them online ↗</a>`}${x.phone?`<span>${esc(x.phone)}</span>`:""}</div>
     ${qaBlock(x)}
-    <div class="foot">${x.claimed?`<span class="claimed">${x.type==="tutor"?"Managed by the tutor":"Updated by the group"}</span>`:`<span>Unclaimed</span>`}<a class="linkbtn" href="/leaders.html#${esc(sid(x))}">${x.claimed?"Manage listing":"Is this yours? Claim it"}</a></div>
+    ${x.claimed?`<div class="foot"><span class="claimed">${x.type==="tutor"?"Managed by the tutor":"Updated by the group"}</span><a class="linkbtn" href="/leaders.html#${esc(sid(x))}">Manage listing</a></div>`
+      :`<div class="foot unclaimed"><span>Run this group?<small>Claim it free to update details and openings.</small></span><a class="claimbtn" href="/leaders.html#${esc(sid(x))}">Claim this listing</a></div>`}
   </article>`;
 }
 let showAll=false;
