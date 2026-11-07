@@ -643,7 +643,7 @@ html{scroll-behavior:smooth}
     <span class="count" id="count"></span>
     <button class="linkbtn" id="clearBtn" type="button">Clear filters</button>
   </div>
-  <p class="leadstrip">Run a co-op, school or class? Find your listing below and tap <b>Claim your listing</b>, or <a href="/leaders.html">go to the leader portal</a>. It's free.</p>
+  <p class="leadstrip"><span id="leadWho">Run a co-op, school or class?</span> Find your listing below and tap <b>Claim your listing</b>, or <a href="/leaders.html">go to the leader portal</a>. It's free.</p>
   <div class="grid" id="grid"></div>
   <div class="moreline"><button class="btn ghost" type="button" id="showAll" hidden style="margin-top:0"></button></div>
 </div>
@@ -1170,7 +1170,7 @@ function card(x){
     <div class="contact">${x.site?`<a href="${esc(x.site)}" target="_blank" rel="noopener" data-site="${esc(sid(x))}">${/facebook\.com/i.test(x.site)?"Facebook page":"Visit website"} ↗</a>`:x.test?"":`<a href="https://www.google.com/search?q=${encodeURIComponent(x.n+" "+(x.town||"")+" TX")}" target="_blank" rel="noopener">Find them online ↗</a>`}${x.phone?`<span>${esc(x.phone)}</span>`:""}</div>
     ${qaBlock(x)}
     ${x.claimed?`<div class="foot"><span class="claimed">${x.type==="tutor"?"Managed by the tutor":"Updated by the group"}</span><a class="linkbtn" href="/leaders.html#${esc(sid(x))}">Manage listing</a></div>`
-      :`<div class="foot unclaimed"><span>Run this group?</span><a class="claimbtn" href="/leaders.html#${esc(sid(x))}">Claim your listing</a></div>`}
+      :`<div class="foot unclaimed"><span>${x.type==="activity"?"Run this business?":"Run this group?"}</span><a class="claimbtn" href="/leaders.html#${esc(sid(x))}">Claim your listing</a></div>`}
   </article>`;
 }
 let showAll=false;
@@ -1200,6 +1200,7 @@ function render(){
   $("count").textContent=`${res.length} of ${inSection} ${state.section==="activity"?"activities":"listings"}`;
   $("showAll").textContent=`Show all ${res.length} ${state.section==="activity"?"activities":"listings"}`;
   renderBars();
+  $("leadWho").textContent=state.section==="activity"?"Run a business that offers activities for kids?":state.section==="all"?"Run a group or business?":"Run a co-op, school or class?";
   $("tabLearn").setAttribute("aria-selected",state.section==="learn"); $("tabAct").setAttribute("aria-selected",state.section==="activity"); $("tabBoth").setAttribute("aria-selected",state.section==="all");
   $("typeSel").hidden=state.section==="activity"; $("approachSel").hidden=state.section!=="learn"; $("actSel").hidden=state.section!=="activity";
   const actOpt=$("typeSel").querySelector('option[value="activity"]'); if(actOpt) actOpt.hidden=state.section!=="all";
