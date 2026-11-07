@@ -330,7 +330,7 @@ const routes = {
       const site = env.SITE_URL || "https://centexhomeschool.org";
       await sendMail(env, email, `We got your listing for ${name}`,
         `Hi ${clip(b.contact, 80) || "there"},\n\nThanks for adding ${name} to CenTex Homeschool Hub. Your listing is in our review queue. We review every listing by hand, usually within a couple of days, and we'll reach out if we have any questions.\n\n` +
-        `Once it's up, you can claim it to keep your details, availability and open house dates current. Families who tap "Notify me" get an email the moment you open spots.\n\nSee the directory: ${site}/directory\n\n` +
+        `Once it's up, you can claim it to keep your details, availability and event dates current. Families who tap "Notify me" get an email the moment you open spots.\n\nSee the directory: ${site}/directory\n\n` +
         (await joinBlock(env, email)) + `Thanks,\nBerkli\nCenTex Homeschool Hub`);
     } catch (e) { console.error("submission receipt failed", e && e.message); }
     return json({ ok: true });
