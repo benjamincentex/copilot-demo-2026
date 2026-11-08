@@ -496,6 +496,7 @@ async function load(){
   me=m; $("signinBox").hidden=true; loadQs(); loadEv(); $("account").hidden=false; $("whoami").textContent=m.email;
   const map=bySlug();
   $("myListings").innerHTML=m.owned.length?m.owned.filter(id=>map[id]).map(id=>editor(map[id])).join(""):`<div class="box"><h2>Your listings</h2><p class="where" style="margin:0">You don't manage any listings yet. Claim yours below.</p></div>`;
+  { const h=decodeURIComponent((location.hash||"").slice(1)); const f=h&&document.querySelector(`#myListings [data-slug="${CSS.escape(h)}"]`); if(f&&!load.scrolled){ load.scrolled=1; setTimeout(()=>f.scrollIntoView({behavior:"smooth",block:"start"}),150); } }
   $("pendingBox").hidden=!m.pending.length;
   $("pendingList").innerHTML=m.pending.map(p=>`<p style="margin:0"><span class="pill">Pending</span> ${esc(p.listing||p.slug)}</p>`).join("");
 }

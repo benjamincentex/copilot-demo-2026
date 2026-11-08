@@ -195,12 +195,12 @@ async function approveSubmission(env, b) {
     const site0 = env.SITE_URL || "https://centexhomeschool.org";
     let emailed = false;
     try {
-      emailed = await sendMail(env, sub.email, `${n} is now live on CenTex Homeschool Hub`,
-        `Hi ${sub.contact || "there"},\n\nGood news: ${n} is now listed in the CenTex Homeschool Hub directory, where Central Texas families look for co-ops, classes and activities.\n\n` +
-        (b.makeOwner
-          ? `You can manage it yourself. Sign in with this email address to update your details, mark availability and add open houses to the community calendar. Families who tap "Notify me" get an email the moment you open spots.\n\nManage your listing: ${site0}/leaders.html\n\n`
-          : `Want to keep it up to date yourself? Claim it with this email address and you can update details, mark availability and add open houses to the community calendar.\n\nClaim your listing: ${site0}/leaders.html\n\n`) +
-        `See it in the directory: ${site0}/directory\n\n` + (await joinBlock(env, sub.email)) + `Thanks,\nBerkli\nCenTex Homeschool Hub`);
+      emailed = b.makeOwner
+        ? await sendManagerWelcome(env, { to: sub.email, name: sub.contact, listing: n, slug, why: `Good news: ${n} is approved and now listed in the CenTex Homeschool Hub directory, where Central Texas families look for co-ops, classes and activities.` })
+        : await sendMail(env, sub.email, `${n} is now live on CenTex Homeschool Hub`,
+          `Hi ${sub.contact || "there"},\n\nGood news: ${n} is approved and now listed in the CenTex Homeschool Hub directory, where Central Texas families look for co-ops, classes and activities.\n\n` +
+          `Want to keep it up to date yourself? Claim it with this email address and you can update details, mark availability and add events to the community calendar.\n\nClaim your listing: ${site0}/leaders.html#${slug}\n\n` +
+          `See your listing: ${site0}/directory?q=${encodeURIComponent(n)}\n\n` + (await joinBlock(env, sub.email)) + `Thanks,\nBerkli\nCenTex Homeschool Hub`);
     } catch (e) { console.error("live email failed", e && e.message); }
     return { ok: true, slug, emailed, name: n };
 }
@@ -232,6 +232,18 @@ function reviewPage(title, body) {
   return new Response(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${hEsc(title)} · CenTex Homeschool Hub</title>
 <style>body{font-family:system-ui,-apple-system,sans-serif;background:#F8F1E7;color:#2A2219;margin:0;padding:28px 16px}main{max-width:640px;margin:0 auto;background:#FFFBF5;border:1px solid #E8DCCB;border-radius:16px;padding:22px}h1{font-family:Georgia,serif;font-weight:normal;font-size:26px;margin:0 0 6px}p{line-height:1.5}.muted{color:#76675A;font-size:14px}label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:#76675A}input,select,textarea{font:inherit;font-size:15px;padding:8px 10px;border:1px solid #E8DCCB;border-radius:8px;background:#F8F1E7;color:#2A2219}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.full{grid-column:1/-1}.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}button{font:inherit;font-weight:700;font-size:16px;border-radius:10px;padding:12px 20px;cursor:pointer}.ok{background:#2F5A3D;color:#FFFBF5;border:2px solid #2F5A3D}.no{background:#FFFBF5;color:#8A2E1F;border:2px solid #8A2E1F}.warn{background:#FBF0DA;border:1px solid #D9A441;border-radius:10px;padding:10px 12px;font-size:14px}table{width:100%;border-collapse:collapse;font-size:15px}td{padding:6px 10px 6px 0;border-top:1px solid #E8DCCB;vertical-align:top}td:first-child{color:#76675A;white-space:nowrap}a{color:#3546A8}@media(max-width:560px){.grid{grid-template-columns:1fr}}</style>
 <main>${body}<p class="muted" style="margin-top:18px"><a href="/admin.html">Owner page</a> · <a href="/">CenTex Homeschool Hub</a></p></main></html>`, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
+}
+// One acceptance email for anyone who now manages a listing (approved request, approved claim, or added by the owner).
+async function sendManagerWelcome(env, { to, name, listing, slug, why }) {
+  const site = env.SITE_URL || "https://centexhomeschool.org";
+  return sendMail(env, to, `You're approved: manage ${listing} on CenTex Homeschool Hub`,
+    `Hi ${name || "there"},\n\n${why} You can now manage the listing yourself.\n\n` +
+    `Manage your listing: ${site}/leaders.html#${slug}\n\n` +
+    `How to get back to it anytime:\n- On our site, find ${listing} in the directory. While you're signed in with this email address, it shows a "Manage your listing" link.\n- Or go to ${site}/leaders.html and sign in with this email address. We'll email you a 6-digit code, so there's no password to remember.\n\n` +
+    `What you can update: availability (open spots, waitlist or full), when registration opens, ages, schedule, cost, website, description, faith and approach tags, and Spanish-speaking. You can also add events like open houses, info sessions and deadlines to the community calendar.\n\n` +
+    `When you mark open spots or post a registration date, families waiting on you get an email right away.\n\n` +
+    `See your listing: ${site}/directory?q=${encodeURIComponent(listing)}\n\n` +
+    (await joinBlock(env, to)) + `Thanks,\nBerkli\nCenTex Homeschool Hub`);
 }
 async function isUnpublished(env, slug) {
   const r = await env.DB.prepare("SELECT data FROM listing_overrides WHERE slug=?").bind(slug).first();
@@ -440,7 +452,7 @@ const routes = {
       const prev = prevRow ? JSON.parse(prevRow.data) : {};
       await env.DB.prepare("INSERT INTO listing_overrides (slug, data, updated_at, updated_by) VALUES (?,?,?,?) ON CONFLICT(slug) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at").bind(c.slug, JSON.stringify({ ...prev, claimed: true }), stamp, "contact-confirmed").run();
       const site = env.SITE_URL || "https://centexhomeschool.org";
-      try { await sendMail(env, c.email, `You can now manage ${c.listing} on CenTex Homeschool Hub`, `Hi ${c.name || "there"},\n\n${v.confirmedBy} confirmed you're part of ${c.listing}, so your claim is approved. Sign in at ${site}/leaders.html with this email address to update your details and availability anytime.\n\n` + (await joinBlock(env, c.email)) + `Thanks,\nBerkli\nCenTex Homeschool Hub`); } catch {}
+      try { await sendManagerWelcome(env, { to: c.email, name: c.name, listing: c.listing, slug: c.slug, why: `${v.confirmedBy} confirmed you're part of ${c.listing}, so your claim is approved.` }); } catch {}
       await notifyOwner(env, `Claim confirmed by the group: ${c.listing}`, `${v.confirmedBy} (from ${c.listing}'s website) confirmed ${c.email}, so the claim was approved automatically.`);
     }
     return simplePage("Confirmed", `Thanks! ${c.name || "They"} can now manage ${c.listing}'s listing.`);
@@ -1273,13 +1285,7 @@ const routes = {
       .bind(c.slug, JSON.stringify({ ...prev, claimed: true }), stamp, "owner").run();
     try {
       const paid = ["class", "micro", "tutor"].includes(c.type);
-      await sendMail(env, c.email, `You can now manage ${c.listing} on CenTex Homeschool Hub`,
-        `Hi ${c.name || "there"},\n\nYour claim for ${c.listing} is approved. Sign in at ${env.SITE_URL || "https://centexhomeschool.org"}/leaders.html with this email address to update your details and availability anytime.\n\n` +
-        `A few things that help families find you:\n- Mark your availability (open spots, waitlist or full)\n- Add your next open house or application deadline to the community calendar\n- Answer families' questions on your listing\n\n` +
-        `When you mark open spots or post a registration date, families waiting on your group get an email right away.\n\n` +
-        (await joinBlock(env, c.email)) +
-        (paid && paidOn(env) ? `P.S. Want families to enroll in one click? A Featured listing ($39/month) adds a highlighted banner, photos, a "Register" button straight to your registration page, an unlimited description (free listings get 75 characters), a newsletter spotlight twice a year, free job posts and a quarterly report on how your listing is performing. Details: ${env.SITE_URL || "https://centexhomeschool.org"}/leaders.html#plans\n\n` : "") +
-        `Thanks,\nBerkli\nCenTex Homeschool Hub`);
+      await sendManagerWelcome(env, { to: c.email, name: c.name, listing: c.listing, slug: c.slug, why: `Your claim for ${c.listing} is approved.` });
     } catch (e) { console.error("approval email failed", e.code, e.message); }
     return json({ ok: true });
   },
@@ -1370,10 +1376,7 @@ const routes = {
     if (manager && b.notify) {
       const site0 = env.SITE_URL || "https://centexhomeschool.org";
       try {
-        emailed = await sendMail(env, manager, `${n} is now listed on CenTex Homeschool Hub`,
-          `Hi there,\n\n${n} is now listed in the CenTex Homeschool Hub directory, where Central Texas families look for co-ops, classes and activities. You're set up to manage it.\n\n` +
-          `Sign in with this email address to update your details, mark availability and add open houses to the community calendar. Families who tap "Notify me" get an email the moment you open spots.\n\nManage your listing: ${site0}/leaders.html\n\n` +
-          (await joinBlock(env, manager)) + `Thanks,\nBerkli\nCenTex Homeschool Hub`);
+        emailed = await sendManagerWelcome(env, { to: manager, name: "", listing: n, slug, why: `${n} is now listed in the CenTex Homeschool Hub directory, where Central Texas families look for co-ops, classes and activities.` });
       } catch (e) { console.error("manager email failed", e && e.message); }
     }
     return json({ ok: true, slug, emailed });
