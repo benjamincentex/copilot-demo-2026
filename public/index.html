@@ -382,10 +382,13 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .hwday .hwd b{font-family:var(--display);font-size:20px;font-weight:400;color:var(--ink);letter-spacing:0;margin-left:4px}
 .hwday i{font-style:normal;font-size:13px;line-height:1.3;border-left:3px solid var(--oak);padding-left:6px;overflow-wrap:anywhere}
 .hwday i.k-school{border-color:var(--bonnet)}
+.hwday i.k-wk{border-left-style:dashed;border-color:var(--sun)}
+.hwday i b{display:block;font-weight:600}
+.hwday i em{display:block;font-style:normal;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:700}
 .hwday i small{display:block;color:var(--muted);font-size:12px}
 .hwday .hwmore{font-size:12px;color:var(--muted)}
 .hwday .hwnone{font-size:13px;color:var(--muted)}
-@media (max-width:780px){.hwgrid{grid-template-columns:1fr}.hwday{min-height:0;flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:4px 10px}.hwday .hwd{flex:0 0 72px}.hwday i,.hwday .hwmore,.hwday .hwnone{flex:1 1 60%}.hwday.past{display:none}}
+@media (max-width:780px){.hwgrid{grid-template-columns:1fr}.hwday{min-height:0;flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:4px 10px}.hwday{flex-direction:column}.hwday .hwd{flex:none}.hwday.past{display:none}}
 .quoteband .qsub{display:inline-block;margin-top:10px;font-size:14px;font-weight:600;color:var(--oak)}
 .t-act{background:var(--sun-soft);color:var(--ink);border:1px solid var(--sun)}
 .dirtabs{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 0}
@@ -1737,6 +1740,7 @@ $("calPrev").onclick=()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getM
 $("calNext").onclick=()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+1,1);calDay=null;renderCalendar();};
 $("calGrid").addEventListener("click",e=>{const b=e.target.closest("[data-day]"); if(!b) return; calDay=calDay===b.dataset.day?null:b.dataset.day; renderCalendar(); renderWeekly(); const ag=document.querySelector(".agenda"); if(ag){ const r=ag.getBoundingClientRect(); if(r.top>innerHeight-80||r.top<0) ag.scrollIntoView({behavior:"smooth",block:"start"}); }});
 // Home page: rolling 7-day snapshot (today + the next 6 days) of dated events, plus how many weekly classes run each day.
+const HWCAT={openhouse:"Open house",deadline:"Deadline",public:"Homeschool event",activity:"Activity",other:"Event"};
 function renderHomeWeek(failed){
   const box=$("homeWeek"); if(!box) return;
   if(failed){ box.innerHTML=`<div class="emptynote">This week's events couldn't load. <a href="/calendar">Open the calendar</a>.</div>`; return; }
@@ -1746,9 +1750,12 @@ function renderHomeWeek(failed){
   $("hwRange").textContent=`${f(days[0])} – ${f(days[6])}`;
   const WK=L.filter(x=>!x.test&&x.type==="activity"&&(x.daytime||x.homeschool)&&x.days&&x.days.length);
   box.innerHTML=days.map((d,i)=>{
-    const key=ymd(d), evs=EVENTS.filter(ev=>ev.event_date===key), wk=weeklyOn(d,WK).length, max=3;
-    const items=evs.slice(0,max).map(ev=>`<i class="k-${kindOf(ev)}">${esc(ev.title)}${(ev.event_time||ev.town)?`<small>${esc([ev.event_time,ev.town].filter(Boolean).join(" · "))}</small>`:""}</i>`).join("");
-    const more=[evs.length>max?`+${evs.length-max} more`:"",wk?`${wk} weekly class${wk>1?"es":""}`:""].filter(Boolean).join(" · ");
+    const key=ymd(d), evs=EVENTS.filter(ev=>ev.event_date===key).sort((a,b)=>(startMin(a.event_time)??9999)-(startMin(b.event_time)??9999));
+    const wks=weeklyOn(d,WK), wk=wks.length, max=5;
+    const all=evs.map(ev=>`<i class="k-${kindOf(ev)}">${ev.category&&HWCAT[ev.category]?`<em>${HWCAT[ev.category]}</em>`:""}<b>${esc(ev.title)}</b>${ev.event_time?`<small>${esc(ev.event_time)}</small>`:""}${(ev.place||ev.town)?`<small>${esc([ev.place,ev.town].filter(Boolean).join(", "))}</small>`:""}${ev.host&&ev.host!==ev.title?`<small>${esc(ev.host)}</small>`:""}</i>`)
+      .concat(wks.map(x=>`<i class="k-wk"><em>Weekly class</em><b>${esc(x.n)}</b><small>${esc(wkTown(x,d))}</small></i>`));
+    const items=all.slice(0,max).join("");
+    const more=all.length>max?`+${all.length-max} more in the calendar`:"";
     return `<button type="button" class="hwday${key===todayKey?" today":""}${key<todayKey?" past":""}" data-hwday="${key}" aria-label="${d.toDateString()}: ${evs.length} event${evs.length===1?"":"s"}${wk?", "+wk+" weekly classes":""}. Open in calendar">
       <span class="hwd">${i===0?"Today":i===1?"Tomorrow":DOWK[d.getDay()]}<b>${d.getDate()}</b></span>${items||(wk?"":`<span class="hwnone">No events yet</span>`)}${more?`<span class="hwmore">${more}</span>`:""}</button>`;
   }).join("");
