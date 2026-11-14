@@ -366,6 +366,26 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .quoteband blockquote{margin:0;font-family:var(--display);font-size:clamp(22px,3vw,30px);line-height:1.35;color:var(--oak)}
 .quoteband figcaption{margin-top:10px;font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
 .quoteband .qweek{display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--sun);font-weight:700;margin-bottom:8px}
+.statlink{text-decoration:none;color:inherit;border-radius:10px;transition:background .15s}
+.statlink:hover,.statlink:focus-visible{background:var(--sun-soft)}
+.statlink:hover span{color:var(--oak)}
+.homeweek{max-width:1100px;margin:22px auto 8px;padding:0 16px}
+.hwhead{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;margin-bottom:10px}
+.hwhead h2{font-size:clamp(20px,2.4vw,26px);margin:0}
+.hwhead .hwall{margin-left:auto;font-weight:600;font-size:14px;color:var(--oak)}
+.hwgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}
+.hwday{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:6px;text-align:left;font:inherit;color:inherit;cursor:pointer;min-width:0;min-height:120px}
+.hwday:hover,.hwday:focus-visible{border-color:var(--oak)}
+.hwday.today{border-color:var(--sun);box-shadow:0 0 0 1px var(--sun)}
+.hwday.past{opacity:.55}
+.hwday .hwd{font-size:12px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;color:var(--muted)}
+.hwday .hwd b{font-family:var(--display);font-size:20px;font-weight:400;color:var(--ink);letter-spacing:0;margin-left:4px}
+.hwday i{font-style:normal;font-size:13px;line-height:1.3;border-left:3px solid var(--oak);padding-left:6px;overflow-wrap:anywhere}
+.hwday i.k-school{border-color:var(--bonnet)}
+.hwday i small{display:block;color:var(--muted);font-size:12px}
+.hwday .hwmore{font-size:12px;color:var(--muted)}
+.hwday .hwnone{font-size:13px;color:var(--muted)}
+@media (max-width:780px){.hwgrid{grid-template-columns:1fr}.hwday{min-height:0;flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:4px 10px}.hwday .hwd{flex:0 0 72px}.hwday i,.hwday .hwmore,.hwday .hwnone{flex:1 1 60%}.hwday.past{display:none}}
 .quoteband .qsub{display:inline-block;margin-top:10px;font-size:14px;font-weight:600;color:var(--oak)}
 .t-act{background:var(--sun-soft);color:var(--ink);border:1px solid var(--sun)}
 .dirtabs{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 0}
@@ -537,7 +557,7 @@ html{scroll-behavior:smooth}
     <div class="stat"><b id="statListings">0</b><span>schools, co-ops &amp; classes</span></div>
     <div class="stat"><b id="statActivities">0</b><span>activities</span></div>
     <div class="stat"><b id="statTowns">0</b><span>towns</span></div>
-    <div class="stat"><b>$2,000</b><span>TEFA per homeschooler</span></div>
+    <a class="stat statlink" href="/resources#tefa"><b>$2,000</b><span>TEFA per homeschooler →</span></a>
   </div>
 </div>
 <figure class="scene" data-view="home" aria-label="Illustration of families gathered for a park day under a huge live oak in the Texas Hill Country">
@@ -582,6 +602,10 @@ html{scroll-behavior:smooth}
   <figcaption id="qBy">Albert Einstein</figcaption>
   <a class="qsub" href="#newsletter">Get a quote like this every Monday →</a>
 </figure>
+<section class="homeweek" data-view="home" aria-labelledby="hwTitle">
+  <div class="hwhead"><h2 id="hwTitle">This week in Central Texas</h2><span class="meta" id="hwRange"></span><a href="/calendar" class="hwall">Full calendar →</a></div>
+  <div class="hwgrid" id="homeWeek"><div class="emptynote">Loading this week's events…</div></div>
+</section>
   <section id="fit" data-view="home" style="padding-block:24px 8px">
     <div class="intro">
       <span class="label">Find your fit</span>
@@ -1710,14 +1734,36 @@ let calRz; addEventListener("resize",()=>{clearTimeout(calRz); calRz=setTimeout(
 $("calPrev").onclick=()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()-1,1);calDay=null;renderCalendar();};
 $("calNext").onclick=()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+1,1);calDay=null;renderCalendar();};
 $("calGrid").addEventListener("click",e=>{const b=e.target.closest("[data-day]"); if(!b) return; calDay=calDay===b.dataset.day?null:b.dataset.day; renderCalendar(); renderWeekly(); const ag=document.querySelector(".agenda"); if(ag){ const r=ag.getBoundingClientRect(); if(r.top>innerHeight-80||r.top<0) ag.scrollIntoView({behavior:"smooth",block:"start"}); }});
+// Home page: Monday–Sunday snapshot of this week's dated events, plus how many weekly classes run each day.
+function renderHomeWeek(failed){
+  const box=$("homeWeek"); if(!box) return;
+  if(failed){ box.innerHTML=`<div class="emptynote">This week's events couldn't load. <a href="/calendar">Open the calendar</a>.</div>`; return; }
+  const now=new Date(), todayKey=ymd(now), mon=new Date(now.getFullYear(),now.getMonth(),now.getDate()-((now.getDay()+6)%7));
+  const days=[...Array(7)].map((_,i)=>{const d=new Date(mon); d.setDate(mon.getDate()+i); return d;});
+  const f=d=>d.toLocaleDateString("en-US",{month:"short",day:"numeric"});
+  $("hwRange").textContent=`${f(days[0])} – ${f(days[6])}`;
+  const WK=L.filter(x=>!x.test&&x.type==="activity"&&(x.daytime||x.homeschool)&&x.days&&x.days.length);
+  box.innerHTML=days.map(d=>{
+    const key=ymd(d), evs=EVENTS.filter(ev=>ev.event_date===key), wk=weeklyOn(d,WK).length, max=3;
+    const items=evs.slice(0,max).map(ev=>`<i class="k-${kindOf(ev)}">${esc(ev.title)}${(ev.event_time||ev.town)?`<small>${esc([ev.event_time,ev.town].filter(Boolean).join(" · "))}</small>`:""}</i>`).join("");
+    const more=[evs.length>max?`+${evs.length-max} more`:"",wk?`${wk} weekly class${wk>1?"es":""}`:""].filter(Boolean).join(" · ");
+    return `<button type="button" class="hwday${key===todayKey?" today":""}${key<todayKey?" past":""}" data-hwday="${key}" aria-label="${d.toDateString()}: ${evs.length} event${evs.length===1?"":"s"}${wk?", "+wk+" weekly classes":""}. Open in calendar">
+      <span class="hwd">${DOWK[d.getDay()]}<b>${d.getDate()}</b></span>${items||(wk?"":`<span class="hwnone">No events yet</span>`)}${more?`<span class="hwmore">${more}</span>`:""}</button>`;
+  }).join("");
+}
+document.addEventListener("click",e=>{const b=e.target.closest("[data-hwday]"); if(!b) return;
+  const k=b.dataset.hwday, [y,m]=k.split("-").map(Number); calFilter="all"; calTowns=[]; calMonth=new Date(y,m-1,1); calDay=k;
+  document.querySelectorAll("[data-calf]").forEach(x=>x.setAttribute("aria-selected",x.dataset.calf==="all"));
+  go("/calendar"); renderCalTowns(); renderCalendar(); renderWeekly();
+  const ag=document.querySelector(".agenda")||$("eventList"); if(ag) setTimeout(()=>ag.scrollIntoView({behavior:"smooth",block:"start"}),50); });
 async function loadEvents(){
   const r=await api("/api/cal"); EVENTS=(r.ok&&Array.isArray(r.events))?r.events:[];
-  if(!r.ok||!Array.isArray(r.events)){ console.error("Calendar couldn't load events:", r.error||"unexpected response"); renderCalendar(); $("eventList").innerHTML=`<div class="emptynote">The calendar couldn't load right now. Refresh the page to try again.</div>`; return; }
+  if(!r.ok||!Array.isArray(r.events)){ console.error("Calendar couldn't load events:", r.error||"unexpected response"); renderHomeWeek(true); renderCalendar(); $("eventList").innerHTML=`<div class="emptynote">The calendar couldn't load right now. Refresh the page to try again.</div>`; return; }
   // Open on the month of the next upcoming event when this month has none.
   const now=new Date(), key=ymd(now), next=EVENTS.find(ev=>ev.event_date>=key);
   const thisMonth=key.slice(0,7);
   if(next && !weeklyActs().length && !EVENTS.some(ev=>ev.event_date.slice(0,7)===thisMonth && ev.event_date>=key)){ const [y,m]=next.event_date.split("-").map(Number); calMonth=new Date(y,m-1,1); }
-  renderCalTowns(); renderCalendar(); renderWeekly();
+  renderCalTowns(); renderCalendar(); renderWeekly(); renderHomeWeek();
 }
 document.addEventListener("click",async e=>{
   const ask=e.target.closest("[data-ask]")||e.target.closest("[data-answer]"), rep=e.target.closest("[data-reply]"), rm=e.target.closest("[data-remove]");
