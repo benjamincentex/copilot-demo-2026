@@ -382,9 +382,10 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .hwday .hwd b{font-family:var(--display);font-size:20px;font-weight:400;color:var(--ink);letter-spacing:0;margin-left:4px}
 .hwday i{font-style:normal;font-size:13px;line-height:1.3;border-left:3px solid var(--oak);padding-left:6px;overflow-wrap:anywhere}
 .hwday i.k-school{border-color:var(--bonnet)}
-.hwday i.k-wk{border-left-style:dashed;border-color:var(--sun)}
-.hwday i b{display:block;font-weight:600}
-.hwday i em{display:block;font-style:normal;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.hwday i b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-weight:600}
+.hwday .hwwk em{font-style:normal;font-weight:700;color:var(--sun)}
+.hwday .hwt{color:var(--oak);font-variant-numeric:tabular-nums}
+.hwday .hwwk{margin-top:auto;font-size:12px;line-height:1.35;color:var(--muted);border-top:1px dashed var(--line);padding-top:6px;align-self:stretch;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .hwday i small{display:block;color:var(--muted);font-size:12px}
 .hwday .hwmore{font-size:12px;color:var(--muted)}
 .hwday .hwnone{font-size:13px;color:var(--muted)}
@@ -1751,13 +1752,15 @@ function renderHomeWeek(failed){
   const WK=L.filter(x=>!x.test&&x.type==="activity"&&(x.daytime||x.homeschool)&&x.days&&x.days.length);
   box.innerHTML=days.map((d,i)=>{
     const key=ymd(d), evs=EVENTS.filter(ev=>ev.event_date===key).sort((a,b)=>(startMin(a.event_time)??9999)-(startMin(b.event_time)??9999));
-    const wks=weeklyOn(d,WK), wk=wks.length, max=5;
-    const all=evs.map(ev=>`<i class="k-${kindOf(ev)}">${ev.category&&HWCAT[ev.category]?`<em>${HWCAT[ev.category]}</em>`:""}<b>${esc(ev.title)}</b>${ev.event_time?`<small>${esc(ev.event_time)}</small>`:""}${(ev.place||ev.town)?`<small>${esc([ev.place,ev.town].filter(Boolean).join(", "))}</small>`:""}${ev.host&&ev.host!==ev.title?`<small>${esc(ev.host)}</small>`:""}</i>`)
-      .concat(wks.map(x=>`<i class="k-wk"><em>Weekly class</em><b>${esc(x.n)}</b><small>${esc(wkTown(x,d))}</small></i>`));
-    const items=all.slice(0,max).join("");
-    const more=all.length>max?`+${all.length-max} more in the calendar`:"";
+    const wks=weeklyOn(d,WK), wk=wks.length, max=3;
+    // Compact: short time + title + town on the card; full details in the hover tooltip and the calendar.
+    const shortT=t=>{ const m=startMin(t); if(m==null) return ""; const h=Math.floor(m/60), mi=m%60; return (h%12||12)+(mi?":"+String(mi).padStart(2,"0"):"")+(h<12?"a":"p"); };
+    const tip=ev=>[HWCAT[ev.category],ev.title,ev.event_time,[ev.place,ev.town].filter(Boolean).join(", "),ev.host&&ev.host!==ev.title?"Hosted by "+ev.host:""].filter(Boolean).join("\n");
+    const items=evs.slice(0,max).map(ev=>`<i class="k-${kindOf(ev)}" title="${esc(tip(ev))}"><b>${shortT(ev.event_time)?`<span class="hwt">${shortT(ev.event_time)}</span> `:""}${esc(ev.title)}</b>${ev.town?`<small>${esc(ev.town)}</small>`:""}</i>`).join("");
+    const wkLine=wk?`<span class="hwwk" title="${esc(wks.map(x=>x.n+" ("+wkTown(x,d)+")").join("\n"))}"><em>Weekly</em> ${esc(wks.slice(0,2).map(x=>x.n).join(", "))}${wk>2?` +${wk-2}`:""}</span>`:"";
+    const more=(evs.length>max?`+${evs.length-max} more event${evs.length-max>1?"s":""}`:"");
     return `<button type="button" class="hwday${key===todayKey?" today":""}${key<todayKey?" past":""}" data-hwday="${key}" aria-label="${d.toDateString()}: ${evs.length} event${evs.length===1?"":"s"}${wk?", "+wk+" weekly classes":""}. Open in calendar">
-      <span class="hwd">${i===0?"Today":i===1?"Tomorrow":DOWK[d.getDay()]}<b>${d.getDate()}</b></span>${items||(wk?"":`<span class="hwnone">No events yet</span>`)}${more?`<span class="hwmore">${more}</span>`:""}</button>`;
+      <span class="hwd">${i===0?"Today":i===1?"Tomorrow":DOWK[d.getDay()]}<b>${d.getDate()}</b></span>${items||(wk?"":`<span class="hwnone">No events yet</span>`)}${more?`<span class="hwmore">${more}</span>`:""}${wkLine}</button>`;
   }).join("");
 }
 document.addEventListener("click",e=>{const b=e.target.closest("[data-hwday]"); if(!b) return;
