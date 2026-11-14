@@ -72,3 +72,4 @@ CREATE TABLE IF NOT EXISTS contact_messages (id INTEGER PRIMARY KEY AUTOINCREMEN
 ALTER TABLE claims ADD COLUMN verify TEXT;
 ALTER TABLE submissions ADD COLUMN dupes TEXT;
 ALTER TABLE submissions ADD COLUMN review_token TEXT;
+CREATE TABLE IF NOT EXISTS claim_invites (id INTEGER PRIMARY KEY AUTOINCREMENT, wave TEXT, slug TEXT, listing TEXT, to_email TEXT NOT NULL, subject TEXT NOT NULL, body TEXT NOT NULL, token TEXT NOT NULL, status TEXT DEFAULT 'draft', notified_at TEXT, sent_at TEXT, created_at TEXT DEFAULT (datetime('now')));

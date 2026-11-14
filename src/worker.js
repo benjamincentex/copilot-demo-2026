@@ -108,7 +108,7 @@ async function sendMail(env, to, subject, text, html, opts = {}) {
     const headers = unsub ? { "List-Unsubscribe": `<${unsub[0]}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } : undefined;
     await env.EMAIL.send({
       to,
-      from: { email: env.MAIL_FROM || "hello@centexhomeschool.org", name: "CenTex Homeschool Hub" },
+      from: { email: env.MAIL_FROM || "hello@centexhomeschool.org", name: opts.fromName || "CenTex Homeschool Hub" },
       // Replies go to a real person: the other parent for reply emails, otherwise the owner's inbox.
       ...((opts.replyTo || owner) ? { replyTo: opts.replyTo || owner } : {}),
       subject,
@@ -379,6 +379,22 @@ function blockMsg(mod) {
   return "This can't be posted as written. Please keep it kind, family-friendly and focused on homeschooling, then try again.";
 }
 
+// ---- Claim invites: drafts are queued in claim_invites; the owner gets one review email and sends them with one click ----
+async function claimInviteDigest(env) {
+  const to = (env.ADMIN_EMAIL || "").split(",")[0].trim(); if (!to) return;
+  const { results } = await env.DB.prepare("SELECT * FROM claim_invites WHERE status='draft' AND notified_at IS NULL ORDER BY id").all();
+  if (!results.length) return;
+  const site = env.SITE_URL || "https://centexhomeschool.org";
+  for (const token of [...new Set(results.map((r) => r.token))]) {
+    const rows = results.filter((r) => r.token === token);
+    const inner = `<h2 style="font-family:Georgia,serif;font-weight:normal;font-size:24px;margin:0 0 6px">${rows.length} claim invite${rows.length > 1 ? "s" : ""} ready to send</h2>
+      <p style="margin:0 0 14px;color:#76675A">Nothing has gone out yet. Each one invites a group to claim its listing. They'll come from "Berkli at CenTex Homeschool Hub" and replies come to you.</p>
+      <p style="margin:0 0 18px"><a href="${site}/api/invites?t=${token}" style="display:inline-block;background:#2F5A3D;color:#FFFBF5;text-decoration:none;font-weight:bold;padding:12px 22px;border-radius:10px">Review and send</a></p>
+      ${rows.map((r) => `<div style="border-top:1px solid #E8DCCB;padding:12px 0"><b>${hEsc(r.listing)}</b><br><span style="color:#76675A;font-size:14px">To ${hEsc(r.to_email)} · ${hEsc(r.subject)}</span></div>`).join("")}`;
+    const ok = await sendMail(env, to, `Review ${rows.length} claim invite${rows.length > 1 ? "s" : ""} before they go out`, `${rows.length} claim invites are ready. Review and send: ${site}/api/invites?t=${token}`, emailShell(env, inner, "Nothing has gone out yet"));
+    if (ok) await env.DB.prepare("UPDATE claim_invites SET notified_at=datetime('now') WHERE token=? AND status='draft'").bind(token).run();
+  }
+}
 const routes = {
   // ---------- public ----------
   "GET /api/listings": async (req, env) => {
@@ -435,6 +451,40 @@ const routes = {
   },
 
   // One click from the group's published contact address approves the claim.
+  "GET /api/invites": async (req, env) => {
+    const t = clip(new URL(req.url).searchParams.get("t"), 64).replace(/[^a-f0-9]/gi, "");
+    const { results } = t ? await env.DB.prepare("SELECT * FROM claim_invites WHERE token=? ORDER BY id").bind(t).all() : { results: [] };
+    if (!results.length) return reviewPage("Claim invites", `<h1>That link has expired</h1>`);
+    const drafts = results.filter((r) => r.status === "draft"), done = results.filter((r) => r.status !== "draft" && r.status !== "discarded");
+    return reviewPage("Claim invites", `<h1>Claim invites</h1>
+      <p class="muted">${drafts.length ? `${drafts.length} ready to send. Untick any you don't want to send yet. Each goes from "Berkli at CenTex Homeschool Hub" with replies to your inbox.` : "Nothing left to send in this batch."}</p>
+      ${done.length ? `<p>${done.map((r) => `${r.status === "sent" ? "✓" : "⚠"} ${hEsc(r.listing)}: ${r.status === "sent" ? "sent " + hEsc(String(r.sent_at || "").slice(0, 16)) + " UTC" : "didn't send"}`).join("<br>")}</p>` : ""}
+      ${drafts.length ? `<form method="post" action="/api/invites"><input type="hidden" name="t" value="${t}">
+      ${drafts.map((r) => `<details style="border-top:1px solid #E8DCCB;padding:10px 0"><summary style="cursor:pointer"><label style="display:inline-flex;gap:8px;align-items:center"><input type="checkbox" name="id" value="${r.id}" checked style="width:auto"> <b>${hEsc(r.listing)}</b></label> <span class="muted">· ${hEsc(r.to_email)}</span></summary>
+        <p class="muted" style="margin:8px 0 4px">Subject: ${hEsc(r.subject)}</p><pre style="white-space:pre-wrap;font:inherit;background:#F8F1E7;border-radius:10px;padding:12px;margin:0">${hEsc(r.body)}</pre></details>`).join("")}
+      <div class="row" style="margin-top:16px"><button class="ok" name="action" value="send">Send selected</button><button class="no" name="action" value="discard">Discard selected</button></div></form>` : ""}`);
+  },
+  "POST /api/invites": async (req, env) => {
+    const f = await req.formData(); const t = clip(f.get("t"), 64).replace(/[^a-f0-9]/gi, ""), action = String(f.get("action") || "");
+    const ids = f.getAll("id").map(Number).filter(Boolean);
+    if (!t || !ids.length) return reviewPage("Claim invites", `<h1>Nothing selected</h1><p><a href="/api/invites?t=${t}">Go back</a></p>`);
+    const ph = ids.map(() => "?").join(",");
+    const { results } = await env.DB.prepare(`SELECT * FROM claim_invites WHERE token=? AND status='draft' AND id IN (${ph})`).bind(t, ...ids).all();
+    if (action === "discard") {
+      await env.DB.prepare(`UPDATE claim_invites SET status='discarded' WHERE token=? AND status='draft' AND id IN (${ph})`).bind(t, ...ids).run();
+      return reviewPage("Discarded", `<h1>Discarded ${results.length}</h1><p>Nothing was sent to them. <a href="/api/invites?t=${t}">Back to the batch</a></p>`);
+    }
+    const owner = (env.ADMIN_EMAIL || "").split(",")[0].trim(); let sent = 0; const failed = [];
+    for (const r of results) {
+      // Claim the row first so a double-click can't send twice.
+      const lock = await env.DB.prepare("UPDATE claim_invites SET status='sending' WHERE id=? AND status='draft'").bind(r.id).run();
+      if (!lock.meta.changes) continue;
+      const ok = await sendMail(env, r.to_email, r.subject, r.body, null, { replyTo: owner, fromName: "Berkli at CenTex Homeschool Hub" });
+      await env.DB.prepare("UPDATE claim_invites SET status=?, sent_at=datetime('now') WHERE id=?").bind(ok ? "sent" : "failed", r.id).run();
+      ok ? sent++ : failed.push(r.listing);
+    }
+    return reviewPage("Sent", `<h1>✓ Sent ${sent} invite${sent === 1 ? "" : "s"}</h1>${failed.length ? `<p class="warn">Didn't send: ${failed.map(hEsc).join(", ")}. Check the owner page for email errors.</p>` : ""}<p>Claims will arrive in your inbox as "New listing claim" emails to approve. <a href="/api/invites?t=${t}">See the batch</a></p>`);
+  },
   "GET /api/claim/confirm": async (req, env) => {
     const t = clip(new URL(req.url).searchParams.get("t"), 64).replace(/[^a-f0-9]/gi, "");
     const { results } = t ? await env.DB.prepare("SELECT * FROM claims WHERE verify LIKE ? LIMIT 5").bind(`%"askToken":"${t}"%`).all() : { results: [] };
@@ -1921,7 +1971,7 @@ async function seoPage(request, env, url) {
 
 export default {
   async scheduled(event, env, ctx) {
-    if (event.cron === "*/10 * * * *") ctx.waitUntil(snapshotSites(env));
+    if (event.cron === "*/10 * * * *") { ctx.waitUntil(snapshotSites(env)); ctx.waitUntil(claimInviteDigest(env).catch((e) => console.error("invite digest failed", e && e.message))); }
     if (event.cron === "0 13 * * *") { ctx.waitUntil(dailyDigest(env)); ctx.waitUntil(monthlyReports(env)); ctx.waitUntil(sendEventReminders(env)); ctx.waitUntil(availReminders(env)); ctx.waitUntil(sendWeeklyQuote(env)); }
     ctx.waitUntil(processNewsletters(env, 200));
   },
