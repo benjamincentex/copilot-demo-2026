@@ -366,7 +366,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .quoteband blockquote{margin:0;font-family:var(--display);font-size:clamp(22px,3vw,30px);line-height:1.35;color:var(--oak)}
 .quoteband figcaption{margin-top:10px;font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
 .quoteband .qweek{display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--sun);font-weight:700;margin-bottom:8px}
-.statlink{text-decoration:none;color:inherit;border-radius:10px;transition:background .15s}
+.statlink{text-decoration:none;color:inherit;border-radius:10px;padding:4px 8px;margin:-4px -8px;transition:background .15s}
 .statlink:hover,.statlink:focus-visible{background:var(--sun-soft)}
 .statlink:hover span{color:var(--oak)}
 .homeweek{max-width:1100px;margin:22px auto 8px;padding:0 16px}
@@ -554,9 +554,9 @@ html{scroll-behavior:smooth}
     </div>
   </div>
   <div class="stats" aria-label="Directory at a glance">
-    <div class="stat"><b id="statListings">0</b><span>schools, co-ops &amp; classes</span></div>
-    <div class="stat"><b id="statActivities">0</b><span>activities</span></div>
-    <div class="stat"><b id="statTowns">0</b><span>towns</span></div>
+    <a class="stat statlink" href="/directory"><b id="statListings">0</b><span>schools, co-ops &amp; classes →</span></a>
+    <a class="stat statlink" href="/activities"><b id="statActivities">0</b><span>activities →</span></a>
+    <a class="stat statlink" href="/directory"><b id="statTowns">0</b><span>towns →</span></a>
     <a class="stat statlink" href="/resources#tefa"><b>$2,000</b><span>TEFA per homeschooler →</span></a>
   </div>
 </div>
