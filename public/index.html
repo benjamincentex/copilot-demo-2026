@@ -554,9 +554,9 @@ html{scroll-behavior:smooth}
     </div>
   </div>
   <div class="stats" aria-label="Directory at a glance">
-    <a class="stat statlink" href="/directory"><b id="statListings">0</b><span>schools, co-ops &amp; classes →</span></a>
-    <a class="stat statlink" href="/activities"><b id="statActivities">0</b><span>activities →</span></a>
-    <a class="stat statlink" href="/directory"><b id="statTowns">0</b><span>towns →</span></a>
+    <a class="stat statlink" href="/directory" data-statclear><b id="statListings">0</b><span>schools, co-ops &amp; classes →</span></a>
+    <a class="stat statlink" href="/activities" data-statclear><b id="statActivities">0</b><span>activities →</span></a>
+    <a class="stat statlink" href="/directory?show=all" data-statclear><b id="statTowns">0</b><span>towns →</span></a>
     <a class="stat statlink" href="/resources#tefa"><b>$2,000</b><span>TEFA per homeschooler →</span></a>
   </div>
 </div>
@@ -1121,7 +1121,7 @@ document.addEventListener("click",e=>{
   const a=e.target.closest("a[href]"); if(!a||a.target||e.defaultPrevented||e.button||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey) return;
   const u=new URL(a.getAttribute("href"),location.href); if(u.origin!==location.origin) return;
   let dest=null;
-  if(u.pathname in VIEWS||u.pathname==="/index.html") dest=u.pathname+u.hash;
+  if(u.pathname in VIEWS||u.pathname==="/index.html") dest=u.pathname+u.search+u.hash;
   if(u.pathname===location.pathname&&u.hash){ const h=u.hash.slice(1), el=document.getElementById(h);
     if(el&&!el.closest("[hidden]")) return;          // same-page jump: let the browser scroll
     if(LEGACY[h]) dest=LEGACY[h]; }
@@ -1384,6 +1384,8 @@ $("tabLearn").addEventListener("click",()=>setSection("learn"));
 $("actSel").addEventListener("change",e=>{state.approach=e.target.value;render();});
 $("tabAct").addEventListener("click",()=>setSection("activity"));
 $("tabBoth").addEventListener("click",()=>setSection("all"));
+// Home stats open the directory on the matching tab with no leftover search or filters, so the numbers match.
+document.addEventListener("click",e=>{ if(e.target.closest("[data-statclear]")) $("clearBtn").click(); },true);
 $("clearBtn").addEventListener("click",()=>{Object.assign(state,{q:"",type:"",approach:"",towns:[],open:false});$("q").value="";$("typeSel").value="";$("approachSel").value="";$("actSel").value="";render();});
 
 function goForm(kind,name){
