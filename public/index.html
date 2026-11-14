@@ -603,7 +603,7 @@ html{scroll-behavior:smooth}
   <a class="qsub" href="#newsletter">Get a quote like this every Monday →</a>
 </figure>
 <section class="homeweek" data-view="home" aria-labelledby="hwTitle">
-  <div class="hwhead"><h2 id="hwTitle">This week in Central Texas</h2><span class="meta" id="hwRange"></span><a href="/calendar" class="hwall">Full calendar →</a></div>
+  <div class="hwhead"><h2 id="hwTitle">The week ahead in Central Texas</h2><span class="meta" id="hwRange"></span><a href="/calendar" class="hwall">Full calendar →</a></div>
   <div class="hwgrid" id="homeWeek"><div class="emptynote">Loading this week's events…</div></div>
 </section>
   <section id="fit" data-view="home" style="padding-block:24px 8px">
@@ -1734,21 +1734,21 @@ let calRz; addEventListener("resize",()=>{clearTimeout(calRz); calRz=setTimeout(
 $("calPrev").onclick=()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()-1,1);calDay=null;renderCalendar();};
 $("calNext").onclick=()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+1,1);calDay=null;renderCalendar();};
 $("calGrid").addEventListener("click",e=>{const b=e.target.closest("[data-day]"); if(!b) return; calDay=calDay===b.dataset.day?null:b.dataset.day; renderCalendar(); renderWeekly(); const ag=document.querySelector(".agenda"); if(ag){ const r=ag.getBoundingClientRect(); if(r.top>innerHeight-80||r.top<0) ag.scrollIntoView({behavior:"smooth",block:"start"}); }});
-// Home page: Monday–Sunday snapshot of this week's dated events, plus how many weekly classes run each day.
+// Home page: rolling 7-day snapshot (today + the next 6 days) of dated events, plus how many weekly classes run each day.
 function renderHomeWeek(failed){
   const box=$("homeWeek"); if(!box) return;
   if(failed){ box.innerHTML=`<div class="emptynote">This week's events couldn't load. <a href="/calendar">Open the calendar</a>.</div>`; return; }
-  const now=new Date(), todayKey=ymd(now), mon=new Date(now.getFullYear(),now.getMonth(),now.getDate()-((now.getDay()+6)%7));
+  const now=new Date(), todayKey=ymd(now), mon=new Date(now.getFullYear(),now.getMonth(),now.getDate());
   const days=[...Array(7)].map((_,i)=>{const d=new Date(mon); d.setDate(mon.getDate()+i); return d;});
   const f=d=>d.toLocaleDateString("en-US",{month:"short",day:"numeric"});
   $("hwRange").textContent=`${f(days[0])} – ${f(days[6])}`;
   const WK=L.filter(x=>!x.test&&x.type==="activity"&&(x.daytime||x.homeschool)&&x.days&&x.days.length);
-  box.innerHTML=days.map(d=>{
+  box.innerHTML=days.map((d,i)=>{
     const key=ymd(d), evs=EVENTS.filter(ev=>ev.event_date===key), wk=weeklyOn(d,WK).length, max=3;
     const items=evs.slice(0,max).map(ev=>`<i class="k-${kindOf(ev)}">${esc(ev.title)}${(ev.event_time||ev.town)?`<small>${esc([ev.event_time,ev.town].filter(Boolean).join(" · "))}</small>`:""}</i>`).join("");
     const more=[evs.length>max?`+${evs.length-max} more`:"",wk?`${wk} weekly class${wk>1?"es":""}`:""].filter(Boolean).join(" · ");
     return `<button type="button" class="hwday${key===todayKey?" today":""}${key<todayKey?" past":""}" data-hwday="${key}" aria-label="${d.toDateString()}: ${evs.length} event${evs.length===1?"":"s"}${wk?", "+wk+" weekly classes":""}. Open in calendar">
-      <span class="hwd">${DOWK[d.getDay()]}<b>${d.getDate()}</b></span>${items||(wk?"":`<span class="hwnone">No events yet</span>`)}${more?`<span class="hwmore">${more}</span>`:""}</button>`;
+      <span class="hwd">${i===0?"Today":i===1?"Tomorrow":DOWK[d.getDay()]}<b>${d.getDate()}</b></span>${items||(wk?"":`<span class="hwnone">No events yet</span>`)}${more?`<span class="hwmore">${more}</span>`:""}</button>`;
   }).join("");
 }
 document.addEventListener("click",e=>{const b=e.target.closest("[data-hwday]"); if(!b) return;
